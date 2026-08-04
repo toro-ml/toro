@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Toro/Toro.fsproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Toro.Tests/Toro.Tests.fsproj" />
+  </Folder>
+</Solution>
