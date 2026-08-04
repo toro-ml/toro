@@ -6,19 +6,28 @@
     <PackageId>Toro</PackageId>
     <Version>0.1.0</Version>
     <Authors>ryushiaok</Authors>
-    <Description>Toro</Description>
-    <PackageTags>fsharp;dotnet</PackageTags>
+    <Description>Minimalist ML framework for F# powered by TorchSharp</Description>
+    <PackageTags>fsharp;dotnet;ml;torchsharp;tensor</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/toro-ml/toro</RepositoryUrl>
     <RepositoryBranch>main</RepositoryBranch>
     <RepositoryType>git</RepositoryType>
+    <NoWarn>FS0760</NoWarn>
     <PackageReleaseNotes>https://github.com/toro-ml/toro/releases</PackageReleaseNotes>
     <PackageProjectUrl>https://github.com/toro-ml/toro</PackageProjectUrl>
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Library.fs" />
+    <Compile Include="Error.fs" />
+    <Compile Include="Device.fs" />
+    <Compile Include="DType.fs" />
+    <Compile Include="Shape.fs" />
+    <Compile Include="Tensor.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="TorchSharp" Version="0.107.0" />
   </ItemGroup>
 
   <ItemGroup>
