@@ -3,10 +3,26 @@
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageId>Toro</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>ryushiaok</Authors>
+    <Description>Toro</Description>
+    <PackageTags>fsharp;dotnet</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/toro-ml/toro</RepositoryUrl>
+    <RepositoryBranch>main</RepositoryBranch>
+    <RepositoryType>git</RepositoryType>
+    <PackageReleaseNotes>https://github.com/toro-ml/toro/releases</PackageReleaseNotes>
+    <PackageProjectUrl>https://github.com/toro-ml/toro</PackageProjectUrl>
   </PropertyGroup>
 
   <ItemGroup>
     <Compile Include="Library.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="/" />
   </ItemGroup>
 
 </Project>

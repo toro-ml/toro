@@ -1,9 +1,0 @@
-env_files = [{ path = "./.env", profile = "development" }]
-
-[tasks.pack]
-script_runner = "@shell"
-script = "dotnet pack src/Toro/Toro.fsproj -p:PackageVersion=${@}"
-
-[tasks.nuget-push]
-script_runner = "@shell"
-script = "dotnet nuget push src/Toro/bin/Release/${@}.nupkg -k ${NUGET_API_KEY} -s https://api.nuget.org/v3/index.json"
