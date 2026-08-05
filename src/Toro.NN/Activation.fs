@@ -8,17 +8,15 @@ type Activation =
     | Silu
     | Tanh
     | Sigmoid
+    with
 
-module Activation =
-    let apply (act: Activation) (x: Tensor) : Result<Tensor, ToroError> =
-        match act with
+    member this.forward(x: Tensor) : Result<Tensor, ToroError> =
+        match this with
         | Relu -> x.relu ()
         | Gelu -> x.gelu ()
         | Silu -> x.silu ()
         | Tanh -> x.tanh ()
         | Sigmoid -> x.sigmoid ()
 
-    let toModule (act: Activation) : IModule =
-        { new IModule with
-            member _.forward x = apply act x
-        }
+    interface IModule with
+        member this.forward x = this.forward x

@@ -70,7 +70,7 @@ let ``Activation functions produce same shape`` () =
     let x = Tensor.randn ([ 2; 4 ], F32, Cpu) |> unwrap
 
     for act in [ Relu; Gelu; Silu; Tanh; Sigmoid ] do
-        let y = Activation.apply act x |> unwrap
+        let y = act.forward x |> unwrap
         y.Shape |> should equal x.Shape
 
 [<Fact>]
@@ -86,7 +86,7 @@ let ``Sequential chains modules`` () =
             return
                 Sequential.create [
                     l1 :> IModule
-                    Activation.toModule Relu
+                    Relu :> IModule
                     l2 :> IModule
                 ]
         }
