@@ -122,3 +122,10 @@ module VarBuilder =
         Device = device
         Backend = InitBackend()
     }
+
+    let fromVarMap (varMap: IVarBackend) (dtype: DType) (device: Device) : VarBuilder = {
+        Prefix = ""
+        DType = dtype
+        Device = device
+        Backend = varMap
+    }

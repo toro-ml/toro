@@ -18,11 +18,14 @@
     <Compile Include="Module.fs" />
     <Compile Include="Init.fs" />
     <Compile Include="VarBuilder.fs" />
+    <Compile Include="VarMap.fs" />
     <Compile Include="Linear.fs" />
     <Compile Include="Embedding.fs" />
     <Compile Include="LayerNorm.fs" />
     <Compile Include="Activation.fs" />
     <Compile Include="Sequential.fs" />
+    <Compile Include="Loss.fs" />
+    <Compile Include="Optim.fs" />
   </ItemGroup>
 
   <ItemGroup>
