@@ -45,11 +45,7 @@ type LayerNorm = {
 
             let! xSqr = x.sqr ()
             let! normX = xSqr.meanKeepdim -1
-
-            let! normXEps = normX.addScalar this.Eps
-
-            let! normXSqrt = normXEps.sqrt ()
-            let! xNormed = x.div normXSqrt
+            let! xNormed = x /~ (normX.addScalar this.Eps |> TensorR.sqrt)
             let! xNormed = xNormed.toDType xDType
 
             let! x = xNormed.mul this.Weight

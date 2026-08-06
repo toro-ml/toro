@@ -19,7 +19,7 @@ type SGD = {
             result {
                 for v in this.Vars do
                     let! g = v.grad ()
-                    let! updated = Ok v -~ g.mulScalar this.LearningRate
+                    let! updated = v -~ g.mulScalar this.LearningRate
                     do! v.copyInPlace updated
             }
 
@@ -84,7 +84,7 @@ type AdamW = {
                     do! m.copyInPlace mNew
 
                     // v = beta2 * v + (1 - beta2) * g^2
-                    let! vNew = v.mulScalar p.Beta2 +~ (g.sqr () |> TensorR.scale (1.0 - p.Beta2))
+                    let! vNew = v.mulScalar p.Beta2 +~ g.sqr () *~. (1.0 - p.Beta2)
                     do! v.copyInPlace vNew
 
                     // bias correction
@@ -97,8 +97,7 @@ type AdamW = {
                     // theta = theta * (1 - lr * wd) - lr * mHat / (sqrt(vHat) + eps)
                     let! updated =
                         param.mulScalar (1.0 - p.Lr * p.WeightDecay)
-                        -~ (Ok mHat /~ (vHat.sqrt () |> TensorR.shift p.Eps)
-                            |> TensorR.scale p.Lr)
+                        -~ (mHat /~ (vHat.sqrt () +~. p.Eps) *~. p.Lr)
 
                     do! param.copyInPlace updated
             }

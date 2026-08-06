@@ -20,27 +20,10 @@ module Init =
         match init with
         | Const v -> Tensor.full (shape, v, dtype, device)
         | Randn(mean, stdev) ->
-            result {
-                let! t = Tensor.randn (shape, dtype, device)
-
-                let! scaled = t.mulScalar stdev
-                return! scaled.addScalar mean
-            }
+            Tensor.randn (shape, dtype, device) *~. stdev +~. mean
         | Uniform(lo, up) ->
-            result {
-                let! t = Tensor.rand (shape, dtype, device)
-
-                let! scaled = t.mulScalar (up - lo)
-
-                return! scaled.addScalar lo
-            }
+            Tensor.rand (shape, dtype, device) *~. (up - lo) +~. lo
         | KaimingNormal ->
             let fanIn = if shape.Length >= 2 then shape[1] else shape[0]
-
             let stdev = sqrt (2.0 / float fanIn)
-
-            result {
-                let! t = Tensor.randn (shape, dtype, device)
-
-                return! t.mulScalar stdev
-            }
+            Tensor.randn (shape, dtype, device) *~. stdev

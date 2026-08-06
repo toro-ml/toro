@@ -3,56 +3,111 @@ namespace Toro
 [<AutoOpen>]
 module TensorOp =
 
-    let (+~) (a: Result<Tensor, ToroError>) (b: Result<Tensor, ToroError>) =
+    [<System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)>]
+    type ToR = ToR with
+        static member (%%) (ToR, t: Tensor) : Result<Tensor, ToroError> = Ok t
+        static member (%%) (ToR, r: Result<Tensor, ToroError>) = r
+
+    let inline internal toR x = ToR %% x
+
+    let inline ( +~ ) a b =
         result {
-            let! a = a
-            let! b = b
+            let! (a: Tensor) = toR a
+            let! (b: Tensor) = toR b
             return! a.add b
         }
 
-    let (-~) (a: Result<Tensor, ToroError>) (b: Result<Tensor, ToroError>) =
+    let inline ( -~ ) a b =
         result {
-            let! a = a
-            let! b = b
+            let! (a: Tensor) = toR a
+            let! (b: Tensor) = toR b
             return! a.sub b
         }
 
-    let ( *~ ) (a: Result<Tensor, ToroError>) (b: Result<Tensor, ToroError>) =
+    let inline ( *~ ) a b =
         result {
-            let! a = a
-            let! b = b
+            let! (a: Tensor) = toR a
+            let! (b: Tensor) = toR b
             return! a.mul b
         }
 
-    let (/~) (a: Result<Tensor, ToroError>) (b: Result<Tensor, ToroError>) =
+    let inline ( /~ ) a b =
         result {
-            let! a = a
-            let! b = b
+            let! (a: Tensor) = toR a
+            let! (b: Tensor) = toR b
             return! a.div b
+        }
+
+    let inline ( *~. ) t (s: float) =
+        result {
+            let! (t: Tensor) = toR t
+            return! t.mulScalar s
+        }
+
+    let inline ( /~. ) t (s: float) =
+        result {
+            let! (t: Tensor) = toR t
+            return! t.divScalar s
+        }
+
+    let inline ( +~. ) t (s: float) =
+        result {
+            let! (t: Tensor) = toR t
+            return! t.addScalar s
+        }
+
+    let inline ( -~. ) t (s: float) =
+        result {
+            let! (t: Tensor) = toR t
+            return! t.subScalar s
         }
 
 module TensorR =
 
-    let scale (s: float) (t: Result<Tensor, ToroError>) =
-        Result.bind (fun (t: Tensor) -> t.mulScalar s) t
+    let inline scale (s: float) t =
+        result {
+            let! (t: Tensor) = toR t
+            return! t.mulScalar s
+        }
 
-    let shift (s: float) (t: Result<Tensor, ToroError>) =
-        Result.bind (fun (t: Tensor) -> t.addScalar s) t
+    let inline shift (s: float) t =
+        result {
+            let! (t: Tensor) = toR t
+            return! t.addScalar s
+        }
 
-    let sqr (t: Result<Tensor, ToroError>) =
-        Result.bind (fun (t: Tensor) -> t.sqr ()) t
+    let inline sqr t =
+        result {
+            let! (t: Tensor) = toR t
+            return! t.sqr ()
+        }
 
-    let sqrt (t: Result<Tensor, ToroError>) =
-        Result.bind (fun (t: Tensor) -> t.sqrt ()) t
+    let inline sqrt t =
+        result {
+            let! (t: Tensor) = toR t
+            return! t.sqrt ()
+        }
 
-    let neg (t: Result<Tensor, ToroError>) =
-        Result.bind (fun (t: Tensor) -> t.neg ()) t
+    let inline neg t =
+        result {
+            let! (t: Tensor) = toR t
+            return! t.neg ()
+        }
 
-    let exp (t: Result<Tensor, ToroError>) =
-        Result.bind (fun (t: Tensor) -> t.exp ()) t
+    let inline exp t =
+        result {
+            let! (t: Tensor) = toR t
+            return! t.exp ()
+        }
 
-    let log (t: Result<Tensor, ToroError>) =
-        Result.bind (fun (t: Tensor) -> t.log ()) t
+    let inline log t =
+        result {
+            let! (t: Tensor) = toR t
+            return! t.log ()
+        }
 
-    let meanAll (t: Result<Tensor, ToroError>) =
-        Result.bind (fun (t: Tensor) -> t.meanAll ()) t
+    let inline meanAll t =
+        result {
+            let! (t: Tensor) = toR t
+            return! t.meanAll ()
+        }

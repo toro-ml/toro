@@ -5,11 +5,7 @@ open Toro
 module Loss =
 
     let mse (inp: Tensor) (target: Tensor) : Result<Tensor, ToroError> =
-        result {
-            let! diff = inp.sub target
-            let! sq = diff.sqr ()
-            return! sq.meanAll ()
-        }
+        inp.sub target |> TensorR.sqr |> TensorR.meanAll
 
     let nll (inp: Tensor) (target: Tensor) : Result<Tensor, ToroError> =
         result {
