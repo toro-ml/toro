@@ -313,7 +313,11 @@ type Tensor internal (inner: torch.Tensor) =
         ToroError.wrap (fun () -> inner.backward ())
 
     member _.grad() =
-        ToroError.wrap (fun () -> Tensor(inner.grad))
+        ToroError.wrap (fun () ->
+            if isNull inner.grad then
+                Tensor(torch.zeros_like inner)
+            else
+                Tensor(inner.grad))
 
     member _.detach() =
         ToroError.wrap (fun () -> Tensor(inner.detach ()))
