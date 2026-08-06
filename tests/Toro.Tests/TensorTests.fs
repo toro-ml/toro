@@ -421,3 +421,13 @@ let ``avgPool2d reduces spatial dimensions`` () =
     let t = Tensor.randn ([ 1; 1; 4; 4 ], F32, Cpu) |> unwrap
     let y = t.avgPool2d 2 |> unwrap
     y.Shape |> should equal [ 1; 1; 2; 2 ]
+
+[<Fact>]
+let ``maskedFill replaces masked positions`` () =
+    let t = Tensor.ones ([ 2; 3 ], F32, Cpu) |> unwrap
+    let boolMask =
+        TorchSharp.torch.tensor (array2D [| [| false; true; false |]; [| true; false; true |] |])
+        |> Tensor.ofTorchTensor
+        |> unwrap
+    let filled = t.maskedFill (boolMask, -999.0) |> unwrap
+    filled.Shape |> should equal [ 2; 3 ]

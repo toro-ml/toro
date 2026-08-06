@@ -15,6 +15,7 @@
     <Compile Include="LayerTests.fs" />
     <Compile Include="PoolingTests.fs" />
     <Compile Include="RNNTests.fs" />
+    <Compile Include="AttentionTests.fs" />
     <Compile Include="VarTests.fs" />
     <Compile Include="LossTests.fs" />
     <Compile Include="OptimTests.fs" />

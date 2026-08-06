@@ -32,6 +32,7 @@
     <Compile Include="Dropout.fs" />
     <Compile Include="Func.fs" />
     <Compile Include="RNN.fs" />
+    <Compile Include="KvCache.fs" />
     <Compile Include="Loss.fs" />
     <Compile Include="Optim.fs" />
   </ItemGroup>

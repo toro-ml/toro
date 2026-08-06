@@ -516,6 +516,48 @@ type Tensor internal (inner: torch.Tensor) =
                 )
             ))
 
+    // --- Attention ---
+
+    member _.scaledDotProductAttention
+        (
+            key: Tensor,
+            value: Tensor,
+            ?attnMask: Tensor,
+            ?dropoutP: float,
+            ?isCausal: bool
+        ) =
+        ToroError.wrap (fun () ->
+            let dp = defaultArg dropoutP 0.0
+            let causal = defaultArg isCausal false
+
+            let mask =
+                attnMask
+                |> Option.map (fun m -> m.Inner)
+                |> Option.defaultValue null
+
+            Tensor(
+                torch.nn.functional.scaled_dot_product_attention (
+                    inner,
+                    key.Inner,
+                    value.Inner,
+                    attn_mask = mask,
+                    p = dp,
+                    is_casual = causal
+                )
+            ))
+
+    member _.maskedFill(mask: Tensor, value: float) =
+        ToroError.wrap (fun () -> Tensor(inner.masked_fill (mask.Inner, toScalar value)))
+
+    static member causalMask(seqLen: int, dtype: DType, device: Device) =
+        ToroError.wrap (fun () ->
+            let ones =
+                torch.ones (int64 seqLen, int64 seqLen, dtype = torch.bool, device = Device.toTorch device)
+
+            let mask = ones.triu (1L)
+            let filled = torch.zeros (int64 seqLen, int64 seqLen, dtype = DType.toTorch dtype, device = Device.toTorch device)
+            Tensor(filled.masked_fill (mask, toScalar System.Double.NegativeInfinity)))
+
     // --- Encoding ---
 
     member _.oneHot(numClasses: int) =
