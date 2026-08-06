@@ -24,6 +24,7 @@
     <Compile Include="DType.fs" />
     <Compile Include="Shape.fs" />
     <Compile Include="Tensor.fs" />
+    <Compile Include="TensorOp.fs" />
   </ItemGroup>
 
   <ItemGroup>

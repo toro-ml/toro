@@ -269,10 +269,24 @@ type Tensor internal (inner: torch.Tensor) =
     member _.softmax(dim: int) =
         ToroError.wrap (fun () -> Tensor(torch.nn.functional.softmax (inner, int64 dim)))
 
+    member _.logSoftmax(dim: int) =
+        ToroError.wrap (fun () -> Tensor(torch.nn.functional.log_softmax (inner, int64 dim)))
+
+    member _.clamp(min: float, max: float) =
+        ToroError.wrap (fun () -> Tensor(inner.clamp (toScalar min, toScalar max)))
+
+    member _.affine(mul: float, add: float) =
+        ToroError.wrap (fun () ->
+            let t = inner.mul (toScalar mul: Scalar)
+            Tensor(t.add (toScalar add: Scalar)))
+
     // --- Indexing ---
 
     member _.indexSelect(dim: int, index: Tensor) =
         ToroError.wrap (fun () -> Tensor(inner.index_select (int64 dim, index.Inner)))
+
+    member _.gather(dim: int, index: Tensor) =
+        ToroError.wrap (fun () -> Tensor(inner.gather (int64 dim, index.Inner)))
 
     // --- Type / Device conversion ---
 
@@ -297,6 +311,15 @@ type Tensor internal (inner: torch.Tensor) =
 
     member _.detach() =
         ToroError.wrap (fun () -> Tensor(inner.detach ()))
+
+    member _.zeroGrad() =
+        if not (isNull inner.grad) then
+            inner.grad.zero_ () |> ignore
+
+    member _.copyInPlace(src: Tensor) =
+        ToroError.wrap (fun () ->
+            use _scope = torch.no_grad ()
+            inner.copy_ (src.Inner) |> ignore)
 
     // --- Misc ---
 
