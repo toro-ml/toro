@@ -362,3 +362,62 @@ let ``oneHot encodes integer tensor`` () =
 
     let sum = (oh.sumAll () |> unwrap).toFloat32Scalar () |> unwrap
     sum |> should equal 3.0f
+
+[<Fact>]
+let ``chunk splits tensor along dimension`` () =
+    let t = Tensor.ones ([ 2; 12 ], F32, Cpu) |> unwrap
+    let chunks = t.chunk (4, 1) |> unwrap
+    chunks.Length |> should equal 4
+    chunks[0].Shape |> should equal [ 2; 3 ]
+
+[<Fact>]
+let ``broadcastAdd adds with broadcasting`` () =
+    let a = Tensor.ones ([ 2; 3 ], F32, Cpu) |> unwrap
+    let b = Tensor.ones ([ 3 ], F32, Cpu) |> unwrap
+    let c = a.broadcastAdd b |> unwrap
+    c.Shape |> should equal [ 2; 3 ]
+    scalarF32 c |> should equal 12.0f
+
+[<Fact>]
+let ``narrow extracts slice along dimension`` () =
+    let t = Tensor.arange (10.0, F32, Cpu) |> unwrap
+    let t = t.reshape [ 2; 5 ] |> unwrap
+    let s = t.narrow (1, 1L, 3L) |> unwrap
+    s.Shape |> should equal [ 2; 3 ]
+
+[<Fact>]
+let ``leakyRelu applies negative slope`` () =
+    let t =
+        Tensor.ofFloat32Array ([| -2.0f; -1.0f; 0.0f; 1.0f; 2.0f |], Cpu)
+        |> unwrap
+
+    let y = t.leakyRelu 0.1 |> unwrap
+    let vals = y.Shape
+    vals |> should equal [ 5 ]
+
+[<Fact>]
+let ``elu applies exponential linear unit`` () =
+    let t =
+        Tensor.ofFloat32Array ([| -1.0f; 0.0f; 1.0f |], Cpu)
+        |> unwrap
+
+    let y = t.elu 1.0 |> unwrap
+    y.Shape |> should equal [ 3 ]
+
+[<Fact>]
+let ``mish preserves shape`` () =
+    let t = Tensor.randn ([ 3; 4 ], F32, Cpu) |> unwrap
+    let y = t.mish () |> unwrap
+    y.Shape |> should equal [ 3; 4 ]
+
+[<Fact>]
+let ``maxPool2d reduces spatial dimensions`` () =
+    let t = Tensor.randn ([ 1; 1; 4; 4 ], F32, Cpu) |> unwrap
+    let y = t.maxPool2d 2 |> unwrap
+    y.Shape |> should equal [ 1; 1; 2; 2 ]
+
+[<Fact>]
+let ``avgPool2d reduces spatial dimensions`` () =
+    let t = Tensor.randn ([ 1; 1; 4; 4 ], F32, Cpu) |> unwrap
+    let y = t.avgPool2d 2 |> unwrap
+    y.Shape |> should equal [ 1; 1; 2; 2 ]

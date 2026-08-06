@@ -13,6 +13,8 @@
     <Compile Include="AutogradTests.fs" />
     <Compile Include="TensorOpTests.fs" />
     <Compile Include="LayerTests.fs" />
+    <Compile Include="PoolingTests.fs" />
+    <Compile Include="RNNTests.fs" />
     <Compile Include="VarTests.fs" />
     <Compile Include="LossTests.fs" />
     <Compile Include="OptimTests.fs" />

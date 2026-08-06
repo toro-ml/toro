@@ -26,9 +26,12 @@
     <Compile Include="BatchNorm.fs" />
     <Compile Include="GroupNorm.fs" />
     <Compile Include="Activation.fs" />
+    <Compile Include="Pooling.fs" />
     <Compile Include="Sequential.fs" />
+    <Compile Include="SequentialT.fs" />
     <Compile Include="Dropout.fs" />
     <Compile Include="Func.fs" />
+    <Compile Include="RNN.fs" />
     <Compile Include="Loss.fs" />
     <Compile Include="Optim.fs" />
   </ItemGroup>

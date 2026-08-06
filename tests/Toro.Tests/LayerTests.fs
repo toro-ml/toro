@@ -301,3 +301,63 @@ let ``GroupNorm implements IModule`` () =
     let x = Tensor.randn ([ 1; 4; 6; 6 ], F32, Cpu) |> unwrap
     let y = gn.forward x |> unwrap
     y.Shape |> should equal [ 1; 4; 6; 6 ]
+
+// --- Activation extension tests ---
+
+[<Fact>]
+let ``LeakyRelu activation produces correct shape`` () =
+    let act = LeakyRelu 0.01 :> IModule
+    let x = Tensor.randn ([ 3; 4 ], F32, Cpu) |> unwrap
+    let y = act.forward x |> unwrap
+    y.Shape |> should equal [ 3; 4 ]
+
+[<Fact>]
+let ``Elu activation produces correct shape`` () =
+    let act = Elu 1.0 :> IModule
+    let x = Tensor.randn ([ 3; 4 ], F32, Cpu) |> unwrap
+    let y = act.forward x |> unwrap
+    y.Shape |> should equal [ 3; 4 ]
+
+[<Fact>]
+let ``Mish activation produces correct shape`` () =
+    let act = Mish :> IModule
+    let x = Tensor.randn ([ 3; 4 ], F32, Cpu) |> unwrap
+    let y = act.forward x |> unwrap
+    y.Shape |> should equal [ 3; 4 ]
+
+// --- SequentialT tests ---
+
+[<Fact>]
+let ``SequentialT chains IModuleT layers`` () =
+    let vb = VarBuilder.fromInit F32 Cpu
+    let linear = Linear.create 10 5 vb |> unwrap
+
+    let seq =
+        SequentialT.create [
+            ModuleT.ofModule (linear :> IModule)
+            ModuleT.ofModule (Relu :> IModule)
+            Dropout.create 0.0 :> IModuleT
+        ]
+
+    let x = Tensor.randn ([ 2; 10 ], F32, Cpu) |> unwrap
+    let y = seq.forwardT x true |> unwrap
+    y.Shape |> should equal [ 2; 5 ]
+
+[<Fact>]
+let ``SequentialT ofModules wraps IModule list`` () =
+    let vb = VarBuilder.fromInit F32 Cpu
+    let linear = Linear.create 10 5 vb |> unwrap
+
+    let seq = SequentialT.ofModules [ linear :> IModule; Relu :> IModule ]
+
+    let x = Tensor.randn ([ 2; 10 ], F32, Cpu) |> unwrap
+    let y = seq.forwardT x false |> unwrap
+    y.Shape |> should equal [ 2; 5 ]
+
+[<Fact>]
+let ``SequentialT implements IModuleT`` () =
+    let seq = SequentialT.create [ ModuleT.ofModule (Relu :> IModule) ] :> IModuleT
+
+    let x = Tensor.randn ([ 3; 4 ], F32, Cpu) |> unwrap
+    let y = seq.forwardT x false |> unwrap
+    y.Shape |> should equal [ 3; 4 ]

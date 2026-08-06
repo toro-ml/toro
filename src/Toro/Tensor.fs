@@ -268,6 +268,16 @@ type Tensor internal (inner: torch.Tensor) =
     member _.sigmoid() =
         ToroError.wrap (fun () -> Tensor(inner.sigmoid ()))
 
+    member _.leakyRelu(negativeSlope: float) =
+        ToroError.wrap (fun () ->
+            Tensor(torch.nn.functional.leaky_relu (inner, negativeSlope)))
+
+    member _.elu(alpha: float) =
+        ToroError.wrap (fun () -> Tensor(torch.nn.functional.elu (inner, alpha)))
+
+    member _.mish() =
+        ToroError.wrap (fun () -> Tensor(torch.nn.functional.mish (inner)))
+
     member _.dropout(p: float, train: bool) =
         ToroError.wrap (fun () -> Tensor(torch.nn.functional.dropout (inner, p, train)))
 
@@ -294,6 +304,18 @@ type Tensor internal (inner: torch.Tensor) =
 
     member _.gather(dim: int, index: Tensor) =
         ToroError.wrap (fun () -> Tensor(inner.gather (int64 dim, index.Inner)))
+
+    member _.narrow(dim: int, start: int64, length: int64) =
+        ToroError.wrap (fun () -> Tensor(inner.narrow (int64 dim, start, length)))
+
+    member _.chunk(chunks: int, dim: int) =
+        ToroError.wrap (fun () ->
+            inner.chunk (int64 chunks, int64 dim)
+            |> Array.toList
+            |> List.map Tensor)
+
+    member _.broadcastAdd(other: Tensor) =
+        ToroError.wrap (fun () -> Tensor(inner.add (other.Inner)))
 
     // --- Type / Device conversion ---
 
@@ -449,6 +471,50 @@ type Tensor internal (inner: torch.Tensor) =
                 |> Option.defaultValue null
 
             Tensor(torch.nn.functional.group_norm (inner, int64 numGroups, w, b, e)))
+
+    // --- Pooling ---
+
+    member _.maxPool1d(kernelSize: int, ?stride: int, ?padding: int) =
+        ToroError.wrap (fun () ->
+            let s = int64 (defaultArg stride kernelSize)
+            let p = int64 (defaultArg padding 0)
+
+            Tensor(
+                torch.nn.functional.max_pool1d (
+                    inner,
+                    int64 kernelSize,
+                    stride = s,
+                    padding = p
+                )
+            ))
+
+    member _.maxPool2d(kernelSize: int, ?stride: int, ?padding: int) =
+        ToroError.wrap (fun () ->
+            let s = int64 (defaultArg stride kernelSize)
+            let p = int64 (defaultArg padding 0)
+
+            Tensor(
+                torch.nn.functional.max_pool2d (
+                    inner,
+                    int64 kernelSize,
+                    stride = s,
+                    padding = p
+                )
+            ))
+
+    member _.avgPool2d(kernelSize: int, ?stride: int, ?padding: int) =
+        ToroError.wrap (fun () ->
+            let s = int64 (defaultArg stride kernelSize)
+            let p = int64 (defaultArg padding 0)
+
+            Tensor(
+                torch.nn.functional.avg_pool2d (
+                    inner,
+                    int64 kernelSize,
+                    stride = s,
+                    padding = p
+                )
+            ))
 
     // --- Encoding ---
 
