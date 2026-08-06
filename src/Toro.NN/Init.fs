@@ -19,10 +19,8 @@ module Init =
         : Result<Tensor, ToroError> =
         match init with
         | Const v -> Tensor.full (shape, v, dtype, device)
-        | Randn(mean, stdev) ->
-            Tensor.randn (shape, dtype, device) *~. stdev +~. mean
-        | Uniform(lo, up) ->
-            Tensor.rand (shape, dtype, device) *~. (up - lo) +~. lo
+        | Randn(mean, stdev) -> Tensor.randn (shape, dtype, device) *~. stdev +~. mean
+        | Uniform(lo, up) -> Tensor.rand (shape, dtype, device) *~. (up - lo) +~. lo
         | KaimingNormal ->
             let fanIn = if shape.Length >= 2 then shape[1] else shape[0]
             let stdev = sqrt (2.0 / float fanIn)

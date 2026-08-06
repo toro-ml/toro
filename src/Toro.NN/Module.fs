@@ -11,4 +11,5 @@ type IModuleT =
 module ModuleT =
     let ofModule (m: IModule) : IModuleT =
         { new IModuleT with
-            member _.forwardT x _train = m.forward x }
+            member _.forwardT x _train = m.forward x
+        }

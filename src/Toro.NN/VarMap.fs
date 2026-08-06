@@ -8,8 +8,7 @@ type VarMap(data: Dictionary<string, Tensor>) =
 
     new() = VarMap(Dictionary())
 
-    member _.allVars() : Tensor list =
-        data.Values |> Seq.toList
+    member _.allVars() : Tensor list = data.Values |> Seq.toList
 
     member _.data() : IReadOnlyDictionary<string, Tensor> =
         data :> IReadOnlyDictionary<_, _>
@@ -26,13 +25,7 @@ type VarMap(data: Dictionary<string, Tensor>) =
             let tShape = t.Shape
 
             if tShape <> shape then
-                Error(
-                    ShapeMismatch(
-                        $"shape mismatch for {name}",
-                        shape,
-                        tShape
-                    )
-                )
+                Error(ShapeMismatch($"shape mismatch for {name}", shape, tShape))
             else
                 Ok t
         | false, _ ->
@@ -60,13 +53,17 @@ type VarMap(data: Dictionary<string, Tensor>) =
     static member load(dirPath: string) : Result<VarMap, ToroError> =
         result {
             let! files =
-                ToroError.wrap (fun () -> Directory.GetFiles(dirPath, "*.toro", SearchOption.AllDirectories))
+                ToroError.wrap (fun () ->
+                    Directory.GetFiles(dirPath, "*.toro", SearchOption.AllDirectories))
 
             let vm = VarMap()
 
             for file in files do
                 let rel = Path.GetRelativePath(dirPath, file)
-                let name = rel.Replace(Path.DirectorySeparatorChar, '.').Replace(".toro", "")
+
+                let name =
+                    rel.Replace(Path.DirectorySeparatorChar, '.').Replace(".toro", "")
+
                 let! t = Tensor.load file
                 let! t = t.requiresGrad ()
                 vm.set name t

@@ -2,8 +2,9 @@ namespace Toro.NN
 
 open Toro
 
-type Func =
-    { F: Tensor -> Result<Tensor, ToroError> }
+type Func = {
+    F: Tensor -> Result<Tensor, ToroError>
+} with
 
     interface IModule with
         member this.forward x = this.F x
@@ -11,8 +12,9 @@ type Func =
 module Func =
     let create (f: Tensor -> Result<Tensor, ToroError>) : Func = { F = f }
 
-type FuncT =
-    { F: Tensor -> bool -> Result<Tensor, ToroError> }
+type FuncT = {
+    F: Tensor -> bool -> Result<Tensor, ToroError>
+} with
 
     interface IModuleT with
         member this.forwardT x train = this.F x train

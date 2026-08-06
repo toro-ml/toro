@@ -2,10 +2,7 @@ namespace Toro.NN
 
 open Toro
 
-type GroupNormConfig = {
-    Eps: float
-    Affine: bool
-}
+type GroupNormConfig = { Eps: float; Affine: bool }
 
 module GroupNormConfig =
     let defaultConfig = { Eps = 1e-5; Affine = true }
@@ -18,7 +15,12 @@ type GroupNorm = {
 } with
 
     member this.forward(x: Tensor) : Result<Tensor, ToroError> =
-        x.groupNorm (this.NumGroups, ?weight = this.Weight, ?bias = this.Bias, eps = this.Eps)
+        x.groupNorm (
+            this.NumGroups,
+            ?weight = this.Weight,
+            ?bias = this.Bias,
+            eps = this.Eps
+        )
 
     interface IModule with
         member this.forward x = this.forward x
@@ -34,8 +36,20 @@ module GroupNorm =
             let! weight, bias =
                 if config.Affine then
                     result {
-                        let! w = VarBuilder.getWithHints [ numChannels ] "weight" (Init.Const 1.0) vb
-                        let! b = VarBuilder.getWithHints [ numChannels ] "bias" (Init.Const 0.0) vb
+                        let! w =
+                            VarBuilder.getWithHints
+                                [ numChannels ]
+                                "weight"
+                                (Init.Const 1.0)
+                                vb
+
+                        let! b =
+                            VarBuilder.getWithHints
+                                [ numChannels ]
+                                "bias"
+                                (Init.Const 0.0)
+                                vb
+
                         return Some w, Some b
                     }
                 else

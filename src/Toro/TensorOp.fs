@@ -4,20 +4,22 @@ namespace Toro
 module TensorOp =
 
     [<System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)>]
-    type ToR = ToR with
-        static member (%%) (ToR, t: Tensor) : Result<Tensor, ToroError> = Ok t
-        static member (%%) (ToR, r: Result<Tensor, ToroError>) = r
+    type ToR = ToR
+        with
+
+            static member (%%)(ToR, t: Tensor) : Result<Tensor, ToroError> = Ok t
+            static member (%%)(ToR, r: Result<Tensor, ToroError>) = r
 
     let inline internal toR x = ToR %% x
 
-    let inline ( +~ ) a b =
+    let inline (+~) a b =
         result {
             let! (a: Tensor) = toR a
             let! (b: Tensor) = toR b
             return! a.add b
         }
 
-    let inline ( -~ ) a b =
+    let inline (-~) a b =
         result {
             let! (a: Tensor) = toR a
             let! (b: Tensor) = toR b
@@ -31,7 +33,7 @@ module TensorOp =
             return! a.mul b
         }
 
-    let inline ( /~ ) a b =
+    let inline (/~) a b =
         result {
             let! (a: Tensor) = toR a
             let! (b: Tensor) = toR b
@@ -44,19 +46,19 @@ module TensorOp =
             return! t.mulScalar s
         }
 
-    let inline ( /~. ) t (s: float) =
+    let inline (/~.) t (s: float) =
         result {
             let! (t: Tensor) = toR t
             return! t.divScalar s
         }
 
-    let inline ( +~. ) t (s: float) =
+    let inline (+~.) t (s: float) =
         result {
             let! (t: Tensor) = toR t
             return! t.addScalar s
         }
 
-    let inline ( -~. ) t (s: float) =
+    let inline (-~.) t (s: float) =
         result {
             let! (t: Tensor) = toR t
             return! t.subScalar s

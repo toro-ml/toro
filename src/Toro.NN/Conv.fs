@@ -55,7 +55,11 @@ module Conv1d =
 
         result {
             let! ws =
-                VarBuilder.getWithHints [ outChannels; groupInC; kernelSize ] "weight" initWs vb
+                VarBuilder.getWithHints
+                    [ outChannels; groupInC; kernelSize ]
+                    "weight"
+                    initWs
+                    vb
 
             let! bs = VarBuilder.getWithHints [ outChannels ] "bias" initBs vb
 
@@ -86,7 +90,11 @@ module Conv1d =
 
         result {
             let! ws =
-                VarBuilder.getWithHints [ outChannels; groupInC; kernelSize ] "weight" initWs vb
+                VarBuilder.getWithHints
+                    [ outChannels; groupInC; kernelSize ]
+                    "weight"
+                    initWs
+                    vb
 
             return {
                 Weight = ws

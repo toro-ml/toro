@@ -8,7 +8,6 @@ type Activation =
     | Silu
     | Tanh
     | Sigmoid
-    with
 
     member this.forward(x: Tensor) : Result<Tensor, ToroError> =
         match this with

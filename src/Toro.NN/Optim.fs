@@ -148,4 +148,9 @@ module AdamW =
         }
 
     let createWithLr (lr: float) (vars: Tensor list) : Result<AdamW, ToroError> =
-        create { ParamsAdamW.defaultParams with Lr = lr } vars
+        create
+            {
+                ParamsAdamW.defaultParams with
+                    Lr = lr
+            }
+            vars

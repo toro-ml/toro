@@ -2,8 +2,9 @@ namespace Toro.NN
 
 open Toro
 
-type Dropout =
-    { DropP: float }
+type Dropout = {
+    DropP: float
+} with
 
     member this.forwardT (x: Tensor) (train: bool) : Result<Tensor, ToroError> =
         if not train || this.DropP = 0.0 then

@@ -134,8 +134,7 @@ type Tensor internal (inner: torch.Tensor) =
 
             Tensor(torch.stack (ts, int64 dim)))
 
-    static member ofTorchTensor(t: torch.Tensor) =
-        ToroError.wrap (fun () -> Tensor(t))
+    static member ofTorchTensor(t: torch.Tensor) = ToroError.wrap (fun () -> Tensor(t))
 
     // --- Dimension query ---
 
@@ -273,10 +272,12 @@ type Tensor internal (inner: torch.Tensor) =
         ToroError.wrap (fun () -> Tensor(torch.nn.functional.dropout (inner, p, train)))
 
     member _.softmax(dim: int) =
-        ToroError.wrap (fun () -> Tensor(torch.nn.functional.softmax (inner, int64 dim)))
+        ToroError.wrap (fun () ->
+            Tensor(torch.nn.functional.softmax (inner, int64 dim)))
 
     member _.logSoftmax(dim: int) =
-        ToroError.wrap (fun () -> Tensor(torch.nn.functional.log_softmax (inner, int64 dim)))
+        ToroError.wrap (fun () ->
+            Tensor(torch.nn.functional.log_softmax (inner, int64 dim)))
 
     member _.clamp(min: float, max: float) =
         ToroError.wrap (fun () -> Tensor(inner.clamp (toScalar min, toScalar max)))
@@ -376,7 +377,15 @@ type Tensor internal (inner: torch.Tensor) =
                 |> Option.defaultValue null
 
             Tensor(
-                torch.nn.functional.conv2d (inner, weight.Inner, b, [| s; s |], [| p; p |], [| d; d |], g)
+                torch.nn.functional.conv2d (
+                    inner,
+                    weight.Inner,
+                    b,
+                    [| s; s |],
+                    [| p; p |],
+                    [| d; d |],
+                    g
+                )
             ))
 
     // --- Normalization ---
@@ -392,18 +401,52 @@ type Tensor internal (inner: torch.Tensor) =
             eps: float
         ) =
         ToroError.wrap (fun () ->
-            let w = weight |> Option.map (fun t -> t.Inner) |> Option.defaultValue null
-            let b = bias |> Option.map (fun t -> t.Inner) |> Option.defaultValue null
-            let rm = runningMean |> Option.map (fun t -> t.Inner) |> Option.defaultValue null
-            let rv = runningVar |> Option.map (fun t -> t.Inner) |> Option.defaultValue null
+            let w =
+                weight
+                |> Option.map (fun t -> t.Inner)
+                |> Option.defaultValue null
 
-            Tensor(torch.nn.functional.batch_norm (inner, rm, rv, w, b, train, momentum, eps)))
+            let b =
+                bias
+                |> Option.map (fun t -> t.Inner)
+                |> Option.defaultValue null
+
+            let rm =
+                runningMean
+                |> Option.map (fun t -> t.Inner)
+                |> Option.defaultValue null
+
+            let rv =
+                runningVar
+                |> Option.map (fun t -> t.Inner)
+                |> Option.defaultValue null
+
+            Tensor(
+                torch.nn.functional.batch_norm (
+                    inner,
+                    rm,
+                    rv,
+                    w,
+                    b,
+                    train,
+                    momentum,
+                    eps
+                )
+            ))
 
     member _.groupNorm(numGroups: int, ?weight: Tensor, ?bias: Tensor, ?eps: float) =
         ToroError.wrap (fun () ->
             let e = defaultArg eps 1e-5
-            let w = weight |> Option.map (fun t -> t.Inner) |> Option.defaultValue null
-            let b = bias |> Option.map (fun t -> t.Inner) |> Option.defaultValue null
+
+            let w =
+                weight
+                |> Option.map (fun t -> t.Inner)
+                |> Option.defaultValue null
+
+            let b =
+                bias
+                |> Option.map (fun t -> t.Inner)
+                |> Option.defaultValue null
 
             Tensor(torch.nn.functional.group_norm (inner, int64 numGroups, w, b, e)))
 

@@ -78,12 +78,7 @@ let ``Sequential chains modules`` () =
             let! l1 = Linear.create 10 5 (vb |> VarBuilder.pp "l1")
             let! l2 = Linear.create 5 2 (vb |> VarBuilder.pp "l2")
 
-            return
-                Sequential.create [
-                    l1 :> IModule
-                    Relu :> IModule
-                    l2 :> IModule
-                ]
+            return Sequential.create [ l1 :> IModule; Relu :> IModule; l2 :> IModule ]
         }
         |> unwrap
 
@@ -153,20 +148,21 @@ let ``Func create wraps function as IModule`` () =
 
 [<Fact>]
 let ``FuncT passes train flag correctly`` () =
-    let f =
-        FuncT.create (fun x train ->
-            if train then x.mulScalar 2.0
-            else Ok x)
+    let f = FuncT.create (fun x train -> if train then x.mulScalar 2.0 else Ok x)
 
     let m = f :> IModuleT
     let x = Tensor.ones ([ 3 ], F32, Cpu) |> unwrap
 
     let yTrain = m.forwardT x true |> unwrap
-    (yTrain.sumAll () |> unwrap).toFloat32Scalar () |> unwrap
+
+    (yTrain.sumAll () |> unwrap).toFloat32Scalar ()
+    |> unwrap
     |> should equal 6.0f
 
     let yEval = m.forwardT x false |> unwrap
-    (yEval.sumAll () |> unwrap).toFloat32Scalar () |> unwrap
+
+    (yEval.sumAll () |> unwrap).toFloat32Scalar ()
+    |> unwrap
     |> should equal 3.0f
 
 [<Fact>]
@@ -194,7 +190,11 @@ let ``Conv1d forward produces correct shape`` () =
 
 [<Fact>]
 let ``Conv1d with padding preserves length`` () =
-    let config = { Conv1dConfig.defaultConfig with Padding = 2 }
+    let config = {
+        Conv1dConfig.defaultConfig with
+            Padding = 2
+    }
+
     let vb = VarBuilder.fromInit F32 Cpu
     let conv = Conv1d.create 1 8 5 config vb |> unwrap
 
@@ -205,7 +205,10 @@ let ``Conv1d with padding preserves length`` () =
 [<Fact>]
 let ``Conv1d no bias works`` () =
     let vb = VarBuilder.fromInit F32 Cpu
-    let conv = Conv1d.createNoBias 2 4 3 Conv1dConfig.defaultConfig vb |> unwrap
+
+    let conv =
+        Conv1d.createNoBias 2 4 3 Conv1dConfig.defaultConfig vb
+        |> unwrap
 
     conv.Bias |> should equal None
     let x = Tensor.randn ([ 1; 2; 8 ], F32, Cpu) |> unwrap
@@ -225,7 +228,11 @@ let ``Conv2d forward produces correct shape`` () =
 
 [<Fact>]
 let ``Conv2d with padding preserves spatial dims`` () =
-    let config = { Conv2dConfig.defaultConfig with Padding = 1 }
+    let config = {
+        Conv2dConfig.defaultConfig with
+            Padding = 1
+    }
+
     let vb = VarBuilder.fromInit F32 Cpu
     let conv = Conv2d.create 1 4 3 config vb |> unwrap
 
@@ -236,7 +243,10 @@ let ``Conv2d with padding preserves spatial dims`` () =
 [<Fact>]
 let ``Conv2d no bias works`` () =
     let vb = VarBuilder.fromInit F32 Cpu
-    let conv = Conv2d.createNoBias 3 16 3 Conv2dConfig.defaultConfig vb |> unwrap
+
+    let conv =
+        Conv2d.createNoBias 3 16 3 Conv2dConfig.defaultConfig vb
+        |> unwrap
 
     conv.Bias |> should equal None
     let x = Tensor.randn ([ 1; 3; 10; 10 ], F32, Cpu) |> unwrap

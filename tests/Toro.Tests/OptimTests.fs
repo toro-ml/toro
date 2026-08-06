@@ -44,8 +44,7 @@ let ``AdamW step reduces loss`` () =
     let x = Tensor.randn ([ 8; 4 ], F32, Cpu) |> unwrap
     let target = Tensor.randn ([ 8; 2 ], F32, Cpu) |> unwrap
 
-    let opt =
-        AdamW.createWithLr 0.01 (vm.allVars ()) |> unwrap :> IOptimizer
+    let opt = AdamW.createWithLr 0.01 (vm.allVars ()) |> unwrap :> IOptimizer
 
     let getLoss () =
         result {

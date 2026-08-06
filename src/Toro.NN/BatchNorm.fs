@@ -47,8 +47,20 @@ module BatchNorm =
             let! weight, bias =
                 if config.Affine then
                     result {
-                        let! w = VarBuilder.getWithHints [ numFeatures ] "weight" (Init.Const 1.0) vb
-                        let! b = VarBuilder.getWithHints [ numFeatures ] "bias" (Init.Const 0.0) vb
+                        let! w =
+                            VarBuilder.getWithHints
+                                [ numFeatures ]
+                                "weight"
+                                (Init.Const 1.0)
+                                vb
+
+                        let! b =
+                            VarBuilder.getWithHints
+                                [ numFeatures ]
+                                "bias"
+                                (Init.Const 0.0)
+                                vb
+
                         return Some w, Some b
                     }
                 else
@@ -66,5 +78,8 @@ module BatchNorm =
             }
         }
 
-    let createDefault (numFeatures: int) (vb: VarBuilder) : Result<BatchNorm, ToroError> =
+    let createDefault
+        (numFeatures: int)
+        (vb: VarBuilder)
+        : Result<BatchNorm, ToroError> =
         create numFeatures BatchNormConfig.defaultConfig vb
