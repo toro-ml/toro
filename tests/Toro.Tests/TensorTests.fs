@@ -3,17 +3,7 @@ module TensorTests
 open Xunit
 open FsUnit.Xunit
 open Toro
-
-let unwrap r =
-    match r with
-    | Ok v -> v
-    | Error e -> failwithf "Unexpected error: %A" e
-
-let scalarF32 (t: Tensor) =
-    (t.sumAll () |> unwrap).toFloat32Scalar () |> unwrap
-
-let scalarF64 (t: Tensor) =
-    (t.sumAll () |> unwrap).toFloat64Scalar () |> unwrap
+open TestHelper
 
 [<Fact>]
 let ``zeros creates tensor with correct shape`` () =
@@ -49,7 +39,6 @@ let ``full creates tensor with given value`` () =
 [<Fact>]
 let ``matmul produces correct shape`` () =
     let a = Tensor.randn ([ 2; 3 ], F32, Cpu) |> unwrap
-
     let b = Tensor.randn ([ 3; 4 ], F32, Cpu) |> unwrap
 
     let c = a.matmul b |> unwrap
@@ -58,11 +47,35 @@ let ``matmul produces correct shape`` () =
 [<Fact>]
 let ``add and sub are consistent`` () =
     let a = Tensor.ones ([ 2; 2 ], F32, Cpu) |> unwrap
-
     let b = Tensor.ones ([ 2; 2 ], F32, Cpu) |> unwrap
 
     let diff = (a.add b |> unwrap).sub b |> unwrap
     scalarF32 diff |> should equal 4.0f
+
+[<Fact>]
+let ``div divides tensors element-wise`` () =
+    let a = Tensor.full ([ 3 ], 6.0, F32, Cpu) |> unwrap
+    let b = Tensor.full ([ 3 ], 2.0, F32, Cpu) |> unwrap
+    let c = a.div b |> unwrap
+    scalarF32 c |> should equal 9.0f
+
+[<Fact>]
+let ``divScalar divides by scalar`` () =
+    let t = Tensor.full ([ 3 ], 6.0, F32, Cpu) |> unwrap
+    let s = t.divScalar 3.0 |> unwrap
+    scalarF32 s |> should equal 6.0f
+
+[<Fact>]
+let ``subScalar subtracts scalar value`` () =
+    let t = Tensor.full ([ 3 ], 5.0, F32, Cpu) |> unwrap
+    let s = t.subScalar 2.0 |> unwrap
+    scalarF32 s |> should equal 9.0f
+
+[<Fact>]
+let ``pow computes element-wise power`` () =
+    let t = Tensor.full ([ 3 ], 2.0, F64, Cpu) |> unwrap
+    let p = t.pow 3.0 |> unwrap
+    scalarF64 p |> should (equalWithin 1e-10) 24.0
 
 [<Fact>]
 let ``reshape changes shape`` () =
@@ -73,11 +86,41 @@ let ``reshape changes shape`` () =
     r.Rank |> should equal 1
 
 [<Fact>]
+let ``view reshapes tensor`` () =
+    let t = Tensor.randn ([ 2; 6 ], F32, Cpu) |> unwrap
+    let v = t.view [ 3; 4 ] |> unwrap
+    v.Shape |> should equal [ 3; 4 ]
+
+[<Fact>]
+let ``flatten collapses dimensions`` () =
+    let t = Tensor.randn ([ 2; 3; 4 ], F32, Cpu) |> unwrap
+    let f = t.flatten (1, 2) |> unwrap
+    f.Shape |> should equal [ 2; 12 ]
+
+[<Fact>]
+let ``flattenAll creates 1D tensor`` () =
+    let t = Tensor.randn ([ 2; 3; 4 ], F32, Cpu) |> unwrap
+    let f = t.flattenAll () |> unwrap
+    f.Shape |> should equal [ 24 ]
+
+[<Fact>]
 let ``transpose swaps dimensions`` () =
     let t = Tensor.randn ([ 2; 3 ], F32, Cpu) |> unwrap
 
     let tr = t.t () |> unwrap
     tr.Shape |> should equal [ 3; 2 ]
+
+[<Fact>]
+let ``squeeze removes dim of size 1`` () =
+    let t = Tensor.ones ([ 2; 1; 3 ], F32, Cpu) |> unwrap
+    let s = t.squeeze 1 |> unwrap
+    s.Shape |> should equal [ 2; 3 ]
+
+[<Fact>]
+let ``unsqueeze adds dim of size 1`` () =
+    let t = Tensor.ones ([ 2; 3 ], F32, Cpu) |> unwrap
+    let u = t.unsqueeze 1 |> unwrap
+    u.Shape |> should equal [ 2; 1; 3 ]
 
 [<Fact>]
 let ``sumKeepdim preserves rank`` () =
@@ -87,9 +130,91 @@ let ``sumKeepdim preserves rank`` () =
     s.Shape |> should equal [ 2; 3; 1 ]
 
 [<Fact>]
+let ``unary ops preserve shape`` () =
+    let t = Tensor.ones ([ 2; 3 ], F32, Cpu) |> unwrap
+
+    (t.neg () |> unwrap).Shape |> should equal [ 2; 3 ]
+    (t.abs () |> unwrap).Shape |> should equal [ 2; 3 ]
+    (t.sqrt () |> unwrap).Shape |> should equal [ 2; 3 ]
+    (t.exp () |> unwrap).Shape |> should equal [ 2; 3 ]
+    (t.log () |> unwrap).Shape |> should equal [ 2; 3 ]
+
+[<Fact>]
+let ``neg negates values`` () =
+    let t = Tensor.ones ([ 3 ], F32, Cpu) |> unwrap
+    let n = t.neg () |> unwrap
+    scalarF32 n |> should equal -3.0f
+
+[<Fact>]
+let ``clone creates independent copy`` () =
+    let t = Tensor.ones ([ 3 ], F32, Cpu) |> unwrap
+    let c = t.clone () |> unwrap
+    c.Shape |> should equal [ 3 ]
+    scalarF32 c |> should equal 3.0f
+
+[<Fact>]
+let ``gather selects elements by index`` () =
+    let t =
+        Tensor.ofFloat32Array ([| 1.0f; 2.0f; 3.0f; 4.0f; 5.0f; 6.0f |], Cpu)
+        |> unwrap
+
+    let t = t.reshape [ 2; 3 ] |> unwrap
+    let idx = Tensor.zeros ([ 2; 1 ], I64, Cpu) |> unwrap
+    let g = t.gather (1, idx) |> unwrap
+    g.Shape |> should equal [ 2; 1 ]
+
+[<Fact>]
+let ``indexSelect selects rows`` () =
+    let t =
+        Tensor.ofFloat32Array ([| 10.0f; 20.0f; 30.0f; 40.0f; 50.0f; 60.0f |], Cpu)
+        |> unwrap
+
+    let t = t.reshape [ 3; 2 ] |> unwrap
+    let idx = Tensor.zeros ([ 1 ], I64, Cpu) |> unwrap
+    let s = t.indexSelect (0, idx) |> unwrap
+    s.Shape |> should equal [ 1; 2 ]
+    scalarF32 s |> should equal 30.0f
+
+[<Fact>]
+let ``clamp constrains values`` () =
+    let t =
+        Tensor.ofFloat32Array ([| -5.0f; 0.0f; 5.0f |], Cpu)
+        |> unwrap
+
+    let c = t.clamp (-1.0, 1.0) |> unwrap
+    scalarF32 c |> should equal 0.0f
+
+[<Fact>]
+let ``affine applies linear transform`` () =
+    let t = Tensor.ones ([ 3 ], F32, Cpu) |> unwrap
+    let a = t.affine (2.0, 3.0) |> unwrap
+    scalarF32 a |> should equal 15.0f
+
+[<Fact>]
+let ``softmax produces valid distribution`` () =
+    let t = Tensor.randn ([ 2; 5 ], F32, Cpu) |> unwrap
+    let s = t.softmax 1 |> unwrap
+
+    s.Shape |> should equal [ 2; 5 ]
+
+    let sums = s.sum (1) |> unwrap
+    let sumVal = (sums.sumAll () |> unwrap).toFloat32Scalar () |> unwrap
+    sumVal |> should (equalWithin 1e-4f) 2.0f
+
+[<Fact>]
+let ``logSoftmax produces log probabilities`` () =
+    let t = Tensor.randn ([ 2; 5 ], F32, Cpu) |> unwrap
+    let ls = t.logSoftmax -1 |> unwrap
+    ls.Shape |> should equal [ 2; 5 ]
+
+    let expLs = ls.exp () |> unwrap
+    let sums = expLs.sum (1) |> unwrap
+    let total = (sums.sumAll () |> unwrap).toFloat32Scalar () |> unwrap
+    total |> should (equalWithin 1e-4f) 2.0f
+
+[<Fact>]
 let ``operators work correctly`` () =
     let a = Tensor.ones ([ 2; 2 ], F32, Cpu) |> unwrap
-
     let b = Tensor.ones ([ 2; 2 ], F32, Cpu) |> unwrap
 
     scalarF32 (a + b) |> should equal 8.0f
@@ -97,31 +222,23 @@ let ``operators work correctly`` () =
 [<Fact>]
 let ``scalar arithmetic works`` () =
     let t = Tensor.ones ([ 3 ], F32, Cpu) |> unwrap
-
     scalarF32 (t * 5.0) |> should equal 15.0f
-
-[<Fact>]
-let ``result CE chains operations`` () =
-    let r =
-        result {
-            let! a = Tensor.randn ([ 2; 3 ], F32, Cpu)
-
-            let! b = Tensor.randn ([ 3; 4 ], F32, Cpu)
-
-            let! c = a.matmul b
-            return c.Shape
-        }
-
-    unwrap r |> should equal [ 2; 4 ]
 
 [<Fact>]
 let ``cat concatenates tensors`` () =
     let a = Tensor.ones ([ 2; 3 ], F32, Cpu) |> unwrap
-
     let b = Tensor.ones ([ 2; 3 ], F32, Cpu) |> unwrap
 
     let c = Tensor.cat ([ a; b ], 0) |> unwrap
     c.Shape |> should equal [ 4; 3 ]
+
+[<Fact>]
+let ``stack stacks tensors along new dim`` () =
+    let a = Tensor.ones ([ 2; 3 ], F32, Cpu) |> unwrap
+    let b = Tensor.ones ([ 2; 3 ], F32, Cpu) |> unwrap
+
+    let s = Tensor.stack ([ a; b ], 0) |> unwrap
+    s.Shape |> should equal [ 2; 2; 3 ]
 
 [<Fact>]
 let ``toDType converts type`` () =
@@ -140,45 +257,6 @@ let ``ofFloat32Array creates 1D tensor`` () =
     scalarF32 t |> should equal 6.0f
 
 [<Fact>]
-let ``stack stacks tensors along new dim`` () =
-    let a = Tensor.ones ([ 2; 3 ], F32, Cpu) |> unwrap
-    let b = Tensor.ones ([ 2; 3 ], F32, Cpu) |> unwrap
-
-    let s = Tensor.stack ([ a; b ], 0) |> unwrap
-    s.Shape |> should equal [ 2; 2; 3 ]
-
-[<Fact>]
-let ``unary ops preserve shape`` () =
-    let t = Tensor.ones ([ 2; 3 ], F32, Cpu) |> unwrap
-
-    (t.neg () |> unwrap).Shape |> should equal [ 2; 3 ]
-    (t.abs () |> unwrap).Shape |> should equal [ 2; 3 ]
-    (t.sqrt () |> unwrap).Shape |> should equal [ 2; 3 ]
-    (t.exp () |> unwrap).Shape |> should equal [ 2; 3 ]
-    (t.log () |> unwrap).Shape |> should equal [ 2; 3 ]
-
-[<Fact>]
-let ``neg negates values`` () =
-    let t = Tensor.ones ([ 3 ], F32, Cpu) |> unwrap
-    let n = t.neg () |> unwrap
-
-    scalarF32 n |> should equal -3.0f
-
-[<Fact>]
-let ``squeeze removes dim of size 1`` () =
-    let t = Tensor.ones ([ 2; 1; 3 ], F32, Cpu) |> unwrap
-    let s = t.squeeze 1 |> unwrap
-
-    s.Shape |> should equal [ 2; 3 ]
-
-[<Fact>]
-let ``unsqueeze adds dim of size 1`` () =
-    let t = Tensor.ones ([ 2; 3 ], F32, Cpu) |> unwrap
-    let u = t.unsqueeze 1 |> unwrap
-
-    u.Shape |> should equal [ 2; 1; 3 ]
-
-[<Fact>]
 let ``arange creates range tensor`` () =
     let t = Tensor.arange (5.0, F32, Cpu) |> unwrap
 
@@ -192,6 +270,23 @@ let ``rand creates tensor in 0-1 range`` () =
 
     mean |> should be (greaterThan 0.3)
     mean |> should be (lessThan 0.7)
+
+[<Fact>]
+let ``Tensor implements IDisposable`` () =
+    let t = Tensor.ones ([ 2; 3 ], F32, Cpu) |> unwrap
+    t.Dispose()
+
+[<Fact>]
+let ``result CE chains operations`` () =
+    let r =
+        result {
+            let! a = Tensor.randn ([ 2; 3 ], F32, Cpu)
+            let! b = Tensor.randn ([ 3; 4 ], F32, Cpu)
+            let! c = a.matmul b
+            return c.Shape
+        }
+
+    unwrap r |> should equal [ 2; 4 ]
 
 [<Fact>]
 let ``result CE supports for loop`` () =
@@ -243,11 +338,6 @@ let ``result CE supports use`` () =
     disposed.Value |> should be True
 
 [<Fact>]
-let ``Tensor implements IDisposable`` () =
-    let t = Tensor.ones ([ 2; 3 ], F32, Cpu) |> unwrap
-    t.Dispose()
-
-[<Fact>]
 let ``use! disposes tensor after scope`` () =
     let mutable innerRef: TorchSharp.torch.Tensor = null
 
@@ -261,39 +351,14 @@ let ``use! disposes tensor after scope`` () =
     unwrap r |> should equal [ 4 ]
 
 [<Fact>]
-let ``softmax produces valid distribution`` () =
-    let t = Tensor.randn ([ 2; 5 ], F32, Cpu) |> unwrap
-    let s = t.softmax 1 |> unwrap
+let ``oneHot encodes integer tensor`` () =
+    let t =
+        Tensor.ofFloat32Array ([| 0.0f; 1.0f; 2.0f |], Cpu)
+        |> unwrap
 
-    s.Shape |> should equal [ 2; 5 ]
+    let t = t.toDType I64 |> unwrap
+    let oh = t.oneHot 3 |> unwrap
+    oh.Shape |> should equal [ 3; 3 ]
 
-    let sums = s.sum (1) |> unwrap
-    let sumVal = (sums.sumAll () |> unwrap).toFloat32Scalar () |> unwrap
-
-    sumVal |> should (equalWithin 1e-4f) 2.0f
-
-[<Fact>]
-let ``subScalar subtracts scalar value`` () =
-    let t = Tensor.full ([ 3 ], 5.0, F32, Cpu) |> unwrap
-    let s = t.subScalar 2.0 |> unwrap
-
-    scalarF32 s |> should equal 9.0f
-
-[<Fact>]
-let ``pow computes element-wise power`` () =
-    let t = Tensor.full ([ 3 ], 2.0, F64, Cpu) |> unwrap
-    let p = t.pow 3.0 |> unwrap
-
-    scalarF64 p |> should (equalWithin 1e-10) 24.0
-
-[<Fact>]
-let ``noGrad disables gradient tracking`` () =
-    let t = Tensor.randn ([ 2; 3 ], F32, Cpu) |> unwrap
-    let t = t.requiresGrad () |> unwrap
-
-    let y =
-        Toro.noGrad (fun () ->
-            let r = t.mul t |> unwrap
-            r)
-
-    y.Shape |> should equal [ 2; 3 ]
+    let sum = (oh.sumAll () |> unwrap).toFloat32Scalar () |> unwrap
+    sum |> should equal 3.0f

@@ -8,8 +8,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="TestHelper.fs" />
     <Compile Include="TensorTests.fs" />
-    <Compile Include="NNTests.fs" />
+    <Compile Include="AutogradTests.fs" />
+    <Compile Include="TensorOpTests.fs" />
+    <Compile Include="LayerTests.fs" />
+    <Compile Include="VarTests.fs" />
+    <Compile Include="LossTests.fs" />
+    <Compile Include="OptimTests.fs" />
   </ItemGroup>
 
   <ItemGroup>
