@@ -134,6 +134,9 @@ type Tensor internal (inner: torch.Tensor) =
 
             Tensor(torch.stack (ts, int64 dim)))
 
+    static member ofTorchTensor(t: torch.Tensor) =
+        ToroError.wrap (fun () -> Tensor(t))
+
     // --- Dimension query ---
 
     member t.dim(d: int) =
@@ -266,6 +269,9 @@ type Tensor internal (inner: torch.Tensor) =
     member _.sigmoid() =
         ToroError.wrap (fun () -> Tensor(inner.sigmoid ()))
 
+    member _.dropout(p: float, train: bool) =
+        ToroError.wrap (fun () -> Tensor(torch.nn.functional.dropout (inner, p, train)))
+
     member _.softmax(dim: int) =
         ToroError.wrap (fun () -> Tensor(torch.nn.functional.softmax (inner, int64 dim)))
 
@@ -321,10 +327,104 @@ type Tensor internal (inner: torch.Tensor) =
             use _scope = torch.no_grad ()
             inner.copy_ (src.Inner) |> ignore)
 
+    // --- Convolution ---
+
+    member _.conv1d
+        (
+            weight: Tensor,
+            ?bias: Tensor,
+            ?stride: int,
+            ?padding: int,
+            ?dilation: int,
+            ?groups: int
+        ) =
+        ToroError.wrap (fun () ->
+            let s = int64 (defaultArg stride 1)
+            let p = int64 (defaultArg padding 0)
+            let d = int64 (defaultArg dilation 1)
+            let g = int64 (defaultArg groups 1)
+
+            let b =
+                bias
+                |> Option.map (fun b -> b.Inner)
+                |> Option.defaultValue null
+
+            Tensor(torch.nn.functional.conv1d (inner, weight.Inner, b, s, p, d, g)))
+
+    member _.conv2d
+        (
+            weight: Tensor,
+            ?bias: Tensor,
+            ?stride: int,
+            ?padding: int,
+            ?dilation: int,
+            ?groups: int
+        ) =
+        ToroError.wrap (fun () ->
+            let s = int64 (defaultArg stride 1)
+            let p = int64 (defaultArg padding 0)
+            let d = int64 (defaultArg dilation 1)
+            let g = int64 (defaultArg groups 1)
+
+            let b =
+                bias
+                |> Option.map (fun b -> b.Inner)
+                |> Option.defaultValue null
+
+            Tensor(
+                torch.nn.functional.conv2d (inner, weight.Inner, b, [| s; s |], [| p; p |], [| d; d |], g)
+            ))
+
+    // --- Normalization ---
+
+    member _.batchNorm
+        (
+            weight: Tensor option,
+            bias: Tensor option,
+            runningMean: Tensor option,
+            runningVar: Tensor option,
+            train: bool,
+            momentum: float,
+            eps: float
+        ) =
+        ToroError.wrap (fun () ->
+            let w = weight |> Option.map (fun t -> t.Inner) |> Option.defaultValue null
+            let b = bias |> Option.map (fun t -> t.Inner) |> Option.defaultValue null
+            let rm = runningMean |> Option.map (fun t -> t.Inner) |> Option.defaultValue null
+            let rv = runningVar |> Option.map (fun t -> t.Inner) |> Option.defaultValue null
+
+            Tensor(torch.nn.functional.batch_norm (inner, rm, rv, w, b, train, momentum, eps)))
+
+    member _.groupNorm(numGroups: int, ?weight: Tensor, ?bias: Tensor, ?eps: float) =
+        ToroError.wrap (fun () ->
+            let e = defaultArg eps 1e-5
+            let w = weight |> Option.map (fun t -> t.Inner) |> Option.defaultValue null
+            let b = bias |> Option.map (fun t -> t.Inner) |> Option.defaultValue null
+
+            Tensor(torch.nn.functional.group_norm (inner, int64 numGroups, w, b, e)))
+
+    // --- Encoding ---
+
+    member _.oneHot(numClasses: int) =
+        ToroError.wrap (fun () ->
+            Tensor(
+                torch.nn.functional
+                    .one_hot(inner, int64 numClasses)
+                    .``to`` (torch.float32)
+            ))
+
     // --- Misc ---
 
     member _.clone() =
         ToroError.wrap (fun () -> Tensor(inner.clone ()))
+
+    // --- Persistence ---
+
+    member _.save(path: string) =
+        ToroError.wrap (fun () -> inner.save (path))
+
+    static member load(path: string) =
+        ToroError.wrap (fun () -> Tensor(torch.Tensor.load (path)))
 
     // --- Scalar extraction ---
 
