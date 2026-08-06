@@ -161,3 +161,135 @@ let ``KaimingNormal init has reasonable variance`` () =
     let actualStd = sqrt variance
 
     abs (actualStd - expectedStd) |> should be (lessThan 0.02)
+
+// --- VarMap tests ---
+
+[<Fact>]
+let ``VarMap get-or-create returns same tensor`` () =
+    let vm = VarMap()
+    let t1 = vm.get [ 3; 2 ] "w" Init.KaimingNormal F32 Cpu |> unwrap
+    let t2 = vm.get [ 3; 2 ] "w" Init.KaimingNormal F32 Cpu |> unwrap
+    obj.ReferenceEquals(t1.Inner, t2.Inner) |> should be True
+
+[<Fact>]
+let ``VarMap allVars returns all registered tensors`` () =
+    let vm = VarMap()
+    vm.get [ 2; 3 ] "a" (Init.Const 1.0) F32 Cpu |> unwrap |> ignore
+    vm.get [ 4 ] "b" (Init.Const 0.0) F32 Cpu |> unwrap |> ignore
+    vm.allVars().Length |> should equal 2
+
+[<Fact>]
+let ``VarMap shape mismatch returns error`` () =
+    let vm = VarMap()
+    vm.get [ 3; 2 ] "w" Init.KaimingNormal F32 Cpu |> unwrap |> ignore
+
+    match vm.get [ 4; 2 ] "w" Init.KaimingNormal F32 Cpu with
+    | Error(ShapeMismatch _) -> ()
+    | other -> failwithf "Expected ShapeMismatch, got: %A" other
+
+[<Fact>]
+let ``VarBuilder fromVarMap creates trainable params`` () =
+    let vm = VarMap()
+    let vb = VarBuilder.fromVarMap vm F32 Cpu
+
+    let linear = Linear.create 4 2 (vb |> VarBuilder.pp "l") |> unwrap
+
+    let vars = vm.allVars ()
+    vars.Length |> should equal 2
+
+    let x = Tensor.randn ([ 1; 4 ], F32, Cpu) |> unwrap
+    let y = linear.forward x |> unwrap
+    y.Shape |> should equal [ 1; 2 ]
+
+// --- Loss tests ---
+
+[<Fact>]
+let ``MSE loss returns scalar`` () =
+    let inp = Tensor.randn ([ 4; 3 ], F32, Cpu) |> unwrap
+    let target = Tensor.randn ([ 4; 3 ], F32, Cpu) |> unwrap
+
+    let loss = Loss.mse inp target |> unwrap
+    loss.Shape |> should equal List.empty<int>
+
+    let v = loss.toFloat32Scalar () |> unwrap
+    v |> should be (greaterThan 0.0f)
+
+[<Fact>]
+let ``MSE loss of identical tensors is zero`` () =
+    let t = Tensor.ones ([ 2; 3 ], F32, Cpu) |> unwrap
+
+    let loss = Loss.mse t t |> unwrap
+    let v = loss.toFloat32Scalar () |> unwrap
+    v |> should be (lessThan 1e-6f)
+
+[<Fact>]
+let ``Cross entropy loss returns scalar`` () =
+    let logits = Tensor.randn ([ 4; 3 ], F32, Cpu) |> unwrap
+    let targets = Tensor.zeros ([ 4 ], I64, Cpu) |> unwrap
+
+    let loss = Loss.crossEntropy logits targets |> unwrap
+    loss.Shape |> should equal List.empty<int>
+
+    let v = loss.toFloat32Scalar () |> unwrap
+    v |> should be (greaterThan 0.0f)
+
+// --- SGD tests ---
+
+[<Fact>]
+let ``SGD step reduces loss`` () =
+    let vm = VarMap()
+    let vb = VarBuilder.fromVarMap vm F32 Cpu
+
+    let linear = Linear.create 4 2 (vb |> VarBuilder.pp "l") |> unwrap
+
+    let x = Tensor.randn ([ 8; 4 ], F32, Cpu) |> unwrap
+    let target = Tensor.randn ([ 8; 2 ], F32, Cpu) |> unwrap
+
+    let opt = SGD.create 0.01 (vm.allVars ()) :> IOptimizer
+
+    let getLoss () =
+        result {
+            let! y = linear.forward x
+            return! Loss.mse y target
+        }
+        |> unwrap
+
+    let loss0 = (getLoss ()).toFloat32Scalar () |> unwrap
+
+    for _ in 1..20 do
+        let loss = getLoss ()
+        opt.backwardStep loss |> unwrap
+
+    let lossN = (getLoss ()).toFloat32Scalar () |> unwrap
+    lossN |> should be (lessThan loss0)
+
+// --- AdamW tests ---
+
+[<Fact>]
+let ``AdamW step reduces loss`` () =
+    let vm = VarMap()
+    let vb = VarBuilder.fromVarMap vm F32 Cpu
+
+    let linear = Linear.create 4 2 (vb |> VarBuilder.pp "l") |> unwrap
+
+    let x = Tensor.randn ([ 8; 4 ], F32, Cpu) |> unwrap
+    let target = Tensor.randn ([ 8; 2 ], F32, Cpu) |> unwrap
+
+    let opt =
+        AdamW.createWithLr 0.01 (vm.allVars ()) |> unwrap :> IOptimizer
+
+    let getLoss () =
+        result {
+            let! y = linear.forward x
+            return! Loss.mse y target
+        }
+        |> unwrap
+
+    let loss0 = (getLoss ()).toFloat32Scalar () |> unwrap
+
+    for _ in 1..20 do
+        let loss = getLoss ()
+        opt.backwardStep loss |> unwrap
+
+    let lossN = (getLoss ()).toFloat32Scalar () |> unwrap
+    lossN |> should be (lessThan loss0)

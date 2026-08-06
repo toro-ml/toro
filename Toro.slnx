@@ -6,4 +6,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/Toro.Tests/Toro.Tests.fsproj" />
   </Folder>
+  <Folder Name="/examples/">
+    <Project Path="examples/SimpleTraining/SimpleTraining.fsproj" />
+  </Folder>
 </Solution>
