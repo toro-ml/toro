@@ -136,7 +136,7 @@ let ``Dropout implements IModuleT`` () =
 
 [<Fact>]
 let ``Func create wraps function as IModule`` () =
-    let f = Func.create (fun x -> x.relu ())
+    let f = Func.create _.relu()
     let m = f :> IModule
     let x = Tensor.full ([ 3 ], -1.0, F32, Cpu) |> unwrap
 

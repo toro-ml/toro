@@ -97,13 +97,13 @@ type Tensor internal (inner: torch.Tensor) =
 
     static member cat(tensors: Tensor list, dim: int) =
         ToroError.wrap (fun () ->
-            let ts = tensors |> List.toArray |> Array.map (fun t -> t.Inner)
+            let ts = tensors |> List.toArray |> Array.map _.Inner
 
             Tensor(torch.cat (ts, int64 dim)))
 
     static member stack(tensors: Tensor list, dim: int) =
         ToroError.wrap (fun () ->
-            let ts = tensors |> List.toArray |> Array.map (fun t -> t.Inner)
+            let ts = tensors |> List.toArray |> Array.map _.Inner
 
             Tensor(torch.stack (ts, int64 dim)))
 
@@ -373,10 +373,7 @@ type Tensor internal (inner: torch.Tensor) =
             let d = int64 (defaultArg dilation 1)
             let g = int64 (defaultArg groups 1)
 
-            let b =
-                bias
-                |> Option.map (fun b -> b.Inner)
-                |> Option.defaultValue null
+            let b = bias |> Option.map _.Inner |> Option.defaultValue null
 
             Tensor(torch.nn.functional.conv1d (inner, weight.Inner, b, s, p, d, g)))
 
@@ -387,10 +384,7 @@ type Tensor internal (inner: torch.Tensor) =
             let d = int64 (defaultArg dilation 1)
             let g = int64 (defaultArg groups 1)
 
-            let b =
-                bias
-                |> Option.map (fun b -> b.Inner)
-                |> Option.defaultValue null
+            let b = bias |> Option.map _.Inner |> Option.defaultValue null
 
             Tensor(torch.nn.functional.conv2d (inner, weight.Inner, b, [| s; s |], [| p; p |], [| d; d |], g)))
 
@@ -407,25 +401,16 @@ type Tensor internal (inner: torch.Tensor) =
             eps: float
         ) =
         ToroError.wrap (fun () ->
-            let w =
-                weight
-                |> Option.map (fun t -> t.Inner)
-                |> Option.defaultValue null
+            let w = weight |> Option.map _.Inner |> Option.defaultValue null
 
-            let b =
-                bias
-                |> Option.map (fun t -> t.Inner)
-                |> Option.defaultValue null
+            let b = bias |> Option.map _.Inner |> Option.defaultValue null
 
             let rm =
                 runningMean
-                |> Option.map (fun t -> t.Inner)
+                |> Option.map _.Inner
                 |> Option.defaultValue null
 
-            let rv =
-                runningVar
-                |> Option.map (fun t -> t.Inner)
-                |> Option.defaultValue null
+            let rv = runningVar |> Option.map _.Inner |> Option.defaultValue null
 
             Tensor(torch.nn.functional.batch_norm (inner, rm, rv, w, b, train, momentum, eps)))
 
@@ -433,15 +418,9 @@ type Tensor internal (inner: torch.Tensor) =
         ToroError.wrap (fun () ->
             let e = defaultArg eps 1e-5
 
-            let w =
-                weight
-                |> Option.map (fun t -> t.Inner)
-                |> Option.defaultValue null
+            let w = weight |> Option.map _.Inner |> Option.defaultValue null
 
-            let b =
-                bias
-                |> Option.map (fun t -> t.Inner)
-                |> Option.defaultValue null
+            let b = bias |> Option.map _.Inner |> Option.defaultValue null
 
             Tensor(torch.nn.functional.group_norm (inner, int64 numGroups, w, b, e)))
 
@@ -475,10 +454,7 @@ type Tensor internal (inner: torch.Tensor) =
             let dp = defaultArg dropoutP 0.0
             let causal = defaultArg isCausal false
 
-            let mask =
-                attnMask
-                |> Option.map (fun m -> m.Inner)
-                |> Option.defaultValue null
+            let mask = attnMask |> Option.map _.Inner |> Option.defaultValue null
 
             Tensor(
                 torch.nn.functional.scaled_dot_product_attention (

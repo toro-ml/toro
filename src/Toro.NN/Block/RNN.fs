@@ -101,7 +101,7 @@ type LSTM = {
         }
 
     member _.statesToTensor(states: LSTMState list) : Result<Tensor, ToroError> =
-        let hs = states |> List.map (fun s -> s.H)
+        let hs = states |> List.map _.H
         Tensor.stack (hs, 1)
 
     interface IRNN<LSTMState> with
@@ -230,7 +230,7 @@ type GRU = {
         }
 
     member _.statesToTensor(states: GRUState list) : Result<Tensor, ToroError> =
-        let hs = states |> List.map (fun s -> s.H)
+        let hs = states |> List.map _.H
         Tensor.stack (hs, 1)
 
     interface IRNN<GRUState> with
