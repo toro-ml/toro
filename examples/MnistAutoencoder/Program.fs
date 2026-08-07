@@ -6,11 +6,6 @@ open Toro.NN
 
 do TorchSharp.torchvision.io.DefaultImager <- TorchSharp.torchvision.io.SkiaImager()
 
-let unwrap r =
-    match r with
-    | Ok v -> v
-    | Error e -> failwithf "%A" e
-
 type Autoencoder = {
     Encoder: Sequential
     Decoder: Sequential
@@ -59,95 +54,109 @@ let preprocessBatch (images: torch.Tensor) (model: Autoencoder) =
 
 [<EntryPoint>]
 let main _argv =
-    let batchSize = 256
-    let epochs = 10
-    let lr = 1e-3
-    let latentDim = 32
+    result {
+        let batchSize = 256
+        let epochs = 10
+        let lr = 1e-3
+        let latentDim = 32
 
-    let dataPath =
-        IO.Path.Combine(Environment.GetFolderPath Environment.SpecialFolder.LocalApplicationData, "toro-mnist")
+        let dataPath =
+            IO.Path.Combine(Environment.GetFolderPath Environment.SpecialFolder.LocalApplicationData, "toro-mnist")
 
-    printfn "Loading MNIST dataset..."
+        printfn "Loading MNIST dataset..."
 
-    use trainDataset: torch.utils.data.Dataset =
-        TorchSharp.torchvision.datasets.MNIST(dataPath, true, download = true)
+        use trainDataset: torch.utils.data.Dataset =
+            TorchSharp.torchvision.datasets.MNIST(dataPath, true, download = true)
 
-    use testDataset: torch.utils.data.Dataset =
-        TorchSharp.torchvision.datasets.MNIST(dataPath, false, download = true)
+        use testDataset: torch.utils.data.Dataset =
+            TorchSharp.torchvision.datasets.MNIST(dataPath, false, download = true)
 
-    printfn "  Train samples: %d" trainDataset.Count
-    printfn "  Test samples:  %d" testDataset.Count
+        printfn "  Train samples: %d" trainDataset.Count
+        printfn "  Test samples:  %d" testDataset.Count
 
-    let model = createModel latentDim |> unwrap
-    let opt = AdamW.createWithLr lr (Model.trainableVars model) |> unwrap :> IOptimizer
+        let! model = createModel latentDim
+        let! opt = AdamW.createWithLr lr (Model.trainableVars model)
+        let opt = opt :> IOptimizer
 
-    printfn ""
-    printfn "Autoencoder: 784 -> 256 -> %d -> 256 -> 784" latentDim
-    printfn "Optimizer: AdamW (lr=%.0e)" lr
-    printfn ""
+        printfn ""
+        printfn "Autoencoder: 784 -> 256 -> %d -> 256 -> 784" latentDim
+        printfn "Optimizer: AdamW (lr=%.0e)" lr
+        printfn ""
 
-    use trainLoader =
-        torch.utils.data.DataLoader(trainDataset, batchSize, shuffle = true, device = torch.CPU)
+        use trainLoader =
+            torch.utils.data.DataLoader(trainDataset, batchSize, shuffle = true, device = torch.CPU)
 
-    use testLoader = torch.utils.data.DataLoader(testDataset, 256, device = torch.CPU)
+        use testLoader = torch.utils.data.DataLoader(testDataset, 256, device = torch.CPU)
 
-    for epoch in 1..epochs do
-        let mutable totalLoss = 0.0
-        let mutable totalSamples = 0L
+        for epoch in 1..epochs do
+            let mutable totalLoss = 0.0
+            let mutable totalSamples = 0L
 
-        for batch in trainLoader do
-            let images = batch["data"]
-            let x, recon = preprocessBatch images model |> unwrap
-            let loss = Loss.mse recon x |> unwrap
-            opt.backwardStep loss |> unwrap
-
-            let n = images.shape[0]
-            totalLoss <- totalLoss + float (loss.item ()) * float n
-            totalSamples <- totalSamples + n
-
-        let avgLoss = totalLoss / float totalSamples
-        printf "Epoch %2d/%d  train mse=%.6f" epoch epochs avgLoss
-
-        let mutable testLoss = 0.0
-        let mutable testTotal = 0L
-
-        Toro.noGrad (fun () ->
-            for batch in testLoader do
+            for batch in trainLoader do
                 let images = batch["data"]
-                let x, recon = preprocessBatch images model |> unwrap
-                let loss = Loss.mse recon x |> unwrap
+                let! x, recon = preprocessBatch images model
+                let! loss = Loss.mse recon x
+                do! opt.backwardStep loss
+
                 let n = images.shape[0]
-                testLoss <- testLoss + float (loss.item ()) * float n
-                testTotal <- testTotal + n)
+                totalLoss <- totalLoss + float (loss.item ()) * float n
+                totalSamples <- totalSamples + n
 
-        printfn "  test mse=%.6f" (testLoss / float testTotal)
+            let avgLoss = totalLoss / float totalSamples
+            printf "Epoch %2d/%d  train mse=%.6f" epoch epochs avgLoss
 
-    // Save reconstruction samples
-    let sampleCount = 8
-    let mutable saved = false
+            let mutable testLoss = 0.0
+            let mutable testTotal = 0L
 
-    Toro.noGrad (fun () ->
-        for batch in testLoader do
-            if not saved then
-                let images = batch["data"]
-                let orig, recon = preprocessBatch images model |> unwrap
+            do!
+                Toro.noGrad (fun () ->
+                    result {
+                        for batch in testLoader do
+                            let images = batch["data"]
+                            let! x, recon = preprocessBatch images model
+                            let! loss = Loss.mse recon x
+                            let n = images.shape[0]
+                            testLoss <- testLoss + float (loss.item ()) * float n
+                            testTotal <- testTotal + n
+                    })
 
-                let toGrid (t: Tensor) =
-                    t.at([ S(0, sampleCount) ]).reshape [ sampleCount; 1; 28; 28 ] |> unwrap
+            printfn "  test mse=%.6f" (testLoss / float testTotal)
 
-                let combined =
-                    Tensor.cat ([ toGrid orig; toGrid recon ], 0) |> unwrap
-                let outPath = Path.Combine(__SOURCE_DIRECTORY__, "reconstruction.png")
+        let sampleCount = 8
+        let mutable saved = false
 
-                TorchSharp.torchvision.utils.save_image (
-                    combined.Inner,
-                    outPath,
-                    TorchSharp.torchvision.ImageFormat.Png,
-                    nrow = int64 sampleCount
-                )
+        do!
+            Toro.noGrad (fun () ->
+                result {
+                    for batch in testLoader do
+                        if not saved then
+                            let images = batch["data"]
+                            let! orig, recon = preprocessBatch images model
 
-                printfn "Saved %s" outPath
-                saved <- true)
+                            let toGrid (t: Tensor) =
+                                t.at([ S(0, sampleCount) ]).reshape [ sampleCount; 1; 28; 28 ]
 
-    printfn "Done."
-    0
+                            let! origGrid = toGrid orig
+                            let! reconGrid = toGrid recon
+                            let! combined = Tensor.cat ([ origGrid; reconGrid ], 0)
+                            let outPath = Path.Combine(__SOURCE_DIRECTORY__, "reconstruction.png")
+
+                            TorchSharp.torchvision.utils.save_image (
+                                combined.Inner,
+                                outPath,
+                                TorchSharp.torchvision.ImageFormat.Png,
+                                nrow = int64 sampleCount
+                            )
+
+                            printfn "Saved %s" outPath
+                            saved <- true
+                })
+
+        printfn "Done."
+    }
+
+    |> function
+        | Ok() -> 0
+        | Error e ->
+            eprintfn "%A" e
+            1

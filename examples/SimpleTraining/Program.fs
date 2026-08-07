@@ -1,89 +1,79 @@
 open Toro
 open Toro.NN
 
-let unwrap r =
-    match r with
-    | Ok v -> v
-    | Error e -> failwithf "%A" e
-
 [<EntryPoint>]
 let main _argv =
-    let x =
-        Tensor.ofFloat32Array2D (
-            [|
-                [| 0f; 0f |] //
-                [| 0f; 1f |]
-                [| 1f; 0f |]
-                [| 1f; 1f |]
-            |],
-            Cpu
-        )
-        |> unwrap
+    result {
+        let! x =
+            Tensor.ofFloat32Array2D (
+                [|
+                    [| 0f; 0f |] //
+                    [| 0f; 1f |]
+                    [| 1f; 0f |]
+                    [| 1f; 1f |]
+                |],
+                Cpu
+            )
 
-    let y =
-        Tensor.ofFloat32Array2D (
-            [|
-                [| 0f |] //
-                [| 1f |]
-                [| 1f |]
-                [| 0f |]
-            |],
-            Cpu
-        )
-        |> unwrap
+        let! y =
+            Tensor.ofFloat32Array2D (
+                [|
+                    [| 0f |] //
+                    [| 1f |]
+                    [| 1f |]
+                    [| 0f |]
+                |],
+                Cpu
+            )
 
-    let model =
-        result {
-            let! l1 = Linear.init 2 16 F32 Cpu
-            let! l2 = Linear.init 16 1 F32 Cpu
+        let! l1 = Linear.init 2 16 F32 Cpu
+        let! l2 = Linear.init 16 1 F32 Cpu
 
-            return
-                sequential {
-                    l1
-                    Relu
-                    l2
-                }
-        }
-        |> unwrap
-
-    let opt =
-        AdamW.createWithLr 0.01 (Model.trainableVars model)
-        |> unwrap
-        :> IOptimizer
-
-    printfn "Training XOR with AdamW..."
-
-    for epoch in 1..500 do
-        let loss =
-            result {
-                let! pred = model.forward x
-                return! Loss.mse pred y
+        let model =
+            sequential {
+                l1
+                Relu
+                l2
             }
-            |> unwrap
 
-        opt.backwardStep loss |> unwrap
+        let! opt = AdamW.createWithLr 0.01 (Model.trainableVars model)
+        let opt = opt :> IOptimizer
 
-        if epoch % 100 = 0 then
-            let v = loss.toFloat32Scalar () |> unwrap
-            printfn "  epoch %4d  loss = %.6f" epoch v
+        printfn "Training XOR with AdamW..."
 
-    printfn ""
-    printfn "Predictions (expected: 0, 1, 1, 0):"
+        for epoch in 1..500 do
+            let! pred = model.forward x
+            let! loss = Loss.mse pred y
+            do! opt.backwardStep loss
 
-    let pred =
-        Toro.noGrad (fun () ->
-            let p = model.forward x |> unwrap
-            p.flattenAll () |> unwrap)
+            if epoch % 100 = 0 then
+                let! v = loss.toFloat32Scalar ()
+                printfn "  epoch %4d  loss = %.6f" epoch v
 
-    let labels = [|
-        "0 XOR 0" //
-        "0 XOR 1"
-        "1 XOR 0"
-        "1 XOR 1"
-    |]
+        printfn ""
+        printfn "Predictions (expected: 0, 1, 1, 0):"
 
-    for i in 0..3 do
-        let v = pred[i].toFloat32Scalar () |> unwrap
-        printfn "  %s = %.3f" labels[i] v
+        let! pred =
+            Toro.noGrad (fun () ->
+                result {
+                    let! p = model.forward x
+                    return! p.flattenAll ()
+                })
 
-    0
+        let labels = [|
+            "0 XOR 0" //
+            "0 XOR 1"
+            "1 XOR 0"
+            "1 XOR 1"
+        |]
+
+        for i in 0..3 do
+            let! v = pred[i].toFloat32Scalar ()
+            printfn "  %s = %.3f" labels[i] v
+
+    }
+    |> function
+        | Ok() -> 0
+        | Error e ->
+            eprintfn "%A" e
+            1

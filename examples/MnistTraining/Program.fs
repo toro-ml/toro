@@ -3,11 +3,6 @@ open TorchSharp
 open Toro
 open Toro.NN
 
-let unwrap r =
-    match r with
-    | Ok v -> v
-    | Error e -> failwithf "%A" e
-
 type MnistModel = {
     Conv1: Conv2d
     Conv2: Conv2d
@@ -52,103 +47,102 @@ let createModel () =
 
 [<EntryPoint>]
 let main _argv =
-    let batchSize = 64
-    let epochs = 5
-    let lr = 1e-3
 
-    let dataPath =
-        IO.Path.Combine(Environment.GetFolderPath Environment.SpecialFolder.LocalApplicationData, "toro-mnist")
+    result {
+        let batchSize = 64
+        let epochs = 5
+        let lr = 1e-3
 
-    printfn "Loading MNIST dataset..."
+        let dataPath =
+            IO.Path.Combine(Environment.GetFolderPath Environment.SpecialFolder.LocalApplicationData, "toro-mnist")
 
-    let norm = TorchSharp.torchvision.transforms.Normalize([| 0.1307 |], [| 0.3081 |])
+        printfn "Loading MNIST dataset..."
 
-    use trainDataset: torch.utils.data.Dataset =
-        TorchSharp.torchvision.datasets.MNIST(dataPath, true, download = true, target_transform = norm)
+        let norm = TorchSharp.torchvision.transforms.Normalize([| 0.1307 |], [| 0.3081 |])
 
-    use testDataset: torch.utils.data.Dataset =
-        TorchSharp.torchvision.datasets.MNIST(dataPath, false, download = true, target_transform = norm)
+        use trainDataset: torch.utils.data.Dataset =
+            TorchSharp.torchvision.datasets.MNIST(dataPath, true, download = true, target_transform = norm)
 
-    printfn "  Train samples: %d" trainDataset.Count
-    printfn "  Test samples:  %d" testDataset.Count
+        use testDataset: torch.utils.data.Dataset =
+            TorchSharp.torchvision.datasets.MNIST(dataPath, false, download = true, target_transform = norm)
 
-    let model = createModel () |> unwrap
+        printfn "  Train samples: %d" trainDataset.Count
+        printfn "  Test samples:  %d" testDataset.Count
 
-    let opt = AdamW.createWithLr lr (Model.trainableVars model) |> unwrap :> IOptimizer
+        let! model = createModel ()
+        let! opt = AdamW.createWithLr lr (Model.trainableVars model)
+        let opt = opt :> IOptimizer
 
-    printfn ""
+        printfn ""
+        printfn "Model: Conv2d(1->8, 5, s2) -> Conv2d(8->16, 5, s2) -> Linear(256->64) -> Linear(64->10)"
+        printfn "Optimizer: AdamW (lr=%.0e)" lr
+        printfn ""
 
-    printfn "Model: Conv2d(1->8, 5, s2) -> Conv2d(8->16, 5, s2) -> Linear(256->64) -> Linear(64->10)"
+        use trainLoader =
+            torch.utils.data.DataLoader(trainDataset, batchSize, shuffle = true, device = torch.CPU)
 
-    printfn "Optimizer: AdamW (lr=%.0e)" lr
-    printfn ""
+        use testLoader = torch.utils.data.DataLoader(testDataset, 256, device = torch.CPU)
 
-    use trainLoader =
-        torch.utils.data.DataLoader(trainDataset, batchSize, shuffle = true, device = torch.CPU)
+        for epoch in 1..epochs do
+            let mutable totalLoss = 0.0
+            let mutable totalCorrect = 0L
+            let mutable totalSamples = 0L
 
-    use testLoader = torch.utils.data.DataLoader(testDataset, 256, device = torch.CPU)
-
-    for epoch in 1..epochs do
-        let mutable totalLoss = 0.0
-        let mutable totalCorrect = 0L
-        let mutable totalSamples = 0L
-
-        for batch in trainLoader do
-            let images = batch["data"]
-            let labels = batch["label"]
-
-            let trainResult =
-                result {
-                    let! x = Tensor.ofTorchTensor images
-                    let! target = Tensor.ofTorchTensor labels
-                    let! logits = model.forward x
-                    let! loss = Loss.crossEntropy logits target
-
-                    opt.backwardStep loss |> unwrap
-
-                    let lossVal = loss.item ()
-                    let! predicted = logits.argmax 1
-                    let! eqSum = predicted.eq(target).sumAll ()
-                    let correct = eqSum.item () |> int64
-
-                    return lossVal, correct, images.shape[0]
-                }
-
-            let lossVal, correct, n = unwrap trainResult
-            totalLoss <- totalLoss + float lossVal * float n
-            totalCorrect <- totalCorrect + correct
-            totalSamples <- totalSamples + n
-
-        let avgLoss = totalLoss / float totalSamples
-        let accuracy = float totalCorrect / float totalSamples * 100.0
-        printf "Epoch %d/%d  train loss=%.4f  acc=%.1f%%" epoch epochs avgLoss accuracy
-
-        let mutable testCorrect = 0L
-        let mutable testTotal = 0L
-
-        Toro.noGrad (fun () ->
-            for batch in testLoader do
+            for batch in trainLoader do
                 let images = batch["data"]
                 let labels = batch["label"]
 
-                let testResult =
+                let! x = Tensor.ofTorchTensor images
+                let! target = Tensor.ofTorchTensor labels
+                let! logits = model.forward x
+                let! loss = Loss.crossEntropy logits target
+                do! opt.backwardStep loss
+
+                let lossVal = loss.item ()
+                let! predicted = logits.argmax 1
+                let! eqSum = predicted.eq(target).sumAll ()
+                let correct = eqSum.item () |> int64
+                let n = images.shape[0]
+
+                totalLoss <- totalLoss + float lossVal * float n
+                totalCorrect <- totalCorrect + correct
+                totalSamples <- totalSamples + n
+
+            let avgLoss = totalLoss / float totalSamples
+            let accuracy = float totalCorrect / float totalSamples * 100.0
+            printf "Epoch %d/%d  train loss=%.4f  acc=%.1f%%" epoch epochs avgLoss accuracy
+
+            let mutable testCorrect = 0L
+            let mutable testTotal = 0L
+
+            do!
+                Toro.noGrad (fun () ->
                     result {
-                        let! x = Tensor.ofTorchTensor images
-                        let! target = Tensor.ofTorchTensor labels
-                        let! logits = model.forward x
-                        let! predicted = logits.argmax 1
-                        let! eqSum = predicted.eq(target).sumAll ()
-                        let correct = eqSum.item () |> int64
-                        return correct, images.shape[0]
-                    }
+                        for batch in testLoader do
+                            let images = batch["data"]
+                            let labels = batch["label"]
 
-                let correct, n = unwrap testResult
-                testCorrect <- testCorrect + correct
-                testTotal <- testTotal + n)
+                            let! x = Tensor.ofTorchTensor images
+                            let! target = Tensor.ofTorchTensor labels
+                            let! logits = model.forward x
+                            let! predicted = logits.argmax 1
+                            let! eqSum = predicted.eq(target).sumAll ()
+                            let correct = eqSum.item () |> int64
+                            let n = images.shape[0]
 
-        let testAcc = float testCorrect / float testTotal * 100.0
-        printfn "  test acc=%.1f%%" testAcc
+                            testCorrect <- testCorrect + correct
+                            testTotal <- testTotal + n
+                    })
 
-    printfn ""
-    printfn "Done."
-    0
+            let testAcc = float testCorrect / float testTotal * 100.0
+            printfn "  test acc=%.1f%%" testAcc
+
+        printfn ""
+        printfn "Done."
+    }
+
+    |> function
+        | Ok() -> 0
+        | Error e ->
+            eprintfn "%A" e
+            1
