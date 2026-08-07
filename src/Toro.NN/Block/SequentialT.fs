@@ -26,3 +26,15 @@ module SequentialT =
     let ofModules (layers: IModule list) : SequentialT = {
         Layers = layers |> List.map ModuleT.ofModule
     }
+
+type SequentialTBuilder() =
+    member _.Yield(m: IModule) = [ ModuleT.ofModule m ]
+    member _.Yield(m: IModuleT) = [ m ]
+    member _.Combine(a: IModuleT list, b: IModuleT list) = a @ b
+    member _.Delay(f: unit -> IModuleT list) = f ()
+    member _.Zero() : IModuleT list = []
+    member _.Run(layers: IModuleT list) = SequentialT.create layers
+
+[<AutoOpen>]
+module SequentialTCE =
+    let sequentialT = SequentialTBuilder()
