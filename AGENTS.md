@@ -1,0 +1,3 @@
+- run `fantomas` command to format
+- F#10 coding style
+- 

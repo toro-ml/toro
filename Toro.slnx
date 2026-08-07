@@ -9,5 +9,6 @@
   <Folder Name="/examples/">
     <Project Path="examples/SimpleTraining/SimpleTraining.fsproj" />
     <Project Path="examples/MnistTraining/MnistTraining.fsproj" />
+    <Project Path="examples/MnistAutoencoder/MnistAutoencoder.fsproj" />
   </Folder>
 </Solution>
