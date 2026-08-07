@@ -67,7 +67,12 @@ let ``Sequential chains modules`` () =
             let! l1 = Linear.init 10 5 F32 Cpu
             let! l2 = Linear.init 5 2 F32 Cpu
 
-            return Sequential.create [ l1 :> IModule; Relu :> IModule; l2 :> IModule ]
+            return
+                sequential {
+                    l1
+                    Relu
+                    l2
+                }
         }
         |> unwrap
 

@@ -189,9 +189,6 @@ type Tensor internal (inner: torch.Tensor) =
 
         ToroError.wrap (fun () -> Tensor(inner.sum ([| int64 dim |], keepdim = kd)))
 
-    member _.sumKeepdim(dim: int) =
-        ToroError.wrap (fun () -> Tensor(inner.sum ([| int64 dim |], keepdim = true)))
-
     member _.meanAll() =
         ToroError.wrap (fun () -> Tensor(inner.mean ()))
 
@@ -200,8 +197,30 @@ type Tensor internal (inner: torch.Tensor) =
 
         ToroError.wrap (fun () -> Tensor(inner.mean ([| int64 dim |], keepdim = kd)))
 
-    member _.meanKeepdim(dim: int) =
-        ToroError.wrap (fun () -> Tensor(inner.mean ([| int64 dim |], keepdim = true)))
+    member _.argmax(dim: int, ?keepDim: bool) =
+        let kd = defaultArg keepDim false
+        ToroError.wrap (fun () -> Tensor(inner.argmax (int64 dim, kd)))
+
+    member _.argmin(dim: int, ?keepDim: bool) =
+        let kd = defaultArg keepDim false
+        ToroError.wrap (fun () -> Tensor(inner.argmin (int64 dim, kd)))
+
+    member _.max(dim: int, ?keepDim: bool) =
+        let kd = defaultArg keepDim false
+
+        ToroError.wrap (fun () ->
+            let struct (values, indices) = inner.max (int64 dim, kd)
+            Tensor values, Tensor indices)
+
+    member _.min(dim: int, ?keepDim: bool) =
+        let kd = defaultArg keepDim false
+
+        ToroError.wrap (fun () ->
+            let struct (values, indices) = inner.min (int64 dim, kd)
+            Tensor values, Tensor indices)
+
+    static member where(condition: Tensor, x: Tensor, y: Tensor) =
+        ToroError.wrap (fun () -> Tensor(torch.where (condition.Inner, x.Inner, y.Inner)))
 
     // --- Unary ops ---
 
@@ -283,9 +302,6 @@ type Tensor internal (inner: torch.Tensor) =
             inner.chunk (int64 chunks, int64 dim)
             |> Array.toList
             |> List.map Tensor)
-
-    member _.broadcastAdd(other: Tensor) =
-        ToroError.wrap (fun () -> Tensor(inner.add other.Inner))
 
     // --- Type / Device conversion ---
 
@@ -500,6 +516,14 @@ type Tensor internal (inner: torch.Tensor) =
     member _.toInt64Scalar() =
         ToroError.wrap (fun () -> inner.ToInt64())
 
+    member _.item() : float = inner.ToDouble()
+
+    member _.itemF32() : float32 = inner.ToSingle()
+
+    member _.itemI64() : int64 = inner.ToInt64()
+
+    member _.itemI32() : int = inner.ToInt32()
+
     // --- Indexers (throw on error) ---
 
     member _.Item
@@ -558,8 +582,52 @@ type Tensor internal (inner: torch.Tensor) =
     static member (*)(s: float, t: Tensor) =
         Tensor(t.Inner.mul (toScalar s: Scalar))
 
+    static member (-)(t: Tensor, s: float) =
+        Tensor(t.Inner.sub (toScalar s: Scalar))
+
+    static member (-)(s: float, t: Tensor) =
+        Tensor(t.Inner.neg().add (toScalar s: Scalar))
+
     static member (/)(t: Tensor, s: float) =
         Tensor(t.Inner.div (toScalar s: Scalar))
+
+    // --- Comparison (throw on error) ---
+
+    member _.eq(other: Tensor) = Tensor(inner.eq other.Inner)
+
+    member _.ne(other: Tensor) = Tensor(inner.ne other.Inner)
+
+    member _.gt(other: Tensor) = Tensor(inner.gt other.Inner)
+
+    member _.lt(other: Tensor) = Tensor(inner.lt other.Inner)
+
+    member _.ge(other: Tensor) = Tensor(inner.ge other.Inner)
+
+    member _.le(other: Tensor) = Tensor(inner.le other.Inner)
+
+    member _.eqScalar(s: float) = Tensor(inner.eq (toScalar s))
+
+    member _.neScalar(s: float) = Tensor(inner.ne (toScalar s))
+
+    member _.gtScalar(s: float) = Tensor(inner.gt (toScalar s))
+
+    member _.ltScalar(s: float) = Tensor(inner.lt (toScalar s))
+
+    member _.geScalar(s: float) = Tensor(inner.ge (toScalar s))
+
+    member _.leScalar(s: float) = Tensor(inner.le (toScalar s))
+
+    static member (.=.)(a: Tensor, b: Tensor) = Tensor(a.Inner.eq b.Inner)
+
+    static member (.<>.)(a: Tensor, b: Tensor) = Tensor(a.Inner.ne b.Inner)
+
+    static member (.>.)(a: Tensor, b: Tensor) = Tensor(a.Inner.gt b.Inner)
+
+    static member (.<.)(a: Tensor, b: Tensor) = Tensor(a.Inner.lt b.Inner)
+
+    static member (.>=.)(a: Tensor, b: Tensor) = Tensor(a.Inner.ge b.Inner)
+
+    static member (.<=.)(a: Tensor, b: Tensor) = Tensor(a.Inner.le b.Inner)
 
     // --- Disposal ---
 

@@ -88,8 +88,8 @@ type AdamW = {
                     let mHatScale = 1.0 / (1.0 - pown p.Beta1 (int t))
                     let vHatScale = 1.0 / (1.0 - pown p.Beta2 (int t))
 
-                    let! mHat = mNew.mulScalar mHatScale
-                    let! vHat = vNew.mulScalar vHatScale
+                    let! mHat = mNew *~. mHatScale
+                    let! vHat = vNew *~. vHatScale
 
                     // theta = theta * (1 - lr * wd) - lr * mHat / (sqrt(vHat) + eps)
                     let! updated =

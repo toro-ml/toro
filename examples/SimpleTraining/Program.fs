@@ -38,11 +38,11 @@ let main _argv =
             let! l2 = Linear.init 16 1 F32 Cpu
 
             return
-                Sequential.create [
-                    l1 :> IModule //
-                    Relu :> IModule
-                    l2 :> IModule
-                ]
+                sequential {
+                    l1
+                    Relu
+                    l2
+                }
         }
         |> unwrap
 

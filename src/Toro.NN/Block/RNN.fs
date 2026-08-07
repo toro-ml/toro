@@ -61,12 +61,12 @@ type LSTM = {
 
             let! ihGates =
                 match this.BIh with
-                | Some b -> ihGates.broadcastAdd b
+                | Some b -> ihGates.add b
                 | None -> Ok ihGates
 
             let! hhGates =
                 match this.BHh with
-                | Some b -> hhGates.broadcastAdd b
+                | Some b -> hhGates.add b
                 | None -> Ok hhGates
 
             let! gates = ihGates.add hhGates
@@ -78,8 +78,7 @@ type LSTM = {
             let! outGate = chunks[3].sigmoid ()
 
             let! nextC = forgetGate.mul state.C +~ inGate.mul cellGate
-            let! nextCTanh = nextC.tanh ()
-            let! nextH = outGate.mul nextCTanh
+            let! nextH = outGate *~ nextC.tanh ()
 
             return { H = nextH; C = nextC }
         }
@@ -191,33 +190,24 @@ type GRU = {
 
             let! ihGates =
                 match this.BIh with
-                | Some b -> ihGates.broadcastAdd b
+                | Some b -> ihGates.add b
                 | None -> Ok ihGates
 
             let! hhGates =
                 match this.BHh with
-                | Some b -> hhGates.broadcastAdd b
+                | Some b -> hhGates.add b
                 | None -> Ok hhGates
 
             let! chunksIh = ihGates.chunk (3, 1)
             let! chunksHh = hhGates.chunk (3, 1)
 
-            let! rGate =
-                chunksIh[0].add chunksHh[0]
-                |> Result.bind (fun t -> t.sigmoid ())
-
-            let! zGate =
-                chunksIh[1].add chunksHh[1]
-                |> Result.bind (fun t -> t.sigmoid ())
+            let! rGate = (chunksIh[0] + chunksHh[0]).sigmoid ()
+            let! zGate = (chunksIh[1] + chunksHh[1]).sigmoid ()
 
             let! rHh = rGate.mul chunksHh[2]
-            let! nGate = chunksIh[2].add rHh |> Result.bind (fun t -> t.tanh ())
+            let! nGate = (chunksIh[2] + rHh).tanh ()
 
-            let! zH = zGate.mul state.H
-            let! oneMinusZ = Tensor.ones (zGate.Shape, this.DType, this.Device)
-            let! oneMinusZ = oneMinusZ.sub zGate
-            let! nScaled = oneMinusZ.mul nGate
-            let! nextH = zH.add nScaled
+            let! nextH = zGate.mul state.H +~ (1.0 - zGate).mul nGate
 
             return { H = nextH }
         }

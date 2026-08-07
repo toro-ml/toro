@@ -12,8 +12,7 @@ module Loss =
             let! bSz = inp.dim 0
             let! gathered = inp.gather (1, target)
             let! squeezed = gathered.squeeze -1
-            let! negated = squeezed.neg ()
-            let! total = negated.sumAll ()
+            let! total = (-squeezed).sumAll ()
             return! total.affine (1.0 / float bSz, 0.0)
         }
 

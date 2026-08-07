@@ -106,9 +106,10 @@ let main _argv =
 
                     opt.backwardStep loss |> unwrap
 
-                    let lossVal = loss.toFloat32Scalar () |> unwrap
-                    let predicted = logits.Inner.argmax (1L)
-                    let correct = predicted.eq(labels).sum().ToInt64()
+                    let lossVal = loss.item ()
+                    let! predicted = logits.argmax 1
+                    let! eqSum = predicted.eq(target).sumAll ()
+                    let correct = eqSum.item () |> int64
 
                     return lossVal, correct, images.shape[0]
                 }
@@ -130,16 +131,20 @@ let main _argv =
                 let images = batch["data"]
                 let labels = batch["label"]
 
-                let logits =
+                let testResult =
                     result {
                         let! x = Tensor.ofTorchTensor images
-                        return! model.forward x
+                        let! target = Tensor.ofTorchTensor labels
+                        let! logits = model.forward x
+                        let! predicted = logits.argmax 1
+                        let! eqSum = predicted.eq(target).sumAll ()
+                        let correct = eqSum.item () |> int64
+                        return correct, images.shape[0]
                     }
-                    |> unwrap
 
-                let predicted = logits.Inner.argmax (1L)
-                testCorrect <- testCorrect + predicted.eq(labels).sum().ToInt64()
-                testTotal <- testTotal + images.shape[0])
+                let correct, n = unwrap testResult
+                testCorrect <- testCorrect + correct
+                testTotal <- testTotal + n)
 
         let testAcc = float testCorrect / float testTotal * 100.0
         printfn "  test acc=%.1f%%" testAcc

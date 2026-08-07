@@ -37,14 +37,14 @@ type LayerNorm = {
             let! x =
                 if this.RemoveMean then
                     result {
-                        let! meanX = x.meanKeepdim -1
+                        let! meanX = x.mean (-1, keepDim = true)
                         return! x.sub meanX
                     }
                 else
                     Ok x
 
             let! xSqr = x.sqr ()
-            let! normX = xSqr.meanKeepdim -1
+            let! normX = xSqr.mean (-1, keepDim = true)
             let! xNormed = x /~ (normX.addScalar this.Eps |> TensorR.sqrt)
             let! xNormed = xNormed.toDType xDType
 

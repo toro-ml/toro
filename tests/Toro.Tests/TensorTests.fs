@@ -123,10 +123,10 @@ let ``unsqueeze adds dim of size 1`` () =
     u.Shape |> should equal [ 2; 1; 3 ]
 
 [<Fact>]
-let ``sumKeepdim preserves rank`` () =
+let ``sum keepDim preserves rank`` () =
     let t = Tensor.ones ([ 2; 3; 4 ], F32, Cpu) |> unwrap
 
-    let s = t.sumKeepdim -1 |> unwrap
+    let s = t.sum (-1, keepDim = true) |> unwrap
     s.Shape |> should equal [ 2; 3; 1 ]
 
 [<Fact>]
@@ -371,10 +371,10 @@ let ``chunk splits tensor along dimension`` () =
     chunks[0].Shape |> should equal [ 2; 3 ]
 
 [<Fact>]
-let ``broadcastAdd adds with broadcasting`` () =
+let ``add broadcasts automatically`` () =
     let a = Tensor.ones ([ 2; 3 ], F32, Cpu) |> unwrap
     let b = Tensor.ones ([ 3 ], F32, Cpu) |> unwrap
-    let c = a.broadcastAdd b |> unwrap
+    let c = a.add b |> unwrap
     c.Shape |> should equal [ 2; 3 ]
     scalarF32 c |> should equal 12.0f
 
@@ -492,3 +492,46 @@ let ``at with Ellipsis selects trailing dim`` () =
     let t = t.reshape [ 2; 3; 4 ] |> unwrap
     let s = t.at [ E; I 0 ]
     s.Shape |> should equal [ 2; 3 ]
+
+[<Fact>]
+let ``argmax returns index of maximum along dim`` () =
+    let t =
+        Tensor.ofFloat32Array ([| 1.0f; 3.0f; 2.0f; 5.0f; 4.0f; 0.0f |], Cpu)
+        |> unwrap
+
+    let t = t.reshape [ 2; 3 ] |> unwrap
+    let idx = t.argmax 1 |> unwrap
+    idx.Shape |> should equal [ 2 ]
+    idx[0].itemI64 () |> should equal 1L
+    idx[1].itemI64 () |> should equal 0L
+
+[<Fact>]
+let ``eq returns bool tensor`` () =
+    let a =
+        Tensor.ofFloat32Array ([| 1.0f; 2.0f; 3.0f |], Cpu)
+        |> unwrap
+
+    let b =
+        Tensor.ofFloat32Array ([| 1.0f; 0.0f; 3.0f |], Cpu)
+        |> unwrap
+
+    let eq = a.eq b
+    eq.Shape |> should equal [ 3 ]
+    let eqSum = eq.sumAll () |> unwrap
+    eqSum.item () |> should equal 2.0
+
+[<Fact>]
+let ``item returns scalar as float`` () =
+    let t = Tensor.full ([ 1 ], 3.14, F64, Cpu) |> unwrap
+    t.item () |> should (equalWithin 1e-10) 3.14
+
+[<Fact>]
+let ``max returns values and indices`` () =
+    let t =
+        Tensor.ofFloat32Array ([| 1.0f; 5.0f; 3.0f; 2.0f; 4.0f; 0.0f |], Cpu)
+        |> unwrap
+
+    let t = t.reshape [ 2; 3 ] |> unwrap
+    let values, indices = t.max 1 |> unwrap
+    values.Shape |> should equal [ 2 ]
+    indices.Shape |> should equal [ 2 ]
