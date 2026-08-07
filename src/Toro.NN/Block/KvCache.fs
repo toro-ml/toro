@@ -42,4 +42,4 @@ type KvCache(dim: int) =
         | _ -> None
 
 module KvCache =
-    let create (dim: int) : KvCache = KvCache(dim)
+    let create (dim: int) : KvCache = KvCache dim

@@ -57,7 +57,7 @@ let main _argv =
     let lr = 1e-3
 
     let dataPath =
-        IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "toro-mnist")
+        IO.Path.Combine(Environment.GetFolderPath Environment.SpecialFolder.LocalApplicationData, "toro-mnist")
 
     printfn "Loading MNIST dataset..."
 

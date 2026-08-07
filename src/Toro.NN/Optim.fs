@@ -73,7 +73,7 @@ type AdamW = {
             let t = float this.StepCount
 
             result {
-                for (param, m, v) in this.Vars do
+                for param, m, v in this.Vars do
                     let! g = param.grad ()
 
                     // m = beta1 * m + (1 - beta1) * g
@@ -114,7 +114,7 @@ type AdamW = {
             this.Params <- { this.Params with Lr = lr }
 
         member this.zeroGrad() =
-            for (param, _, _) in this.Vars do
+            for param, _, _ in this.Vars do
                 param.zeroGrad ()
 
 module AdamW =
@@ -126,7 +126,7 @@ module AdamW =
                     result {
                         let! m = Tensor.zeros (param.Shape, param.DType, param.Device)
                         let! v = Tensor.zeros (param.Shape, param.DType, param.Device)
-                        return (param, m, v)
+                        return param, m, v
                     })
                 |> List.fold
                     (fun acc r ->

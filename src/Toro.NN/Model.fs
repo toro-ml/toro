@@ -27,7 +27,7 @@ module Model =
             fields
             |> Array.toList
             |> List.collect (fun fi ->
-                let fieldVal = fi.GetValue(value)
+                let fieldVal = fi.GetValue value
 
                 let path =
                     if prefix.Length = 0 then
@@ -55,24 +55,24 @@ module Model =
 
     let save (model: 'T) (dirPath: string) : Result<unit, ToroError> =
         result {
-            do! ToroError.wrap (fun () -> Directory.CreateDirectory(dirPath) |> ignore)
+            do! ToroError.wrap (fun () -> Directory.CreateDirectory dirPath |> ignore)
 
-            for (name, tensor) in namedParams model do
+            for name, tensor in namedParams model do
                 let filePath = Path.Combine(dirPath, name + ".toro")
-                let dir = Path.GetDirectoryName(filePath)
+                let dir = Path.GetDirectoryName filePath
 
-                if not (Directory.Exists(dir)) then
-                    Directory.CreateDirectory(dir) |> ignore
+                if not (Directory.Exists dir) then
+                    Directory.CreateDirectory dir |> ignore
 
                 do! tensor.save filePath
         }
 
     let loadInto (model: 'T) (dirPath: string) : Result<unit, ToroError> =
         result {
-            for (name, tensor) in namedParams model do
+            for name, tensor in namedParams model do
                 let filePath = Path.Combine(dirPath, name + ".toro")
 
-                if File.Exists(filePath) then
+                if File.Exists filePath then
                     let! loaded = Tensor.load filePath
                     do! tensor.copyInPlace loaded
         }

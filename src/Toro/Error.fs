@@ -33,8 +33,8 @@ module ToroError =
     let msg s : Result<'a, ToroError> = Error(Msg s)
 
 type ResultBuilder() =
-    member _.Return(x) = Ok x
-    member _.ReturnFrom(x) = x
+    member _.Return x = Ok x
+    member _.ReturnFrom x = x
 
     member _.Bind(m, f) =
         match m with
@@ -48,8 +48,8 @@ type ResultBuilder() =
         | Ok() -> f ()
         | Error e -> Error e
 
-    member _.Delay(f) = f
-    member _.Run(f) = f ()
+    member _.Delay f = f
+    member _.Run f = f ()
 
     member _.TryWith(body, handler) =
         try

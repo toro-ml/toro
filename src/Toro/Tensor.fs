@@ -29,14 +29,14 @@ type Tensor internal (inner: torch.Tensor) =
             let t =
                 torch.zeros (Shape.toInt64Array shape, dtype = DType.toTorch dtype, device = Device.toTorch device)
 
-            Tensor(t))
+            Tensor t)
 
     static member ones(shape: int list, dtype: DType, device: Device) =
         ToroError.wrap (fun () ->
             let t =
                 torch.ones (Shape.toInt64Array shape, dtype = DType.toTorch dtype, device = Device.toTorch device)
 
-            Tensor(t))
+            Tensor t)
 
     static member full(shape: int list, value: float, dtype: DType, device: Device) =
         ToroError.wrap (fun () ->
@@ -48,35 +48,35 @@ type Tensor internal (inner: torch.Tensor) =
                     device = Device.toTorch device
                 )
 
-            Tensor(t))
+            Tensor t)
 
     static member rand(shape: int list, dtype: DType, device: Device) =
         ToroError.wrap (fun () ->
             let t =
                 torch.rand (Shape.toInt64Array shape, dtype = DType.toTorch dtype, device = Device.toTorch device)
 
-            Tensor(t))
+            Tensor t)
 
     static member randn(shape: int list, dtype: DType, device: Device) =
         ToroError.wrap (fun () ->
             let t =
                 torch.randn (Shape.toInt64Array shape, dtype = DType.toTorch dtype, device = Device.toTorch device)
 
-            Tensor(t))
+            Tensor t)
 
     static member arange(stop: float, dtype: DType, device: Device) =
         ToroError.wrap (fun () ->
             let t =
                 torch.arange (toScalar stop, dtype = DType.toTorch dtype, device = Device.toTorch device)
 
-            Tensor(t))
+            Tensor t)
 
     static member arange(start: float, stop: float, dtype: DType, device: Device) =
         ToroError.wrap (fun () ->
             let t =
                 torch.arange (toScalar start, toScalar stop, dtype = DType.toTorch dtype, device = Device.toTorch device)
 
-            Tensor(t))
+            Tensor t)
 
     static member ofFloat32Array2D(data: float32 array array, device: Device) =
         ToroError.wrap (fun () ->
@@ -87,13 +87,13 @@ type Tensor internal (inner: torch.Tensor) =
             let t =
                 torch.tensor(flat, device = Device.toTorch device).reshape ([| int64 rows; int64 cols |])
 
-            Tensor(t))
+            Tensor t)
 
     static member ofFloat32Array(data: float32 array, device: Device) =
         ToroError.wrap (fun () ->
             let t = torch.tensor (data, device = Device.toTorch device)
 
-            Tensor(t))
+            Tensor t)
 
     static member cat(tensors: Tensor list, dim: int) =
         ToroError.wrap (fun () ->
@@ -107,26 +107,26 @@ type Tensor internal (inner: torch.Tensor) =
 
             Tensor(torch.stack (ts, int64 dim)))
 
-    static member ofTorchTensor(t: torch.Tensor) = ToroError.wrap (fun () -> Tensor(t))
+    static member ofTorchTensor(t: torch.Tensor) = ToroError.wrap (fun () -> Tensor t)
 
     // --- Dimension query ---
 
     member t.dim(d: int) =
-        ToroError.wrap (fun () -> int (inner.size (d)))
+        ToroError.wrap (fun () -> inner.size d |> int)
 
     // --- Arithmetic (tensor-tensor) ---
 
     member _.add(other: Tensor) =
-        ToroError.wrap (fun () -> Tensor(inner.add (other.Inner)))
+        ToroError.wrap (fun () -> Tensor(inner.add other.Inner))
 
     member _.sub(other: Tensor) =
-        ToroError.wrap (fun () -> Tensor(inner.sub (other.Inner)))
+        ToroError.wrap (fun () -> Tensor(inner.sub other.Inner))
 
     member _.mul(other: Tensor) =
-        ToroError.wrap (fun () -> Tensor(inner.mul (other.Inner)))
+        ToroError.wrap (fun () -> Tensor(inner.mul other.Inner))
 
     member _.div(other: Tensor) =
-        ToroError.wrap (fun () -> Tensor(inner.div (other.Inner)))
+        ToroError.wrap (fun () -> Tensor(inner.div other.Inner))
 
     // --- Arithmetic (scalar) ---
 
@@ -145,7 +145,7 @@ type Tensor internal (inner: torch.Tensor) =
     // --- Matrix ops ---
 
     member _.matmul(other: Tensor) =
-        ToroError.wrap (fun () -> Tensor(inner.matmul (other.Inner)))
+        ToroError.wrap (fun () -> Tensor(inner.matmul other.Inner))
 
     member _.t() =
         ToroError.wrap (fun () -> Tensor(inner.t ()))
@@ -230,10 +230,10 @@ type Tensor internal (inner: torch.Tensor) =
         ToroError.wrap (fun () -> Tensor(inner.relu ()))
 
     member _.gelu() =
-        ToroError.wrap (fun () -> Tensor(torch.nn.functional.gelu (inner)))
+        ToroError.wrap (fun () -> Tensor(torch.nn.functional.gelu inner))
 
     member _.silu() =
-        ToroError.wrap (fun () -> Tensor(torch.nn.functional.silu (inner)))
+        ToroError.wrap (fun () -> Tensor(torch.nn.functional.silu inner))
 
     member _.tanh() =
         ToroError.wrap (fun () -> Tensor(inner.tanh ()))
@@ -248,7 +248,7 @@ type Tensor internal (inner: torch.Tensor) =
         ToroError.wrap (fun () -> Tensor(torch.nn.functional.elu (inner, alpha)))
 
     member _.mish() =
-        ToroError.wrap (fun () -> Tensor(torch.nn.functional.mish (inner)))
+        ToroError.wrap (fun () -> Tensor(torch.nn.functional.mish inner))
 
     member _.dropout(p: float, train: bool) =
         ToroError.wrap (fun () -> Tensor(torch.nn.functional.dropout (inner, p, train)))
@@ -285,7 +285,7 @@ type Tensor internal (inner: torch.Tensor) =
             |> List.map Tensor)
 
     member _.broadcastAdd(other: Tensor) =
-        ToroError.wrap (fun () -> Tensor(inner.add (other.Inner)))
+        ToroError.wrap (fun () -> Tensor(inner.add other.Inner))
 
     // --- Type / Device conversion ---
 
@@ -302,7 +302,7 @@ type Tensor internal (inner: torch.Tensor) =
     member _.requiresGrad(?requiresGrad: bool) =
         let rg = defaultArg requiresGrad true
 
-        ToroError.wrap (fun () -> Tensor(inner.requires_grad_ (rg)))
+        ToroError.wrap (fun () -> Tensor(inner.requires_grad_ rg))
 
     member _.backward() =
         ToroError.wrap (fun () -> inner.backward ())
@@ -312,7 +312,7 @@ type Tensor internal (inner: torch.Tensor) =
             if isNull inner.grad then
                 Tensor(torch.zeros_like inner)
             else
-                Tensor(inner.grad))
+                Tensor inner.grad)
 
     member _.detach() =
         ToroError.wrap (fun () -> Tensor(inner.detach ()))
@@ -324,7 +324,7 @@ type Tensor internal (inner: torch.Tensor) =
     member _.copyInPlace(src: Tensor) =
         ToroError.wrap (fun () ->
             use _scope = torch.no_grad ()
-            inner.copy_ (src.Inner) |> ignore)
+            inner.copy_ src.Inner |> ignore)
 
     // --- Convolution ---
 
@@ -471,7 +471,7 @@ type Tensor internal (inner: torch.Tensor) =
     // --- Encoding ---
 
     member _.oneHot(numClasses: int) =
-        ToroError.wrap (fun () -> Tensor(torch.nn.functional.one_hot(inner, int64 numClasses).``to`` (torch.float32)))
+        ToroError.wrap (fun () -> Tensor(torch.nn.functional.one_hot(inner, int64 numClasses).``to`` torch.float32))
 
     // --- Misc ---
 
@@ -481,10 +481,10 @@ type Tensor internal (inner: torch.Tensor) =
     // --- Persistence ---
 
     member _.save(path: string) =
-        ToroError.wrap (fun () -> inner.save (path))
+        ToroError.wrap (fun () -> inner.save path)
 
     static member load(path: string) =
-        ToroError.wrap (fun () -> Tensor(torch.Tensor.load (path)))
+        ToroError.wrap (fun () -> Tensor(torch.Tensor.load path))
 
     // --- Scalar extraction ---
 
@@ -536,13 +536,13 @@ type Tensor internal (inner: torch.Tensor) =
 
     // --- Operators (throw on error) ---
 
-    static member (+)(a: Tensor, b: Tensor) = Tensor(a.Inner.add (b.Inner))
+    static member (+)(a: Tensor, b: Tensor) = Tensor(a.Inner.add b.Inner)
 
-    static member (-)(a: Tensor, b: Tensor) = Tensor(a.Inner.sub (b.Inner))
+    static member (-)(a: Tensor, b: Tensor) = Tensor(a.Inner.sub b.Inner)
 
-    static member (*)(a: Tensor, b: Tensor) = Tensor(a.Inner.mul (b.Inner))
+    static member (*)(a: Tensor, b: Tensor) = Tensor(a.Inner.mul b.Inner)
 
-    static member (/)(a: Tensor, b: Tensor) = Tensor(a.Inner.div (b.Inner))
+    static member (/)(a: Tensor, b: Tensor) = Tensor(a.Inner.div b.Inner)
 
     static member (~-)(t: Tensor) = Tensor(t.Inner.neg ())
 
