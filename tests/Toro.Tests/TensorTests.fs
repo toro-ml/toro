@@ -535,3 +535,41 @@ let ``max returns values and indices`` () =
     let values, indices = t.max 1 |> unwrap
     values.Shape |> should equal [ 2 ]
     indices.Shape |> should equal [ 2 ]
+
+[<Fact>]
+let ``permute reorders dimensions`` () =
+    let t = Tensor.randn ([ 2; 3; 4 ], F32, Cpu) |> unwrap
+    let p = t.permute [ 0; 2; 1 ] |> unwrap
+    p.Shape |> should equal [ 2; 4; 3 ]
+
+[<Fact>]
+let ``expand broadcasts to larger shape`` () =
+    let t = Tensor.ones ([ 1; 3 ], F32, Cpu) |> unwrap
+    let e = t.expand [ 4; 3 ] |> unwrap
+    e.Shape |> should equal [ 4; 3 ]
+
+[<Fact>]
+let ``repeatInterleave repeats elements`` () =
+    let t = Tensor.ones ([ 2; 3 ], F32, Cpu) |> unwrap
+    let r = t.repeatInterleave (2, 0) |> unwrap
+    r.Shape |> should equal [ 4; 3 ]
+
+[<Fact>]
+let ``pad adds padding to tensor`` () =
+    let t = Tensor.ones ([ 2; 3 ], F32, Cpu) |> unwrap
+    let p = t.pad ([ 1; 1; 0; 0 ], 0.0) |> unwrap
+    p.Shape |> should equal [ 2; 5 ]
+
+[<Fact>]
+let ``tril returns lower triangular`` () =
+    let t = Tensor.ones ([ 3; 3 ], F32, Cpu) |> unwrap
+    let lo = t.tril () |> unwrap
+    lo.at([ I 0; I 0 ]).itemF32 () |> should equal 1.0f
+    lo.at([ I 0; I 2 ]).itemF32 () |> should equal 0.0f
+
+[<Fact>]
+let ``triu returns upper triangular`` () =
+    let t = Tensor.ones ([ 3; 3 ], F32, Cpu) |> unwrap
+    let up = t.triu () |> unwrap
+    up.at([ I 0; I 2 ]).itemF32 () |> should equal 1.0f
+    up.at([ I 2; I 0 ]).itemF32 () |> should equal 0.0f

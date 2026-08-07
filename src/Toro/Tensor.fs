@@ -176,6 +176,28 @@ type Tensor internal (inner: torch.Tensor) =
     member _.contiguous() =
         ToroError.wrap (fun () -> Tensor(inner.contiguous ()))
 
+    member _.permute(dims: int list) =
+        ToroError.wrap (fun () -> Tensor(inner.permute (dims |> List.map int64 |> List.toArray)))
+
+    member _.expand(shape: int list) =
+        ToroError.wrap (fun () -> Tensor(inner.expand (Shape.toInt64Array shape)))
+
+    member _.repeatInterleave(repeats: int, dim: int) =
+        ToroError.wrap (fun () -> Tensor(inner.repeat_interleave (int64 repeats, int64 dim)))
+
+    member _.pad(padding: int list, value: float) =
+        ToroError.wrap (fun () ->
+            let p = padding |> List.map int64 |> List.toArray
+            Tensor(torch.nn.functional.pad (inner, p, value = value)))
+
+    member _.tril(?diagonal: int) =
+        let d = defaultArg diagonal 0
+        ToroError.wrap (fun () -> Tensor(inner.tril (int64 d)))
+
+    member _.triu(?diagonal: int) =
+        let d = defaultArg diagonal 0
+        ToroError.wrap (fun () -> Tensor(inner.triu (int64 d)))
+
     member _.broadcastLeft(shape: int list) =
         ToroError.wrap (fun () -> Tensor(inner.broadcast_to (Shape.toInt64Array shape)))
 

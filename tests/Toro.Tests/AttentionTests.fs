@@ -97,3 +97,26 @@ let ``KvCache reset clears state`` () =
     cache.reset ()
     cache.CurrentSeqLen |> should equal 0
     cache.currentData () |> should equal None
+
+[<Fact>]
+let ``MultiHeadAttention forward returns correct shape`` () =
+    let dim = 32
+    let heads = 4
+    let batch = 2
+    let seqLen = 8
+    let mha = MultiHeadAttention.init dim heads F32 Cpu |> unwrap
+    let x = Tensor.randn ([ batch; seqLen; dim ], F32, Cpu) |> unwrap
+    let y = mha.forward x |> unwrap
+    y.Shape |> should equal [ batch; seqLen; dim ]
+
+[<Fact>]
+let ``TransformerBlock forward returns correct shape`` () =
+    let dim = 32
+    let heads = 4
+    let ffDim = 64
+    let batch = 2
+    let seqLen = 8
+    let block = TransformerBlock.init dim heads ffDim F32 Cpu |> unwrap
+    let x = Tensor.randn ([ batch; seqLen; dim ], F32, Cpu) |> unwrap
+    let y = block.forward x |> unwrap
+    y.Shape |> should equal [ batch; seqLen; dim ]

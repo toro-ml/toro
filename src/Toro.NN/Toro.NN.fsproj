@@ -32,6 +32,7 @@
     <Compile Include="Block/Func.fs" />
     <Compile Include="Block/RNN.fs" />
     <Compile Include="Block/KvCache.fs" />
+    <Compile Include="Block/Attention.fs" />
     <Compile Include="Loss.fs" />
     <Compile Include="Optim.fs" />
   </ItemGroup>
