@@ -26,6 +26,7 @@ module Linear =
 
         result {
             let! ws = Init.toParam [ outDim; inDim ] dtype device Init.defaultKaimingNormal
+
             let! bs = Init.toParam [ outDim ] dtype device (Init.Uniform(-bound, bound))
             return { Weight = ws; Bias = Some bs }
         }
@@ -33,5 +34,6 @@ module Linear =
     let initNoBias (inDim: int) (outDim: int) (dtype: DType) (device: Device) : Result<Linear, ToroError> =
         result {
             let! ws = Init.toParam [ outDim; inDim ] dtype device Init.defaultKaimingNormal
+
             return { Weight = ws; Bias = None }
         }

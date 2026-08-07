@@ -13,9 +13,17 @@ let ``scaledDotProductAttention returns correct shape`` () =
     let seqLen = 8
     let headDim = 16
 
-    let q = Tensor.randn ([ batch; heads; seqLen; headDim ], F32, Cpu) |> unwrap
-    let k = Tensor.randn ([ batch; heads; seqLen; headDim ], F32, Cpu) |> unwrap
-    let v = Tensor.randn ([ batch; heads; seqLen; headDim ], F32, Cpu) |> unwrap
+    let q =
+        Tensor.randn ([ batch; heads; seqLen; headDim ], F32, Cpu)
+        |> unwrap
+
+    let k =
+        Tensor.randn ([ batch; heads; seqLen; headDim ], F32, Cpu)
+        |> unwrap
+
+    let v =
+        Tensor.randn ([ batch; heads; seqLen; headDim ], F32, Cpu)
+        |> unwrap
 
     let out = q.scaledDotProductAttention (k, v) |> unwrap
     out.Shape |> should equal [ batch; heads; seqLen; headDim ]
@@ -26,7 +34,10 @@ let ``scaledDotProductAttention with causal mask`` () =
     let k = Tensor.randn ([ 1; 1; 4; 8 ], F32, Cpu) |> unwrap
     let v = Tensor.randn ([ 1; 1; 4; 8 ], F32, Cpu) |> unwrap
 
-    let out = q.scaledDotProductAttention (k, v, isCausal = true) |> unwrap
+    let out =
+        q.scaledDotProductAttention (k, v, isCausal = true)
+        |> unwrap
+
     out.Shape |> should equal [ 1; 1; 4; 8 ]
 
 [<Fact>]
@@ -37,7 +48,10 @@ let ``scaledDotProductAttention with explicit attn mask`` () =
     let v = Tensor.randn ([ 1; 2; seqLen; 8 ], F32, Cpu) |> unwrap
     let mask = Tensor.causalMask (seqLen, F32, Cpu) |> unwrap
 
-    let out = q.scaledDotProductAttention (k, v, attnMask = mask) |> unwrap
+    let out =
+        q.scaledDotProductAttention (k, v, attnMask = mask)
+        |> unwrap
+
     out.Shape |> should equal [ 1; 2; seqLen; 8 ]
 
 [<Fact>]

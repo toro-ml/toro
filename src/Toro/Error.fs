@@ -77,11 +77,7 @@ type ResultBuilder() =
             this.Bind(body (), (fun () -> this.While(guard, body)))
 
     member this.For(sequence: seq<'a>, body) =
-        this.Using(
-            sequence.GetEnumerator(),
-            fun enum ->
-                this.While(enum.MoveNext, this.Delay(fun () -> body enum.Current))
-        )
+        this.Using(sequence.GetEnumerator(), fun enum -> this.While(enum.MoveNext, this.Delay(fun () -> body enum.Current)))
 
 [<AutoOpen>]
 module ResultCE =

@@ -53,8 +53,7 @@ module Conv1d =
         let bound = 1.0 / sqrt (float (groupInC * kernelSize))
 
         result {
-            let! ws =
-                Init.toParam [ outChannels; groupInC; kernelSize ] dtype device Init.defaultKaimingNormal
+            let! ws = Init.toParam [ outChannels; groupInC; kernelSize ] dtype device Init.defaultKaimingNormal
 
             let! bs = Init.toParam [ outChannels ] dtype device (Init.Uniform(-bound, bound))
 
@@ -85,8 +84,7 @@ module Conv1d =
         let groupInC = inChannels / config.Groups
 
         result {
-            let! ws =
-                Init.toParam [ outChannels; groupInC; kernelSize ] dtype device Init.defaultKaimingNormal
+            let! ws = Init.toParam [ outChannels; groupInC; kernelSize ] dtype device Init.defaultKaimingNormal
 
             return {
                 Weight = ws
@@ -146,12 +144,7 @@ module Conv2d =
         let bound = 1.0 / sqrt (float (groupInC * kernelSize * kernelSize))
 
         result {
-            let! ws =
-                Init.toParam
-                    [ outChannels; groupInC; kernelSize; kernelSize ]
-                    dtype
-                    device
-                    Init.defaultKaimingNormal
+            let! ws = Init.toParam [ outChannels; groupInC; kernelSize; kernelSize ] dtype device Init.defaultKaimingNormal
 
             let! bs = Init.toParam [ outChannels ] dtype device (Init.Uniform(-bound, bound))
 
@@ -182,12 +175,7 @@ module Conv2d =
         let groupInC = inChannels / config.Groups
 
         result {
-            let! ws =
-                Init.toParam
-                    [ outChannels; groupInC; kernelSize; kernelSize ]
-                    dtype
-                    device
-                    Init.defaultKaimingNormal
+            let! ws = Init.toParam [ outChannels; groupInC; kernelSize; kernelSize ] dtype device Init.defaultKaimingNormal
 
             return {
                 Weight = ws

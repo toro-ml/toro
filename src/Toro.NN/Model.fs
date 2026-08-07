@@ -21,13 +21,19 @@ module Model =
         if not (FSharpType.IsRecord(ty, BindingFlags.Public ||| BindingFlags.Instance)) then
             []
         else
-            let fields = FSharpType.GetRecordFields(ty, BindingFlags.Public ||| BindingFlags.Instance)
+            let fields =
+                FSharpType.GetRecordFields(ty, BindingFlags.Public ||| BindingFlags.Instance)
 
             fields
             |> Array.toList
             |> List.collect (fun fi ->
                 let fieldVal = fi.GetValue(value)
-                let path = if prefix.Length = 0 then fi.Name else prefix + "." + fi.Name
+
+                let path =
+                    if prefix.Length = 0 then
+                        fi.Name
+                    else
+                        prefix + "." + fi.Name
 
                 if fi.PropertyType = tensorType then
                     [ path, fieldVal :?> Tensor ]

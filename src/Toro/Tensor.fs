@@ -27,22 +27,14 @@ type Tensor internal (inner: torch.Tensor) =
     static member zeros(shape: int list, dtype: DType, device: Device) =
         ToroError.wrap (fun () ->
             let t =
-                torch.zeros (
-                    Shape.toInt64Array shape,
-                    dtype = DType.toTorch dtype,
-                    device = Device.toTorch device
-                )
+                torch.zeros (Shape.toInt64Array shape, dtype = DType.toTorch dtype, device = Device.toTorch device)
 
             Tensor(t))
 
     static member ones(shape: int list, dtype: DType, device: Device) =
         ToroError.wrap (fun () ->
             let t =
-                torch.ones (
-                    Shape.toInt64Array shape,
-                    dtype = DType.toTorch dtype,
-                    device = Device.toTorch device
-                )
+                torch.ones (Shape.toInt64Array shape, dtype = DType.toTorch dtype, device = Device.toTorch device)
 
             Tensor(t))
 
@@ -61,45 +53,28 @@ type Tensor internal (inner: torch.Tensor) =
     static member rand(shape: int list, dtype: DType, device: Device) =
         ToroError.wrap (fun () ->
             let t =
-                torch.rand (
-                    Shape.toInt64Array shape,
-                    dtype = DType.toTorch dtype,
-                    device = Device.toTorch device
-                )
+                torch.rand (Shape.toInt64Array shape, dtype = DType.toTorch dtype, device = Device.toTorch device)
 
             Tensor(t))
 
     static member randn(shape: int list, dtype: DType, device: Device) =
         ToroError.wrap (fun () ->
             let t =
-                torch.randn (
-                    Shape.toInt64Array shape,
-                    dtype = DType.toTorch dtype,
-                    device = Device.toTorch device
-                )
+                torch.randn (Shape.toInt64Array shape, dtype = DType.toTorch dtype, device = Device.toTorch device)
 
             Tensor(t))
 
     static member arange(stop: float, dtype: DType, device: Device) =
         ToroError.wrap (fun () ->
             let t =
-                torch.arange (
-                    toScalar stop,
-                    dtype = DType.toTorch dtype,
-                    device = Device.toTorch device
-                )
+                torch.arange (toScalar stop, dtype = DType.toTorch dtype, device = Device.toTorch device)
 
             Tensor(t))
 
     static member arange(start: float, stop: float, dtype: DType, device: Device) =
         ToroError.wrap (fun () ->
             let t =
-                torch.arange (
-                    toScalar start,
-                    toScalar stop,
-                    dtype = DType.toTorch dtype,
-                    device = Device.toTorch device
-                )
+                torch.arange (toScalar start, toScalar stop, dtype = DType.toTorch dtype, device = Device.toTorch device)
 
             Tensor(t))
 
@@ -110,9 +85,7 @@ type Tensor internal (inner: torch.Tensor) =
             let flat = Array.concat data
 
             let t =
-                torch
-                    .tensor(flat, device = Device.toTorch device)
-                    .reshape ([| int64 rows; int64 cols |])
+                torch.tensor(flat, device = Device.toTorch device).reshape ([| int64 rows; int64 cols |])
 
             Tensor(t))
 
@@ -269,8 +242,7 @@ type Tensor internal (inner: torch.Tensor) =
         ToroError.wrap (fun () -> Tensor(inner.sigmoid ()))
 
     member _.leakyRelu(negativeSlope: float) =
-        ToroError.wrap (fun () ->
-            Tensor(torch.nn.functional.leaky_relu (inner, negativeSlope)))
+        ToroError.wrap (fun () -> Tensor(torch.nn.functional.leaky_relu (inner, negativeSlope)))
 
     member _.elu(alpha: float) =
         ToroError.wrap (fun () -> Tensor(torch.nn.functional.elu (inner, alpha)))
@@ -282,12 +254,10 @@ type Tensor internal (inner: torch.Tensor) =
         ToroError.wrap (fun () -> Tensor(torch.nn.functional.dropout (inner, p, train)))
 
     member _.softmax(dim: int) =
-        ToroError.wrap (fun () ->
-            Tensor(torch.nn.functional.softmax (inner, int64 dim)))
+        ToroError.wrap (fun () -> Tensor(torch.nn.functional.softmax (inner, int64 dim)))
 
     member _.logSoftmax(dim: int) =
-        ToroError.wrap (fun () ->
-            Tensor(torch.nn.functional.log_softmax (inner, int64 dim)))
+        ToroError.wrap (fun () -> Tensor(torch.nn.functional.log_softmax (inner, int64 dim)))
 
     member _.clamp(min: float, max: float) =
         ToroError.wrap (fun () -> Tensor(inner.clamp (toScalar min, toScalar max)))
@@ -358,15 +328,7 @@ type Tensor internal (inner: torch.Tensor) =
 
     // --- Convolution ---
 
-    member _.conv1d
-        (
-            weight: Tensor,
-            ?bias: Tensor,
-            ?stride: int,
-            ?padding: int,
-            ?dilation: int,
-            ?groups: int
-        ) =
+    member _.conv1d(weight: Tensor, ?bias: Tensor, ?stride: int, ?padding: int, ?dilation: int, ?groups: int) =
         ToroError.wrap (fun () ->
             let s = int64 (defaultArg stride 1)
             let p = int64 (defaultArg padding 0)
@@ -380,15 +342,7 @@ type Tensor internal (inner: torch.Tensor) =
 
             Tensor(torch.nn.functional.conv1d (inner, weight.Inner, b, s, p, d, g)))
 
-    member _.conv2d
-        (
-            weight: Tensor,
-            ?bias: Tensor,
-            ?stride: int,
-            ?padding: int,
-            ?dilation: int,
-            ?groups: int
-        ) =
+    member _.conv2d(weight: Tensor, ?bias: Tensor, ?stride: int, ?padding: int, ?dilation: int, ?groups: int) =
         ToroError.wrap (fun () ->
             let s = int64 (defaultArg stride 1)
             let p = int64 (defaultArg padding 0)
@@ -400,17 +354,7 @@ type Tensor internal (inner: torch.Tensor) =
                 |> Option.map (fun b -> b.Inner)
                 |> Option.defaultValue null
 
-            Tensor(
-                torch.nn.functional.conv2d (
-                    inner,
-                    weight.Inner,
-                    b,
-                    [| s; s |],
-                    [| p; p |],
-                    [| d; d |],
-                    g
-                )
-            ))
+            Tensor(torch.nn.functional.conv2d (inner, weight.Inner, b, [| s; s |], [| p; p |], [| d; d |], g)))
 
     // --- Normalization ---
 
@@ -445,18 +389,7 @@ type Tensor internal (inner: torch.Tensor) =
                 |> Option.map (fun t -> t.Inner)
                 |> Option.defaultValue null
 
-            Tensor(
-                torch.nn.functional.batch_norm (
-                    inner,
-                    rm,
-                    rv,
-                    w,
-                    b,
-                    train,
-                    momentum,
-                    eps
-                )
-            ))
+            Tensor(torch.nn.functional.batch_norm (inner, rm, rv, w, b, train, momentum, eps)))
 
     member _.groupNorm(numGroups: int, ?weight: Tensor, ?bias: Tensor, ?eps: float) =
         ToroError.wrap (fun () ->
@@ -481,53 +414,25 @@ type Tensor internal (inner: torch.Tensor) =
             let s = int64 (defaultArg stride kernelSize)
             let p = int64 (defaultArg padding 0)
 
-            Tensor(
-                torch.nn.functional.max_pool1d (
-                    inner,
-                    int64 kernelSize,
-                    stride = s,
-                    padding = p
-                )
-            ))
+            Tensor(torch.nn.functional.max_pool1d (inner, int64 kernelSize, stride = s, padding = p)))
 
     member _.maxPool2d(kernelSize: int, ?stride: int, ?padding: int) =
         ToroError.wrap (fun () ->
             let s = int64 (defaultArg stride kernelSize)
             let p = int64 (defaultArg padding 0)
 
-            Tensor(
-                torch.nn.functional.max_pool2d (
-                    inner,
-                    int64 kernelSize,
-                    stride = s,
-                    padding = p
-                )
-            ))
+            Tensor(torch.nn.functional.max_pool2d (inner, int64 kernelSize, stride = s, padding = p)))
 
     member _.avgPool2d(kernelSize: int, ?stride: int, ?padding: int) =
         ToroError.wrap (fun () ->
             let s = int64 (defaultArg stride kernelSize)
             let p = int64 (defaultArg padding 0)
 
-            Tensor(
-                torch.nn.functional.avg_pool2d (
-                    inner,
-                    int64 kernelSize,
-                    stride = s,
-                    padding = p
-                )
-            ))
+            Tensor(torch.nn.functional.avg_pool2d (inner, int64 kernelSize, stride = s, padding = p)))
 
     // --- Attention ---
 
-    member _.scaledDotProductAttention
-        (
-            key: Tensor,
-            value: Tensor,
-            ?attnMask: Tensor,
-            ?dropoutP: float,
-            ?isCausal: bool
-        ) =
+    member _.scaledDotProductAttention(key: Tensor, value: Tensor, ?attnMask: Tensor, ?dropoutP: float, ?isCausal: bool) =
         ToroError.wrap (fun () ->
             let dp = defaultArg dropoutP 0.0
             let causal = defaultArg isCausal false
@@ -557,18 +462,16 @@ type Tensor internal (inner: torch.Tensor) =
                 torch.ones (int64 seqLen, int64 seqLen, dtype = torch.bool, device = Device.toTorch device)
 
             let mask = ones.triu (1L)
-            let filled = torch.zeros (int64 seqLen, int64 seqLen, dtype = DType.toTorch dtype, device = Device.toTorch device)
+
+            let filled =
+                torch.zeros (int64 seqLen, int64 seqLen, dtype = DType.toTorch dtype, device = Device.toTorch device)
+
             Tensor(filled.masked_fill (mask, toScalar System.Double.NegativeInfinity)))
 
     // --- Encoding ---
 
     member _.oneHot(numClasses: int) =
-        ToroError.wrap (fun () ->
-            Tensor(
-                torch.nn.functional
-                    .one_hot(inner, int64 numClasses)
-                    .``to`` (torch.float32)
-            ))
+        ToroError.wrap (fun () -> Tensor(torch.nn.functional.one_hot(inner, int64 numClasses).``to`` (torch.float32)))
 
     // --- Misc ---
 

@@ -25,10 +25,7 @@ module Loss =
         }
 
     /// Binary cross-entropy with logits: max(x,0) - x*y + log(1 + exp(-|x|))
-    let binaryCrossEntropyWithLogit
-        (inp: Tensor)
-        (target: Tensor)
-        : Result<Tensor, ToroError> =
+    let binaryCrossEntropyWithLogit (inp: Tensor) (target: Tensor) : Result<Tensor, ToroError> =
         result {
             let! loss =
                 (inp.relu () -~ inp.mul target)

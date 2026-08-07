@@ -41,10 +41,7 @@ type SGD = {
                 v.zeroGrad ()
 
 module SGD =
-    let create (lr: float) (vars: Tensor list) : SGD = {
-        Vars = vars
-        LearningRate = lr
-    }
+    let create (lr: float) (vars: Tensor list) : SGD = { Vars = vars; LearningRate = lr }
 
 type ParamsAdamW = {
     Lr: float

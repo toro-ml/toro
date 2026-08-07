@@ -40,7 +40,8 @@ let ``AdamW step reduces loss`` () =
 
     let opt =
         AdamW.createWithLr 0.01 (Model.trainableVars linear)
-        |> unwrap :> IOptimizer
+        |> unwrap
+        :> IOptimizer
 
     let getLoss () =
         result {

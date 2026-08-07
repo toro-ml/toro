@@ -11,12 +11,7 @@ type Init =
 module Init =
     let defaultKaimingNormal = KaimingNormal
 
-    let toTensor
-        (shape: int list)
-        (dtype: DType)
-        (device: Device)
-        (init: Init)
-        : Result<Tensor, ToroError> =
+    let toTensor (shape: int list) (dtype: DType) (device: Device) (init: Init) : Result<Tensor, ToroError> =
         match init with
         | Const v -> Tensor.full (shape, v, dtype, device)
         | Randn(mean, stdev) -> Tensor.randn (shape, dtype, device) *~. stdev +~. mean
@@ -26,12 +21,7 @@ module Init =
             let stdev = sqrt (2.0 / float fanIn)
             Tensor.randn (shape, dtype, device) *~. stdev
 
-    let toParam
-        (shape: int list)
-        (dtype: DType)
-        (device: Device)
-        (init: Init)
-        : Result<Tensor, ToroError> =
+    let toParam (shape: int list) (dtype: DType) (device: Device) (init: Init) : Result<Tensor, ToroError> =
         result {
             let! t = toTensor shape dtype device init
             return! t.requiresGrad ()

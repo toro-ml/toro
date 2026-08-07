@@ -59,12 +59,7 @@ type LayerNorm = {
         member this.forward x = this.forward x
 
 module LayerNorm =
-    let init
-        (size: int)
-        (config: LayerNormConfig)
-        (dtype: DType)
-        (device: Device)
-        : Result<LayerNorm, ToroError> =
+    let init (size: int) (config: LayerNormConfig) (dtype: DType) (device: Device) : Result<LayerNorm, ToroError> =
         result {
             let! weight = Init.toParam [ size ] dtype device (Init.Const 1.0)
 

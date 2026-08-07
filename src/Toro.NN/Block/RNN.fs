@@ -46,8 +46,7 @@ type LSTM = {
 
     member this.zeroState(batchDim: int) : Result<LSTMState, ToroError> =
         result {
-            let! zeros =
-                Tensor.zeros ([ batchDim; this.HiddenDim ], this.DType, this.Device)
+            let! zeros = Tensor.zeros ([ batchDim; this.HiddenDim ], this.DType, this.Device)
 
             let! zeros2 = zeros.clone ()
             return { H = zeros; C = zeros2 }
@@ -114,19 +113,19 @@ type LSTM = {
         member this.statesToTensor states = this.statesToTensor states
 
 module LSTM =
-    let init
-        (inDim: int)
-        (hiddenDim: int)
-        (config: LSTMConfig)
-        (dtype: DType)
-        (device: Device)
-        : Result<LSTM, ToroError> =
+    let init (inDim: int) (hiddenDim: int) (config: LSTMConfig) (dtype: DType) (device: Device) : Result<LSTM, ToroError> =
         result {
             let! wIh = Init.toParam [ 4 * hiddenDim; inDim ] dtype device config.WIhInit
+
             let! wHh = Init.toParam [ 4 * hiddenDim; hiddenDim ] dtype device config.WHhInit
 
-            let! bIh = config.BIhInit |> Option.traverseResult (Init.toParam [ 4 * hiddenDim ] dtype device)
-            let! bHh = config.BHhInit |> Option.traverseResult (Init.toParam [ 4 * hiddenDim ] dtype device)
+            let! bIh =
+                config.BIhInit
+                |> Option.traverseResult (Init.toParam [ 4 * hiddenDim ] dtype device)
+
+            let! bHh =
+                config.BHhInit
+                |> Option.traverseResult (Init.toParam [ 4 * hiddenDim ] dtype device)
 
             return {
                 WIh = wIh
@@ -139,12 +138,7 @@ module LSTM =
             }
         }
 
-    let initDefault
-        (inDim: int)
-        (hiddenDim: int)
-        (dtype: DType)
-        (device: Device)
-        : Result<LSTM, ToroError> =
+    let initDefault (inDim: int) (hiddenDim: int) (dtype: DType) (device: Device) : Result<LSTM, ToroError> =
         init inDim hiddenDim LSTMConfig.defaultConfig dtype device
 
 // --- GRU ---
@@ -184,8 +178,7 @@ type GRU = {
 
     member this.zeroState(batchDim: int) : Result<GRUState, ToroError> =
         result {
-            let! zeros =
-                Tensor.zeros ([ batchDim; this.HiddenDim ], this.DType, this.Device)
+            let! zeros = Tensor.zeros ([ batchDim; this.HiddenDim ], this.DType, this.Device)
 
             return { H = zeros }
         }
@@ -259,19 +252,19 @@ type GRU = {
         member this.statesToTensor states = this.statesToTensor states
 
 module GRU =
-    let init
-        (inDim: int)
-        (hiddenDim: int)
-        (config: GRUConfig)
-        (dtype: DType)
-        (device: Device)
-        : Result<GRU, ToroError> =
+    let init (inDim: int) (hiddenDim: int) (config: GRUConfig) (dtype: DType) (device: Device) : Result<GRU, ToroError> =
         result {
             let! wIh = Init.toParam [ 3 * hiddenDim; inDim ] dtype device config.WIhInit
+
             let! wHh = Init.toParam [ 3 * hiddenDim; hiddenDim ] dtype device config.WHhInit
 
-            let! bIh = config.BIhInit |> Option.traverseResult (Init.toParam [ 3 * hiddenDim ] dtype device)
-            let! bHh = config.BHhInit |> Option.traverseResult (Init.toParam [ 3 * hiddenDim ] dtype device)
+            let! bIh =
+                config.BIhInit
+                |> Option.traverseResult (Init.toParam [ 3 * hiddenDim ] dtype device)
+
+            let! bHh =
+                config.BHhInit
+                |> Option.traverseResult (Init.toParam [ 3 * hiddenDim ] dtype device)
 
             return {
                 WIh = wIh
@@ -284,10 +277,5 @@ module GRU =
             }
         }
 
-    let initDefault
-        (inDim: int)
-        (hiddenDim: int)
-        (dtype: DType)
-        (device: Device)
-        : Result<GRU, ToroError> =
+    let initDefault (inDim: int) (hiddenDim: int) (dtype: DType) (device: Device) : Result<GRU, ToroError> =
         init inDim hiddenDim GRUConfig.defaultConfig dtype device

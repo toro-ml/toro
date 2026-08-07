@@ -10,13 +10,26 @@ let unwrap r =
 let main _argv =
     let x =
         Tensor.ofFloat32Array2D (
-            [| [| 0f; 0f |]; [| 0f; 1f |]; [| 1f; 0f |]; [| 1f; 1f |] |],
+            [|
+                [| 0f; 0f |] //
+                [| 0f; 1f |]
+                [| 1f; 0f |]
+                [| 1f; 1f |]
+            |],
             Cpu
         )
         |> unwrap
 
     let y =
-        Tensor.ofFloat32Array2D ([| [| 0f |]; [| 1f |]; [| 1f |]; [| 0f |] |], Cpu)
+        Tensor.ofFloat32Array2D (
+            [|
+                [| 0f |] //
+                [| 1f |]
+                [| 1f |]
+                [| 0f |]
+            |],
+            Cpu
+        )
         |> unwrap
 
     let model =
@@ -24,13 +37,19 @@ let main _argv =
             let! l1 = Linear.init 2 16 F32 Cpu
             let! l2 = Linear.init 16 1 F32 Cpu
 
-            return Sequential.create [ l1 :> IModule; Relu :> IModule; l2 :> IModule ]
+            return
+                Sequential.create [
+                    l1 :> IModule //
+                    Relu :> IModule
+                    l2 :> IModule
+                ]
         }
         |> unwrap
 
     let opt =
         AdamW.createWithLr 0.01 (Model.trainableVars model)
-        |> unwrap :> IOptimizer
+        |> unwrap
+        :> IOptimizer
 
     printfn "Training XOR with AdamW..."
 
@@ -56,7 +75,12 @@ let main _argv =
             let p = model.forward x |> unwrap
             p.flattenAll () |> unwrap)
 
-    let labels = [| "0 XOR 0"; "0 XOR 1"; "1 XOR 0"; "1 XOR 1" |]
+    let labels = [|
+        "0 XOR 0" //
+        "0 XOR 1"
+        "1 XOR 0"
+        "1 XOR 1"
+    |]
 
     let idx = Tensor.arange (4.0, I64, Cpu) |> unwrap
 

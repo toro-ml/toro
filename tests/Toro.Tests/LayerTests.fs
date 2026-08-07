@@ -105,7 +105,11 @@ let ``Dropout train=true produces zeros`` () =
 
     let y = drop.forwardT x true |> unwrap
     let sum = (y.sumAll () |> unwrap).toFloat32Scalar () |> unwrap
-    let sumSq = ((y.sqr () |> unwrap).sumAll () |> unwrap).toFloat32Scalar () |> unwrap
+
+    let sumSq =
+        ((y.sqr () |> unwrap).sumAll () |> unwrap).toFloat32Scalar ()
+        |> unwrap
+
     sumSq |> should be (greaterThan 15000.0f)
     sum |> should be (greaterThan 0.0f)
 

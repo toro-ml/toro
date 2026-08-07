@@ -57,55 +57,34 @@ let main _argv =
     let lr = 1e-3
 
     let dataPath =
-        IO.Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "toro-mnist"
-        )
+        IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "toro-mnist")
 
     printfn "Loading MNIST dataset..."
 
     let norm = TorchSharp.torchvision.transforms.Normalize([| 0.1307 |], [| 0.3081 |])
 
     use trainDataset: torch.utils.data.Dataset =
-        TorchSharp.torchvision.datasets.MNIST(
-            dataPath,
-            true,
-            download = true,
-            target_transform = norm
-        )
+        TorchSharp.torchvision.datasets.MNIST(dataPath, true, download = true, target_transform = norm)
 
     use testDataset: torch.utils.data.Dataset =
-        TorchSharp.torchvision.datasets.MNIST(
-            dataPath,
-            false,
-            download = true,
-            target_transform = norm
-        )
+        TorchSharp.torchvision.datasets.MNIST(dataPath, false, download = true, target_transform = norm)
 
     printfn "  Train samples: %d" trainDataset.Count
     printfn "  Test samples:  %d" testDataset.Count
 
     let model = createModel () |> unwrap
 
-    let opt =
-        AdamW.createWithLr lr (Model.trainableVars model)
-        |> unwrap :> IOptimizer
+    let opt = AdamW.createWithLr lr (Model.trainableVars model) |> unwrap :> IOptimizer
 
     printfn ""
 
-    printfn
-        "Model: Conv2d(1->8, 5, s2) -> Conv2d(8->16, 5, s2) -> Linear(256->64) -> Linear(64->10)"
+    printfn "Model: Conv2d(1->8, 5, s2) -> Conv2d(8->16, 5, s2) -> Linear(256->64) -> Linear(64->10)"
 
     printfn "Optimizer: AdamW (lr=%.0e)" lr
     printfn ""
 
     use trainLoader =
-        torch.utils.data.DataLoader(
-            trainDataset,
-            batchSize,
-            shuffle = true,
-            device = torch.CPU
-        )
+        torch.utils.data.DataLoader(trainDataset, batchSize, shuffle = true, device = torch.CPU)
 
     use testLoader = torch.utils.data.DataLoader(testDataset, 256, device = torch.CPU)
 

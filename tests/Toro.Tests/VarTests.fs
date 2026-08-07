@@ -46,17 +46,16 @@ let ``trainableVars returns only requiresGrad tensors`` () =
     let trainable = Model.trainableVars bn
 
     all.Length |> should be (greaterThan trainable.Length)
-    trainable |> List.iter (fun t -> t.RequiresGrad |> should be True)
+
+    trainable
+    |> List.iter (fun t -> t.RequiresGrad |> should be True)
 
 // --- Model.save / loadInto tests ---
 
 [<Fact>]
 let ``Model save and loadInto round-trips`` () =
     let dir =
-        System.IO.Path.Combine(
-            System.IO.Path.GetTempPath(),
-            System.Guid.NewGuid().ToString()
-        )
+        System.IO.Path.Combine(System.IO.Path.GetTempPath(), System.Guid.NewGuid().ToString())
 
     try
         let linear = Linear.init 3 2 F32 Cpu |> unwrap
