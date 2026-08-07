@@ -8,8 +8,12 @@ type IModule =
 type IModuleT =
     abstract forwardT: Tensor -> train: bool -> Result<Tensor, ToroError>
 
+type ModuleTOfModule = {
+    Module: IModule
+} with
+
+    interface IModuleT with
+        member this.forwardT x _train = this.Module.forward x
+
 module ModuleT =
-    let ofModule (m: IModule) : IModuleT =
-        { new IModuleT with
-            member _.forwardT x _train = m.forward x
-        }
+    let ofModule (m: IModule) : IModuleT = { Module = m } :> IModuleT
