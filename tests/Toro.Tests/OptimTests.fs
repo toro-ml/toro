@@ -8,15 +8,12 @@ open TestHelper
 
 [<Fact>]
 let ``SGD step reduces loss`` () =
-    let vm = VarMap()
-    let vb = VarBuilder.fromVarMap vm F32 Cpu
-
-    let linear = Linear.create 4 2 (vb |> VarBuilder.pp "l") |> unwrap
+    let linear = Linear.init 4 2 F32 Cpu |> unwrap
 
     let x = Tensor.randn ([ 8; 4 ], F32, Cpu) |> unwrap
     let target = Tensor.randn ([ 8; 2 ], F32, Cpu) |> unwrap
 
-    let opt = SGD.create 0.01 (vm.allVars ()) :> IOptimizer
+    let opt = SGD.create 0.01 (Model.trainableVars linear) :> IOptimizer
 
     let getLoss () =
         result {
@@ -36,15 +33,14 @@ let ``SGD step reduces loss`` () =
 
 [<Fact>]
 let ``AdamW step reduces loss`` () =
-    let vm = VarMap()
-    let vb = VarBuilder.fromVarMap vm F32 Cpu
-
-    let linear = Linear.create 4 2 (vb |> VarBuilder.pp "l") |> unwrap
+    let linear = Linear.init 4 2 F32 Cpu |> unwrap
 
     let x = Tensor.randn ([ 8; 4 ], F32, Cpu) |> unwrap
     let target = Tensor.randn ([ 8; 2 ], F32, Cpu) |> unwrap
 
-    let opt = AdamW.createWithLr 0.01 (vm.allVars ()) |> unwrap :> IOptimizer
+    let opt =
+        AdamW.createWithLr 0.01 (Model.trainableVars linear)
+        |> unwrap :> IOptimizer
 
     let getLoss () =
         result {

@@ -327,6 +327,8 @@ type Tensor internal (inner: torch.Tensor) =
 
     // --- Autograd ---
 
+    member _.RequiresGrad = inner.requires_grad
+
     member _.requiresGrad(?requiresGrad: bool) =
         let rg = defaultArg requiresGrad true
 

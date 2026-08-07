@@ -6,90 +6,78 @@ open Toro
 open Toro.NN
 open TestHelper
 
-// --- VarBuilder tests ---
+// --- Model.namedParams tests ---
 
 [<Fact>]
-let ``VarBuilder pp creates namespaced keys`` () =
-    let t = Tensor.ones ([ 3; 2 ], F32, Cpu) |> unwrap
-
-    let tensors = Map.ofList [ "layer.weight", t ]
-
-    let vb = VarBuilder.fromTensors tensors F32 Cpu
-
-    let vbLayer = vb |> VarBuilder.pp "layer"
-
-    VarBuilder.containsTensor "weight" vbLayer |> should be True
+let ``namedParams collects tensors from Linear`` () =
+    let linear = Linear.init 4 2 F32 Cpu |> unwrap
+    let ps = Model.namedParams linear
+    ps.Length |> should equal 2
+    ps |> List.map fst |> should contain "Weight"
+    ps |> List.map fst |> should contain "Bias"
 
 [<Fact>]
-let ``VarBuilder returns error on missing tensor`` () =
-    let tensors = Map.empty
-
-    let vb = VarBuilder.fromTensors tensors F32 Cpu
-
-    let r = VarBuilder.get [ 2; 3 ] "missing" vb
-
-    match r with
-    | Error(TensorNotFound _) -> ()
-    | _ -> failwith "Expected TensorNotFound"
+let ``namedParams skips None bias`` () =
+    let linear = Linear.initNoBias 4 2 F32 Cpu |> unwrap
+    let ps = Model.namedParams linear
+    ps.Length |> should equal 1
+    ps |> List.map fst |> should equal [ "Weight" ]
 
 [<Fact>]
-let ``VarBuilder shape mismatch returns ShapeMismatch`` () =
-    let t = Tensor.ones ([ 3; 2 ], F32, Cpu) |> unwrap
-    let tensors = Map.ofList [ "w", t ]
-    let vb = VarBuilder.fromTensors tensors F32 Cpu
+let ``namedParams recurses into nested records`` () =
+    let linear = Linear.init 4 2 F32 Cpu |> unwrap
 
-    match VarBuilder.get [ 4; 2 ] "w" vb with
-    | Error(ShapeMismatch _) -> ()
-    | other -> failwithf "Expected ShapeMismatch, got: %A" other
+    let model = {|
+        L1 = linear
+        L2 = Linear.init 2 1 F32 Cpu |> unwrap
+    |}
 
-[<Fact>]
-let ``VarBuilder fromVarMap creates trainable params`` () =
-    let vm = VarMap()
-    let vb = VarBuilder.fromVarMap vm F32 Cpu
-
-    let linear = Linear.create 4 2 (vb |> VarBuilder.pp "l") |> unwrap
-
-    let vars = vm.allVars ()
-    vars.Length |> should equal 2
-
-    let x = Tensor.randn ([ 1; 4 ], F32, Cpu) |> unwrap
-    let y = linear.forward x |> unwrap
-    y.Shape |> should equal [ 1; 2 ]
-
-// --- VarMap tests ---
+    let ps = Model.namedParams model
+    ps.Length |> should equal 4
+    ps |> List.map fst |> should contain "L1.Weight"
+    ps |> List.map fst |> should contain "L1.Bias"
+    ps |> List.map fst |> should contain "L2.Weight"
+    ps |> List.map fst |> should contain "L2.Bias"
 
 [<Fact>]
-let ``VarMap get-or-create returns same tensor`` () =
-    let vm = VarMap()
-    let t1 = vm.get [ 3; 2 ] "w" Init.KaimingNormal F32 Cpu |> unwrap
-    let t2 = vm.get [ 3; 2 ] "w" Init.KaimingNormal F32 Cpu |> unwrap
-    obj.ReferenceEquals(t1.Inner, t2.Inner) |> should be True
+let ``trainableVars returns only requiresGrad tensors`` () =
+    let bn = BatchNorm.initDefault 4 F32 Cpu |> unwrap
+    let all = Model.namedParams bn
+    let trainable = Model.trainableVars bn
+
+    all.Length |> should be (greaterThan trainable.Length)
+    trainable |> List.iter (fun t -> t.RequiresGrad |> should be True)
+
+// --- Model.save / loadInto tests ---
 
 [<Fact>]
-let ``VarMap allVars returns all registered tensors`` () =
-    let vm = VarMap()
+let ``Model save and loadInto round-trips`` () =
+    let dir =
+        System.IO.Path.Combine(
+            System.IO.Path.GetTempPath(),
+            System.Guid.NewGuid().ToString()
+        )
 
-    vm.get [ 2; 3 ] "a" (Init.Const 1.0) F32 Cpu
-    |> unwrap
-    |> ignore
+    try
+        let linear = Linear.init 3 2 F32 Cpu |> unwrap
 
-    vm.get [ 4 ] "b" (Init.Const 0.0) F32 Cpu
-    |> unwrap
-    |> ignore
+        let wSum =
+            (linear.Weight.sumAll () |> unwrap).toFloat32Scalar ()
+            |> unwrap
 
-    vm.allVars().Length |> should equal 2
+        Model.save linear dir |> unwrap
 
-[<Fact>]
-let ``VarMap shape mismatch returns error`` () =
-    let vm = VarMap()
+        let linear2 = Linear.init 3 2 F32 Cpu |> unwrap
+        Model.loadInto linear2 dir |> unwrap
 
-    vm.get [ 3; 2 ] "w" Init.KaimingNormal F32 Cpu
-    |> unwrap
-    |> ignore
+        let wSum2 =
+            (linear2.Weight.sumAll () |> unwrap).toFloat32Scalar ()
+            |> unwrap
 
-    match vm.get [ 4; 2 ] "w" Init.KaimingNormal F32 Cpu with
-    | Error(ShapeMismatch _) -> ()
-    | other -> failwithf "Expected ShapeMismatch, got: %A" other
+        wSum2 |> should (equalWithin 1e-5f) wSum
+    finally
+        if System.IO.Directory.Exists dir then
+            System.IO.Directory.Delete(dir, true)
 
 // --- Init tests ---
 
@@ -140,41 +128,3 @@ let ``Init Randn creates tensor with specified mean`` () =
 
     let mean = (t.meanAll () |> unwrap).toFloat64Scalar () |> unwrap
     mean |> should (equalWithin 0.1) 3.0
-
-// --- VarMap save/load tests ---
-
-[<Fact>]
-let ``VarMap save and load round-trips`` () =
-    let dir =
-        System.IO.Path.Combine(
-            System.IO.Path.GetTempPath(),
-            System.Guid.NewGuid().ToString()
-        )
-
-    try
-        let vm = VarMap()
-
-        vm.get [ 3; 2 ] "w" (Init.Const 1.0) F32 Cpu
-        |> unwrap
-        |> ignore
-
-        vm.get [ 4 ] "b" (Init.Const 2.0) F32 Cpu
-        |> unwrap
-        |> ignore
-
-        vm.save dir |> unwrap
-
-        let vm2 = VarMap.load dir |> unwrap
-        let data = vm2.data ()
-        data.Count |> should equal 2
-        data.ContainsKey "w" |> should be True
-        data.ContainsKey "b" |> should be True
-
-        let wShape = data["w"].Shape
-        wShape |> should equal [ 3; 2 ]
-
-        let bShape = data["b"].Shape
-        bShape |> should equal [ 4 ]
-    finally
-        if System.IO.Directory.Exists dir then
-            System.IO.Directory.Delete(dir, true)

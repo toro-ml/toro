@@ -114,40 +114,19 @@ type LSTM = {
         member this.statesToTensor states = this.statesToTensor states
 
 module LSTM =
-    let create
+    let init
         (inDim: int)
         (hiddenDim: int)
         (config: LSTMConfig)
-        (vb: VarBuilder)
+        (dtype: DType)
+        (device: Device)
         : Result<LSTM, ToroError> =
         result {
-            let! wIh =
-                VarBuilder.getWithHints
-                    [ 4 * hiddenDim; inDim ]
-                    "weight_ih_l0"
-                    config.WIhInit
-                    vb
+            let! wIh = Init.toParam [ 4 * hiddenDim; inDim ] dtype device config.WIhInit
+            let! wHh = Init.toParam [ 4 * hiddenDim; hiddenDim ] dtype device config.WHhInit
 
-            let! wHh =
-                VarBuilder.getWithHints
-                    [ 4 * hiddenDim; hiddenDim ]
-                    "weight_hh_l0"
-                    config.WHhInit
-                    vb
-
-            let! bIh =
-                match config.BIhInit with
-                | Some init ->
-                    VarBuilder.getWithHints [ 4 * hiddenDim ] "bias_ih_l0" init vb
-                    |> Result.map Some
-                | None -> Ok None
-
-            let! bHh =
-                match config.BHhInit with
-                | Some init ->
-                    VarBuilder.getWithHints [ 4 * hiddenDim ] "bias_hh_l0" init vb
-                    |> Result.map Some
-                | None -> Ok None
+            let! bIh = config.BIhInit |> Option.traverseResult (Init.toParam [ 4 * hiddenDim ] dtype device)
+            let! bHh = config.BHhInit |> Option.traverseResult (Init.toParam [ 4 * hiddenDim ] dtype device)
 
             return {
                 WIh = wIh
@@ -155,17 +134,18 @@ module LSTM =
                 BIh = bIh
                 BHh = bHh
                 HiddenDim = hiddenDim
-                DType = vb.DType
-                Device = vb.Device
+                DType = dtype
+                Device = device
             }
         }
 
-    let createDefault
+    let initDefault
         (inDim: int)
         (hiddenDim: int)
-        (vb: VarBuilder)
+        (dtype: DType)
+        (device: Device)
         : Result<LSTM, ToroError> =
-        create inDim hiddenDim LSTMConfig.defaultConfig vb
+        init inDim hiddenDim LSTMConfig.defaultConfig dtype device
 
 // --- GRU ---
 
@@ -279,40 +259,19 @@ type GRU = {
         member this.statesToTensor states = this.statesToTensor states
 
 module GRU =
-    let create
+    let init
         (inDim: int)
         (hiddenDim: int)
         (config: GRUConfig)
-        (vb: VarBuilder)
+        (dtype: DType)
+        (device: Device)
         : Result<GRU, ToroError> =
         result {
-            let! wIh =
-                VarBuilder.getWithHints
-                    [ 3 * hiddenDim; inDim ]
-                    "weight_ih_l0"
-                    config.WIhInit
-                    vb
+            let! wIh = Init.toParam [ 3 * hiddenDim; inDim ] dtype device config.WIhInit
+            let! wHh = Init.toParam [ 3 * hiddenDim; hiddenDim ] dtype device config.WHhInit
 
-            let! wHh =
-                VarBuilder.getWithHints
-                    [ 3 * hiddenDim; hiddenDim ]
-                    "weight_hh_l0"
-                    config.WHhInit
-                    vb
-
-            let! bIh =
-                match config.BIhInit with
-                | Some init ->
-                    VarBuilder.getWithHints [ 3 * hiddenDim ] "bias_ih_l0" init vb
-                    |> Result.map Some
-                | None -> Ok None
-
-            let! bHh =
-                match config.BHhInit with
-                | Some init ->
-                    VarBuilder.getWithHints [ 3 * hiddenDim ] "bias_hh_l0" init vb
-                    |> Result.map Some
-                | None -> Ok None
+            let! bIh = config.BIhInit |> Option.traverseResult (Init.toParam [ 3 * hiddenDim ] dtype device)
+            let! bHh = config.BHhInit |> Option.traverseResult (Init.toParam [ 3 * hiddenDim ] dtype device)
 
             return {
                 WIh = wIh
@@ -320,14 +279,15 @@ module GRU =
                 BIh = bIh
                 BHh = bHh
                 HiddenDim = hiddenDim
-                DType = vb.DType
-                Device = vb.Device
+                DType = dtype
+                Device = device
             }
         }
 
-    let createDefault
+    let initDefault
         (inDim: int)
         (hiddenDim: int)
-        (vb: VarBuilder)
+        (dtype: DType)
+        (device: Device)
         : Result<GRU, ToroError> =
-        create inDim hiddenDim GRUConfig.defaultConfig vb
+        init inDim hiddenDim GRUConfig.defaultConfig dtype device

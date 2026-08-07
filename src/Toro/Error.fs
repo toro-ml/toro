@@ -86,3 +86,9 @@ type ResultBuilder() =
 [<AutoOpen>]
 module ResultCE =
     let result = ResultBuilder()
+
+module Option =
+    let inline traverseResult ([<InlineIfLambda>] f: 'a -> Result<'b, 'e>) (opt: 'a option) : Result<'b option, 'e> =
+        match opt with
+        | Some x -> f x |> Result.map Some
+        | None -> Ok None

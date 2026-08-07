@@ -22,16 +22,9 @@ type Embedding = {
         member this.forward x = this.forward x
 
 module Embedding =
-    let create
-        (inSize: int)
-        (outSize: int)
-        (vb: VarBuilder)
-        : Result<Embedding, ToroError> =
-        let init = Init.Randn(0.0, 1.0)
-
+    let init (inSize: int) (outSize: int) (dtype: DType) (device: Device) : Result<Embedding, ToroError> =
         result {
-            let! embeddings =
-                VarBuilder.getWithHints [ inSize; outSize ] "weight" init vb
+            let! embeddings = Init.toParam [ inSize; outSize ] dtype device (Init.Randn(0.0, 1.0))
 
             return {
                 Embeddings = embeddings

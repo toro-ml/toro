@@ -8,9 +8,7 @@ open TestHelper
 
 [<Fact>]
 let ``Linear forward produces correct shape`` () =
-    let vb = VarBuilder.fromInit F32 Cpu
-
-    let linear = Linear.create 10 5 vb |> unwrap
+    let linear = Linear.init 10 5 F32 Cpu |> unwrap
 
     let x = Tensor.randn ([ 2; 10 ], F32, Cpu) |> unwrap
 
@@ -19,9 +17,7 @@ let ``Linear forward produces correct shape`` () =
 
 [<Fact>]
 let ``Linear no bias forward works`` () =
-    let vb = VarBuilder.fromInit F32 Cpu
-
-    let linear = Linear.createNoBias 8 4 vb |> unwrap
+    let linear = Linear.initNoBias 8 4 F32 Cpu |> unwrap
 
     let x = Tensor.randn ([ 3; 8 ], F32, Cpu) |> unwrap
 
@@ -31,9 +27,7 @@ let ``Linear no bias forward works`` () =
 
 [<Fact>]
 let ``Embedding forward produces correct shape`` () =
-    let vb = VarBuilder.fromInit F32 Cpu
-
-    let emb = Embedding.create 100 16 vb |> unwrap
+    let emb = Embedding.init 100 16 F32 Cpu |> unwrap
 
     let ids = Tensor.zeros ([ 2; 5 ], I64, Cpu) |> unwrap
 
@@ -42,9 +36,7 @@ let ``Embedding forward produces correct shape`` () =
 
 [<Fact>]
 let ``LayerNorm forward preserves shape`` () =
-    let vb = VarBuilder.fromInit F32 Cpu
-
-    let ln = LayerNorm.createDefault 8 vb |> unwrap
+    let ln = LayerNorm.initDefault 8 F32 Cpu |> unwrap
 
     let x = Tensor.randn ([ 2; 3; 8 ], F32, Cpu) |> unwrap
 
@@ -53,8 +45,7 @@ let ``LayerNorm forward preserves shape`` () =
 
 [<Fact>]
 let ``RmsNorm forward preserves shape`` () =
-    let vb = VarBuilder.fromInit F32 Cpu
-    let rms = RmsNorm.create 8 1e-5 vb |> unwrap
+    let rms = RmsNorm.init 8 1e-5 F32 Cpu |> unwrap
 
     let x = Tensor.randn ([ 2; 3; 8 ], F32, Cpu) |> unwrap
 
@@ -71,12 +62,10 @@ let ``Activation functions produce same shape`` () =
 
 [<Fact>]
 let ``Sequential chains modules`` () =
-    let vb = VarBuilder.fromInit F32 Cpu
-
     let model =
         result {
-            let! l1 = Linear.create 10 5 (vb |> VarBuilder.pp "l1")
-            let! l2 = Linear.create 5 2 (vb |> VarBuilder.pp "l2")
+            let! l1 = Linear.init 10 5 F32 Cpu
+            let! l2 = Linear.init 5 2 F32 Cpu
 
             return Sequential.create [ l1 :> IModule; Relu :> IModule; l2 :> IModule ]
         }
@@ -89,8 +78,7 @@ let ``Sequential chains modules`` () =
 
 [<Fact>]
 let ``ModuleT ofModule delegates to IModule forward`` () =
-    let vb = VarBuilder.fromInit F32 Cpu
-    let linear = Linear.create 4 2 vb |> unwrap
+    let linear = Linear.init 4 2 F32 Cpu |> unwrap
 
     let moduleT = ModuleT.ofModule (linear :> IModule)
 
@@ -118,9 +106,6 @@ let ``Dropout train=true produces zeros`` () =
     let y = drop.forwardT x true |> unwrap
     let sum = (y.sumAll () |> unwrap).toFloat32Scalar () |> unwrap
     let sumSq = ((y.sqr () |> unwrap).sumAll () |> unwrap).toFloat32Scalar () |> unwrap
-    // Inverted dropout scales surviving elements by 1/(1-p) = 2.0,
-    // so each element is 0 or 2. sum ≈ 10000 (mean-preserving) but
-    // sumSq ≈ 20000 >> 10000 — proving values were actually modified.
     sumSq |> should be (greaterThan 15000.0f)
     sum |> should be (greaterThan 0.0f)
 
@@ -185,8 +170,7 @@ let ``Identity returns input unchanged`` () =
 
 [<Fact>]
 let ``Conv1d forward produces correct shape`` () =
-    let vb = VarBuilder.fromInit F32 Cpu
-    let conv = Conv1d.createDefault 3 16 5 vb |> unwrap
+    let conv = Conv1d.initDefault 3 16 5 F32 Cpu |> unwrap
 
     let x = Tensor.randn ([ 1; 3; 20 ], F32, Cpu) |> unwrap
     let y = conv.forward x |> unwrap
@@ -199,8 +183,7 @@ let ``Conv1d with padding preserves length`` () =
             Padding = 2
     }
 
-    let vb = VarBuilder.fromInit F32 Cpu
-    let conv = Conv1d.create 1 8 5 config vb |> unwrap
+    let conv = Conv1d.init 1 8 5 config F32 Cpu |> unwrap
 
     let x = Tensor.randn ([ 1; 1; 10 ], F32, Cpu) |> unwrap
     let y = conv.forward x |> unwrap
@@ -208,10 +191,8 @@ let ``Conv1d with padding preserves length`` () =
 
 [<Fact>]
 let ``Conv1d no bias works`` () =
-    let vb = VarBuilder.fromInit F32 Cpu
-
     let conv =
-        Conv1d.createNoBias 2 4 3 Conv1dConfig.defaultConfig vb
+        Conv1d.initNoBias 2 4 3 Conv1dConfig.defaultConfig F32 Cpu
         |> unwrap
 
     conv.Bias |> should equal None
@@ -223,8 +204,7 @@ let ``Conv1d no bias works`` () =
 
 [<Fact>]
 let ``Conv2d forward produces correct shape`` () =
-    let vb = VarBuilder.fromInit F32 Cpu
-    let conv = Conv2d.createDefault 1 8 3 vb |> unwrap
+    let conv = Conv2d.initDefault 1 8 3 F32 Cpu |> unwrap
 
     let x = Tensor.randn ([ 1; 1; 8; 8 ], F32, Cpu) |> unwrap
     let y = conv.forward x |> unwrap
@@ -237,8 +217,7 @@ let ``Conv2d with padding preserves spatial dims`` () =
             Padding = 1
     }
 
-    let vb = VarBuilder.fromInit F32 Cpu
-    let conv = Conv2d.create 1 4 3 config vb |> unwrap
+    let conv = Conv2d.init 1 4 3 config F32 Cpu |> unwrap
 
     let x = Tensor.randn ([ 2; 1; 6; 6 ], F32, Cpu) |> unwrap
     let y = conv.forward x |> unwrap
@@ -246,10 +225,8 @@ let ``Conv2d with padding preserves spatial dims`` () =
 
 [<Fact>]
 let ``Conv2d no bias works`` () =
-    let vb = VarBuilder.fromInit F32 Cpu
-
     let conv =
-        Conv2d.createNoBias 3 16 3 Conv2dConfig.defaultConfig vb
+        Conv2d.initNoBias 3 16 3 Conv2dConfig.defaultConfig F32 Cpu
         |> unwrap
 
     conv.Bias |> should equal None
@@ -261,8 +238,7 @@ let ``Conv2d no bias works`` () =
 
 [<Fact>]
 let ``BatchNorm forward preserves shape in eval mode`` () =
-    let vb = VarBuilder.fromInit F32 Cpu
-    let bn = BatchNorm.createDefault 8 vb |> unwrap
+    let bn = BatchNorm.initDefault 8 F32 Cpu |> unwrap
 
     let x = Tensor.randn ([ 2; 8; 4; 4 ], F32, Cpu) |> unwrap
     let y = bn.forwardT x false |> unwrap
@@ -270,8 +246,7 @@ let ``BatchNorm forward preserves shape in eval mode`` () =
 
 [<Fact>]
 let ``BatchNorm forward preserves shape in train mode`` () =
-    let vb = VarBuilder.fromInit F32 Cpu
-    let bn = BatchNorm.createDefault 4 vb |> unwrap
+    let bn = BatchNorm.initDefault 4 F32 Cpu |> unwrap
 
     let x = Tensor.randn ([ 4; 4; 3; 3 ], F32, Cpu) |> unwrap
     let y = bn.forwardT x true |> unwrap
@@ -279,8 +254,7 @@ let ``BatchNorm forward preserves shape in train mode`` () =
 
 [<Fact>]
 let ``BatchNorm implements IModuleT`` () =
-    let vb = VarBuilder.fromInit F32 Cpu
-    let bn = BatchNorm.createDefault 4 vb |> unwrap :> IModuleT
+    let bn = BatchNorm.initDefault 4 F32 Cpu |> unwrap :> IModuleT
 
     let x = Tensor.randn ([ 2; 4; 3; 3 ], F32, Cpu) |> unwrap
     let y = bn.forwardT x false |> unwrap
@@ -290,8 +264,7 @@ let ``BatchNorm implements IModuleT`` () =
 
 [<Fact>]
 let ``GroupNorm forward preserves shape`` () =
-    let vb = VarBuilder.fromInit F32 Cpu
-    let gn = GroupNorm.createDefault 4 8 vb |> unwrap
+    let gn = GroupNorm.initDefault 4 8 F32 Cpu |> unwrap
 
     let x = Tensor.randn ([ 2; 8; 4; 4 ], F32, Cpu) |> unwrap
     let y = gn.forward x |> unwrap
@@ -299,8 +272,7 @@ let ``GroupNorm forward preserves shape`` () =
 
 [<Fact>]
 let ``GroupNorm implements IModule`` () =
-    let vb = VarBuilder.fromInit F32 Cpu
-    let gn = GroupNorm.createDefault 2 4 vb |> unwrap :> IModule
+    let gn = GroupNorm.initDefault 2 4 F32 Cpu |> unwrap :> IModule
 
     let x = Tensor.randn ([ 1; 4; 6; 6 ], F32, Cpu) |> unwrap
     let y = gn.forward x |> unwrap
@@ -333,8 +305,7 @@ let ``Mish activation produces correct shape`` () =
 
 [<Fact>]
 let ``SequentialT chains IModuleT layers`` () =
-    let vb = VarBuilder.fromInit F32 Cpu
-    let linear = Linear.create 10 5 vb |> unwrap
+    let linear = Linear.init 10 5 F32 Cpu |> unwrap
 
     let seq =
         SequentialT.create [
@@ -349,8 +320,7 @@ let ``SequentialT chains IModuleT layers`` () =
 
 [<Fact>]
 let ``SequentialT ofModules wraps IModule list`` () =
-    let vb = VarBuilder.fromInit F32 Cpu
-    let linear = Linear.create 10 5 vb |> unwrap
+    let linear = Linear.init 10 5 F32 Cpu |> unwrap
 
     let seq = SequentialT.ofModules [ linear :> IModule; Relu :> IModule ]
 

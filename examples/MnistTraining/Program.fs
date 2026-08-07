@@ -30,17 +30,17 @@ type MnistModel = {
     interface IModule with
         member this.forward x = this.forward x
 
-let createModel (vb: VarBuilder) =
+let createModel () =
     let stride2 = {
         Conv2dConfig.defaultConfig with
             Stride = 2
     }
 
     result {
-        let! conv1 = Conv2d.create 1 8 5 stride2 (vb |> VarBuilder.pp "conv1")
-        let! conv2 = Conv2d.create 8 16 5 stride2 (vb |> VarBuilder.pp "conv2")
-        let! fc1 = Linear.create 256 64 (vb |> VarBuilder.pp "fc1")
-        let! fc2 = Linear.create 64 10 (vb |> VarBuilder.pp "fc2")
+        let! conv1 = Conv2d.init 1 8 5 stride2 F32 Cpu
+        let! conv2 = Conv2d.init 8 16 5 stride2 F32 Cpu
+        let! fc1 = Linear.init 256 64 F32 Cpu
+        let! fc2 = Linear.init 64 10 F32 Cpu
 
         return {
             Conv1 = conv1
@@ -85,11 +85,11 @@ let main _argv =
     printfn "  Train samples: %d" trainDataset.Count
     printfn "  Test samples:  %d" testDataset.Count
 
-    let varmap = VarMap()
-    let vb = VarBuilder.fromVarMap varmap F32 Cpu
-    let model = createModel vb |> unwrap
+    let model = createModel () |> unwrap
 
-    let opt = AdamW.createWithLr lr (varmap.allVars ()) |> unwrap :> IOptimizer
+    let opt =
+        AdamW.createWithLr lr (Model.trainableVars model)
+        |> unwrap :> IOptimizer
 
     printfn ""
 

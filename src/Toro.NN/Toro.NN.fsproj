@@ -17,8 +17,7 @@
   <ItemGroup>
     <Compile Include="Module.fs" />
     <Compile Include="Init.fs" />
-    <Compile Include="VarBuilder.fs" />
-    <Compile Include="VarMap.fs" />
+    <Compile Include="Model.fs" />
     <Compile Include="Linear.fs" />
     <Compile Include="Embedding.fs" />
     <Compile Include="Conv.fs" />

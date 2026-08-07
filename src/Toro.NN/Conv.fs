@@ -41,27 +41,22 @@ type Conv1d = {
         member this.forward x = this.forward x
 
 module Conv1d =
-    let create
+    let init
         (inChannels: int)
         (outChannels: int)
         (kernelSize: int)
         (config: Conv1dConfig)
-        (vb: VarBuilder)
+        (dtype: DType)
+        (device: Device)
         : Result<Conv1d, ToroError> =
         let groupInC = inChannels / config.Groups
-        let initWs = Init.defaultKaimingNormal
         let bound = 1.0 / sqrt (float (groupInC * kernelSize))
-        let initBs = Init.Uniform(-bound, bound)
 
         result {
             let! ws =
-                VarBuilder.getWithHints
-                    [ outChannels; groupInC; kernelSize ]
-                    "weight"
-                    initWs
-                    vb
+                Init.toParam [ outChannels; groupInC; kernelSize ] dtype device Init.defaultKaimingNormal
 
-            let! bs = VarBuilder.getWithHints [ outChannels ] "bias" initBs vb
+            let! bs = Init.toParam [ outChannels ] dtype device (Init.Uniform(-bound, bound))
 
             return {
                 Weight = ws
@@ -70,31 +65,28 @@ module Conv1d =
             }
         }
 
-    let createDefault
+    let initDefault
         (inChannels: int)
         (outChannels: int)
         (kernelSize: int)
-        (vb: VarBuilder)
+        (dtype: DType)
+        (device: Device)
         : Result<Conv1d, ToroError> =
-        create inChannels outChannels kernelSize Conv1dConfig.defaultConfig vb
+        init inChannels outChannels kernelSize Conv1dConfig.defaultConfig dtype device
 
-    let createNoBias
+    let initNoBias
         (inChannels: int)
         (outChannels: int)
         (kernelSize: int)
         (config: Conv1dConfig)
-        (vb: VarBuilder)
+        (dtype: DType)
+        (device: Device)
         : Result<Conv1d, ToroError> =
         let groupInC = inChannels / config.Groups
-        let initWs = Init.defaultKaimingNormal
 
         result {
             let! ws =
-                VarBuilder.getWithHints
-                    [ outChannels; groupInC; kernelSize ]
-                    "weight"
-                    initWs
-                    vb
+                Init.toParam [ outChannels; groupInC; kernelSize ] dtype device Init.defaultKaimingNormal
 
             return {
                 Weight = ws
@@ -142,27 +134,26 @@ type Conv2d = {
         member this.forward x = this.forward x
 
 module Conv2d =
-    let create
+    let init
         (inChannels: int)
         (outChannels: int)
         (kernelSize: int)
         (config: Conv2dConfig)
-        (vb: VarBuilder)
+        (dtype: DType)
+        (device: Device)
         : Result<Conv2d, ToroError> =
         let groupInC = inChannels / config.Groups
-        let initWs = Init.defaultKaimingNormal
         let bound = 1.0 / sqrt (float (groupInC * kernelSize * kernelSize))
-        let initBs = Init.Uniform(-bound, bound)
 
         result {
             let! ws =
-                VarBuilder.getWithHints
+                Init.toParam
                     [ outChannels; groupInC; kernelSize; kernelSize ]
-                    "weight"
-                    initWs
-                    vb
+                    dtype
+                    device
+                    Init.defaultKaimingNormal
 
-            let! bs = VarBuilder.getWithHints [ outChannels ] "bias" initBs vb
+            let! bs = Init.toParam [ outChannels ] dtype device (Init.Uniform(-bound, bound))
 
             return {
                 Weight = ws
@@ -171,31 +162,32 @@ module Conv2d =
             }
         }
 
-    let createDefault
+    let initDefault
         (inChannels: int)
         (outChannels: int)
         (kernelSize: int)
-        (vb: VarBuilder)
+        (dtype: DType)
+        (device: Device)
         : Result<Conv2d, ToroError> =
-        create inChannels outChannels kernelSize Conv2dConfig.defaultConfig vb
+        init inChannels outChannels kernelSize Conv2dConfig.defaultConfig dtype device
 
-    let createNoBias
+    let initNoBias
         (inChannels: int)
         (outChannels: int)
         (kernelSize: int)
         (config: Conv2dConfig)
-        (vb: VarBuilder)
+        (dtype: DType)
+        (device: Device)
         : Result<Conv2d, ToroError> =
         let groupInC = inChannels / config.Groups
-        let initWs = Init.defaultKaimingNormal
 
         result {
             let! ws =
-                VarBuilder.getWithHints
+                Init.toParam
                     [ outChannels; groupInC; kernelSize; kernelSize ]
-                    "weight"
-                    initWs
-                    vb
+                    dtype
+                    device
+                    Init.defaultKaimingNormal
 
             return {
                 Weight = ws

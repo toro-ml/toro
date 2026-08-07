@@ -26,34 +26,21 @@ type GroupNorm = {
         member this.forward x = this.forward x
 
 module GroupNorm =
-    let create
+    let init
         (numGroups: int)
         (numChannels: int)
         (config: GroupNormConfig)
-        (vb: VarBuilder)
+        (dtype: DType)
+        (device: Device)
         : Result<GroupNorm, ToroError> =
         result {
-            let! weight, bias =
-                if config.Affine then
-                    result {
-                        let! w =
-                            VarBuilder.getWithHints
-                                [ numChannels ]
-                                "weight"
-                                (Init.Const 1.0)
-                                vb
+            let affine = if config.Affine then Some() else None
 
-                        let! b =
-                            VarBuilder.getWithHints
-                                [ numChannels ]
-                                "bias"
-                                (Init.Const 0.0)
-                                vb
+            let! weight =
+                affine |> Option.traverseResult (fun () -> Init.toParam [ numChannels ] dtype device (Init.Const 1.0))
 
-                        return Some w, Some b
-                    }
-                else
-                    Ok(None, None)
+            let! bias =
+                affine |> Option.traverseResult (fun () -> Init.toParam [ numChannels ] dtype device (Init.Const 0.0))
 
             return {
                 NumGroups = numGroups
@@ -63,9 +50,10 @@ module GroupNorm =
             }
         }
 
-    let createDefault
+    let initDefault
         (numGroups: int)
         (numChannels: int)
-        (vb: VarBuilder)
+        (dtype: DType)
+        (device: Device)
         : Result<GroupNorm, ToroError> =
-        create numGroups numChannels GroupNormConfig.defaultConfig vb
+        init numGroups numChannels GroupNormConfig.defaultConfig dtype device

@@ -8,16 +8,14 @@ open TestHelper
 
 [<Fact>]
 let ``LSTM zeroState produces correct shapes`` () =
-    let vb = VarBuilder.fromInit F32 Cpu
-    let lstm = LSTM.createDefault 10 20 vb |> unwrap
+    let lstm = LSTM.initDefault 10 20 F32 Cpu |> unwrap
     let state = lstm.zeroState 3 |> unwrap
     state.H.Shape |> should equal [ 3; 20 ]
     state.C.Shape |> should equal [ 3; 20 ]
 
 [<Fact>]
 let ``LSTM step produces correct output shape`` () =
-    let vb = VarBuilder.fromInit F32 Cpu
-    let lstm = LSTM.createDefault 10 20 vb |> unwrap
+    let lstm = LSTM.initDefault 10 20 F32 Cpu |> unwrap
     let state = lstm.zeroState 2 |> unwrap
     let input = Tensor.randn ([ 2; 10 ], F32, Cpu) |> unwrap
     let newState = lstm.step input state |> unwrap
@@ -26,8 +24,7 @@ let ``LSTM step produces correct output shape`` () =
 
 [<Fact>]
 let ``LSTM seq processes full sequence`` () =
-    let vb = VarBuilder.fromInit F32 Cpu
-    let lstm = LSTM.createDefault 8 16 vb |> unwrap
+    let lstm = LSTM.initDefault 8 16 F32 Cpu |> unwrap
     let input = Tensor.randn ([ 2; 5; 8 ], F32, Cpu) |> unwrap
     let states = lstm.seq input |> unwrap
     states.Length |> should equal 5
@@ -35,8 +32,7 @@ let ``LSTM seq processes full sequence`` () =
 
 [<Fact>]
 let ``LSTM statesToTensor stacks hidden states`` () =
-    let vb = VarBuilder.fromInit F32 Cpu
-    let lstm = LSTM.createDefault 8 16 vb |> unwrap
+    let lstm = LSTM.initDefault 8 16 F32 Cpu |> unwrap
     let input = Tensor.randn ([ 2; 5; 8 ], F32, Cpu) |> unwrap
     let states = lstm.seq input |> unwrap
     let output = lstm.statesToTensor states |> unwrap
@@ -44,23 +40,20 @@ let ``LSTM statesToTensor stacks hidden states`` () =
 
 [<Fact>]
 let ``LSTM implements IRNN interface`` () =
-    let vb = VarBuilder.fromInit F32 Cpu
-    let lstm = LSTM.createDefault 4 8 vb |> unwrap
+    let lstm = LSTM.initDefault 4 8 F32 Cpu |> unwrap
     let rnn = lstm :> IRNN<LSTMState>
     let state = rnn.zeroState 1 |> unwrap
     state.H.Shape |> should equal [ 1; 8 ]
 
 [<Fact>]
 let ``GRU zeroState produces correct shape`` () =
-    let vb = VarBuilder.fromInit F32 Cpu
-    let gru = GRU.createDefault 10 20 vb |> unwrap
+    let gru = GRU.initDefault 10 20 F32 Cpu |> unwrap
     let state = gru.zeroState 3 |> unwrap
     state.H.Shape |> should equal [ 3; 20 ]
 
 [<Fact>]
 let ``GRU step produces correct output shape`` () =
-    let vb = VarBuilder.fromInit F32 Cpu
-    let gru = GRU.createDefault 10 20 vb |> unwrap
+    let gru = GRU.initDefault 10 20 F32 Cpu |> unwrap
     let state = gru.zeroState 2 |> unwrap
     let input = Tensor.randn ([ 2; 10 ], F32, Cpu) |> unwrap
     let newState = gru.step input state |> unwrap
@@ -68,8 +61,7 @@ let ``GRU step produces correct output shape`` () =
 
 [<Fact>]
 let ``GRU seq processes full sequence`` () =
-    let vb = VarBuilder.fromInit F32 Cpu
-    let gru = GRU.createDefault 8 16 vb |> unwrap
+    let gru = GRU.initDefault 8 16 F32 Cpu |> unwrap
     let input = Tensor.randn ([ 2; 5; 8 ], F32, Cpu) |> unwrap
     let states = gru.seq input |> unwrap
     states.Length |> should equal 5
@@ -77,8 +69,7 @@ let ``GRU seq processes full sequence`` () =
 
 [<Fact>]
 let ``GRU statesToTensor stacks hidden states`` () =
-    let vb = VarBuilder.fromInit F32 Cpu
-    let gru = GRU.createDefault 8 16 vb |> unwrap
+    let gru = GRU.initDefault 8 16 F32 Cpu |> unwrap
     let input = Tensor.randn ([ 2; 5; 8 ], F32, Cpu) |> unwrap
     let states = gru.seq input |> unwrap
     let output = gru.statesToTensor states |> unwrap
@@ -86,8 +77,7 @@ let ``GRU statesToTensor stacks hidden states`` () =
 
 [<Fact>]
 let ``GRU implements IRNN interface`` () =
-    let vb = VarBuilder.fromInit F32 Cpu
-    let gru = GRU.createDefault 4 8 vb |> unwrap
+    let gru = GRU.initDefault 4 8 F32 Cpu |> unwrap
     let rnn = gru :> IRNN<GRUState>
     let state = rnn.zeroState 1 |> unwrap
     state.H.Shape |> should equal [ 1; 8 ]

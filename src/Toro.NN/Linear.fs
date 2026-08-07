@@ -21,29 +21,17 @@ type Linear = {
         member this.forward x = this.forward x
 
 module Linear =
-    let create (inDim: int) (outDim: int) (vb: VarBuilder) : Result<Linear, ToroError> =
-        let initWs = Init.defaultKaimingNormal
+    let init (inDim: int) (outDim: int) (dtype: DType) (device: Device) : Result<Linear, ToroError> =
         let bound = 1.0 / sqrt (float inDim)
 
-        let initBs = Init.Uniform(-bound, bound)
-
         result {
-            let! ws = VarBuilder.getWithHints [ outDim; inDim ] "weight" initWs vb
-
-            let! bs = VarBuilder.getWithHints [ outDim ] "bias" initBs vb
-
+            let! ws = Init.toParam [ outDim; inDim ] dtype device Init.defaultKaimingNormal
+            let! bs = Init.toParam [ outDim ] dtype device (Init.Uniform(-bound, bound))
             return { Weight = ws; Bias = Some bs }
         }
 
-    let createNoBias
-        (inDim: int)
-        (outDim: int)
-        (vb: VarBuilder)
-        : Result<Linear, ToroError> =
-        let initWs = Init.defaultKaimingNormal
-
+    let initNoBias (inDim: int) (outDim: int) (dtype: DType) (device: Device) : Result<Linear, ToroError> =
         result {
-            let! ws = VarBuilder.getWithHints [ outDim; inDim ] "weight" initWs vb
-
+            let! ws = Init.toParam [ outDim; inDim ] dtype device Init.defaultKaimingNormal
             return { Weight = ws; Bias = None }
         }

@@ -59,24 +59,18 @@ type LayerNorm = {
         member this.forward x = this.forward x
 
 module LayerNorm =
-    let create
+    let init
         (size: int)
         (config: LayerNormConfig)
-        (vb: VarBuilder)
+        (dtype: DType)
+        (device: Device)
         : Result<LayerNorm, ToroError> =
         result {
-            let! weight = VarBuilder.getWithHints [ size ] "weight" (Init.Const 1.0) vb
+            let! weight = Init.toParam [ size ] dtype device (Init.Const 1.0)
 
             let! bias =
-                if config.Affine then
-                    result {
-                        let! b =
-                            VarBuilder.getWithHints [ size ] "bias" (Init.Const 0.0) vb
-
-                        return Some b
-                    }
-                else
-                    Ok None
+                (if config.Affine then Some(Init.Const 0.0) else None)
+                |> Option.traverseResult (Init.toParam [ size ] dtype device)
 
             return {
                 Weight = weight
@@ -86,8 +80,8 @@ module LayerNorm =
             }
         }
 
-    let createDefault (size: int) (vb: VarBuilder) : Result<LayerNorm, ToroError> =
-        create size LayerNormConfig.defaultConfig vb
+    let initDefault (size: int) (dtype: DType) (device: Device) : Result<LayerNorm, ToroError> =
+        init size LayerNormConfig.defaultConfig dtype device
 
 type RmsNorm = {
     Inner: LayerNorm
@@ -99,7 +93,7 @@ type RmsNorm = {
         member this.forward x = this.forward x
 
 module RmsNorm =
-    let create (size: int) (eps: float) (vb: VarBuilder) : Result<RmsNorm, ToroError> =
+    let init (size: int) (eps: float) (dtype: DType) (device: Device) : Result<RmsNorm, ToroError> =
         let config = {
             Eps = eps
             RemoveMean = false
@@ -107,7 +101,6 @@ module RmsNorm =
         }
 
         result {
-            let! inner = LayerNorm.create size config vb
-
+            let! inner = LayerNorm.init size config dtype device
             return { Inner = inner }
         }

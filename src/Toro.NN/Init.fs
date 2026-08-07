@@ -25,3 +25,14 @@ module Init =
             let fanIn = if shape.Length >= 2 then shape[1] else shape[0]
             let stdev = sqrt (2.0 / float fanIn)
             Tensor.randn (shape, dtype, device) *~. stdev
+
+    let toParam
+        (shape: int list)
+        (dtype: DType)
+        (device: Device)
+        (init: Init)
+        : Result<Tensor, ToroError> =
+        result {
+            let! t = toTensor shape dtype device init
+            return! t.requiresGrad ()
+        }

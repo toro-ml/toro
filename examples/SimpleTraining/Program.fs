@@ -8,7 +8,6 @@ let unwrap r =
 
 [<EntryPoint>]
 let main _argv =
-    // XOR dataset
     let x =
         Tensor.ofFloat32Array2D (
             [| [| 0f; 0f |]; [| 0f; 1f |]; [| 1f; 0f |]; [| 1f; 1f |] |],
@@ -20,19 +19,18 @@ let main _argv =
         Tensor.ofFloat32Array2D ([| [| 0f |]; [| 1f |]; [| 1f |]; [| 0f |] |], Cpu)
         |> unwrap
 
-    let varmap = VarMap()
-    let vb = VarBuilder.fromVarMap varmap F32 Cpu
-
     let model =
         result {
-            let! l1 = Linear.create 2 16 (vb |> VarBuilder.pp "l1")
-            let! l2 = Linear.create 16 1 (vb |> VarBuilder.pp "l2")
+            let! l1 = Linear.init 2 16 F32 Cpu
+            let! l2 = Linear.init 16 1 F32 Cpu
 
             return Sequential.create [ l1 :> IModule; Relu :> IModule; l2 :> IModule ]
         }
         |> unwrap
 
-    let opt = AdamW.createWithLr 0.01 (varmap.allVars ()) |> unwrap :> IOptimizer
+    let opt =
+        AdamW.createWithLr 0.01 (Model.trainableVars model)
+        |> unwrap :> IOptimizer
 
     printfn "Training XOR with AdamW..."
 
