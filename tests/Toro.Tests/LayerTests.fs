@@ -117,7 +117,11 @@ let ``Dropout train=true produces zeros`` () =
 
     let y = drop.forwardT x true |> unwrap
     let sum = (y.sumAll () |> unwrap).toFloat32Scalar () |> unwrap
-    sum |> should be (lessThan 10000.0f)
+    let sumSq = ((y.sqr () |> unwrap).sumAll () |> unwrap).toFloat32Scalar () |> unwrap
+    // Inverted dropout scales surviving elements by 1/(1-p) = 2.0,
+    // so each element is 0 or 2. sum ≈ 10000 (mean-preserving) but
+    // sumSq ≈ 20000 >> 10000 — proving values were actually modified.
+    sumSq |> should be (greaterThan 15000.0f)
     sum |> should be (greaterThan 0.0f)
 
 [<Fact>]
