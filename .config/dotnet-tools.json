@@ -3,10 +3,14 @@
   "isRoot": true,
   "tools": {
     "fantomas": {
-      "version": "6.2.3",
-      "commands": [
-        "fantomas"
-      ]
+      "version": "7.0.5",
+      "commands": ["fantomas"],
+      "rollForward": false
+    },
+    "fsautocomplete": {
+      "version": "0.83.0",
+      "commands": ["fsautocomplete"],
+      "rollForward": false
     }
   }
 }
