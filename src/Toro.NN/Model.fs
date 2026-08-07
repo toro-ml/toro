@@ -7,47 +7,54 @@ open Toro
 
 module Model =
 
-    let private tensorType = typeof<Tensor>
+    let private flags = BindingFlags.Public ||| BindingFlags.Instance
 
     let private isTensorOption (t: System.Type) =
         t.IsGenericType
         && t.GetGenericTypeDefinition() = typedefof<option<_>>
-        && t.GetGenericArguments()[0] = tensorType
+        && t.GetGenericArguments()[0] = typeof<Tensor>
 
-    let private isRecordWithTensors (t: System.Type) =
-        FSharpType.IsRecord(t, BindingFlags.Public ||| BindingFlags.Instance)
+    let private makePath prefix name =
+        if prefix = "" then name else $"{prefix}.{name}"
 
-    let rec private collectTensors (prefix: string) (value: obj) (ty: System.Type) : (string * Tensor) list =
-        if not (FSharpType.IsRecord(ty, BindingFlags.Public ||| BindingFlags.Instance)) then
-            []
-        else
-            let fields =
-                FSharpType.GetRecordFields(ty, BindingFlags.Public ||| BindingFlags.Instance)
+    let rec private collect (prefix: string) (value: obj) : (string * Tensor) list =
+        match value with
+        | null -> []
+        | :? Tensor as t -> [ prefix, t ]
+        | _ ->
+            let ty = value.GetType()
 
-            fields
-            |> Array.toList
-            |> List.collect (fun fi ->
-                let fieldVal = fi.GetValue value
+            if FSharpType.IsRecord(ty, flags) then
+                collectRecord prefix value ty
+            elif
+                typeof<System.Collections.IEnumerable>.IsAssignableFrom ty
+                && ty <> typeof<string>
+            then
+                collectSeq prefix (value :?> System.Collections.IEnumerable)
+            else
+                []
 
-                let path =
-                    if prefix.Length = 0 then
-                        fi.Name
-                    else
-                        prefix + "." + fi.Name
+    and private collectRecord (prefix: string) (value: obj) (ty: System.Type) : (string * Tensor) list =
+        FSharpType.GetRecordFields(ty, flags)
+        |> Array.toList
+        |> List.collect (fun fi ->
+            let path = makePath prefix fi.Name
 
-                if fi.PropertyType = tensorType then
-                    [ path, fieldVal :?> Tensor ]
-                elif isTensorOption fi.PropertyType then
-                    match fieldVal :?> Tensor option with
-                    | Some t -> [ path, t ]
-                    | None -> []
-                elif isRecordWithTensors fi.PropertyType then
-                    collectTensors path fieldVal fi.PropertyType
-                else
-                    [])
+            if isTensorOption fi.PropertyType then
+                match fi.GetValue value :?> Tensor option with
+                | Some t -> [ path, t ]
+                | None -> []
+            else
+                collect path (fi.GetValue value))
 
-    let namedParams (model: 'T) : (string * Tensor) list =
-        collectTensors "" (box model) typeof<'T>
+    and private collectSeq (prefix: string) (items: System.Collections.IEnumerable) : (string * Tensor) list =
+        items
+        |> Seq.cast<obj>
+        |> Seq.indexed
+        |> Seq.collect (fun (i, item) -> collect (makePath prefix (string i)) item)
+        |> Seq.toList
+
+    let namedParams (model: 'T) : (string * Tensor) list = collect "" (box model)
 
     let trainableVars (model: 'T) : Tensor list =
         namedParams model
