@@ -9,38 +9,24 @@ let unwrap r =
     | Error e -> failwithf "%A" e
 
 type CnnModel = {
-    Conv1: Conv2d
-    Bn1: BatchNorm
-    Conv2: Conv2d
-    Bn2: BatchNorm
-    Pool: MaxPool2d
-    Fc1: Linear
-    Drop: Dropout
-    Fc2: Linear
+    Features: SequentialT
+    Classifier: SequentialT
 } with
 
     member this.forwardT (x: Tensor) (train: bool) : Result<Tensor, ToroError> =
         result {
-            let! x = this.Conv1.forward x
-            let! x = this.Bn1.forwardT x train
-            let! x = x.relu ()
-            let! x = this.Pool.forward x
-            let! x = this.Conv2.forward x
-            let! x = this.Bn2.forwardT x train
-            let! x = x.relu ()
-            let! x = this.Pool.forward x
-            let! x = x.flatten (1, -1)
-            let! x = this.Fc1.forward x
-            let! x = x.relu ()
-            let! x = this.Drop.forwardT x train
-            return! this.Fc2.forward x
+            let! x = this.Features.forwardT x train
+            return! this.Classifier.forwardT x train
         }
 
     interface IModuleT with
         member this.forwardT x train = this.forwardT x train
 
 let createModel () =
-    let pad1 = { Conv2dConfig.defaultConfig with Padding = 1 }
+    let pad1 = {
+        Conv2dConfig.defaultConfig with
+            Padding = 1
+    }
 
     result {
         let! conv1 = Conv2d.init 1 32 3 pad1 F32 Cpu
@@ -53,14 +39,25 @@ let createModel () =
         let! fc2 = Linear.init 128 10 F32 Cpu
 
         return {
-            Conv1 = conv1
-            Bn1 = bn1
-            Conv2 = conv2
-            Bn2 = bn2
-            Pool = pool
-            Fc1 = fc1
-            Drop = drop
-            Fc2 = fc2
+            Features =
+                sequentialT {
+                    conv1
+                    bn1
+                    Relu
+                    pool
+                    conv2
+                    bn2
+                    Relu
+                    pool
+                }
+            Classifier =
+                sequentialT {
+                    Func.create (fun x -> x.flatten (1, -1))
+                    fc1
+                    Relu
+                    drop
+                    fc2
+                }
         }
     }
 
