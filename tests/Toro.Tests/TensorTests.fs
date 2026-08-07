@@ -433,3 +433,62 @@ let ``maskedFill replaces masked positions`` () =
 
     let filled = t.maskedFill (boolMask, -999.0) |> unwrap
     filled.Shape |> should equal [ 2; 3 ]
+
+[<Fact>]
+let ``Item int selects along dim 0`` () =
+    let t = Tensor.arange (6.0, F32, Cpu) |> unwrap
+    let t = t.reshape [ 3; 2 ] |> unwrap
+    let row = t.[0]
+    row.Shape |> should equal [ 2 ]
+    scalarF32 row |> should equal 1.0f
+
+[<Fact>]
+let ``Item Tensor selects rows by index`` () =
+    let t = Tensor.arange (6.0, F32, Cpu) |> unwrap
+    let t = t.reshape [ 3; 2 ] |> unwrap
+    let idx = Tensor.ofFloat32Array ([| 0.0f; 2.0f |], Cpu) |> unwrap
+    let idx = idx.toDType I64 |> unwrap
+    let selected = t.[idx]
+    selected.Shape |> should equal [ 2; 2 ]
+
+[<Fact>]
+let ``GetSlice extracts range`` () =
+    let t = Tensor.arange (5.0, F32, Cpu) |> unwrap
+    let s = t.[1..3]
+    s.Shape |> should equal [ 3 ]
+    scalarF32 s |> should equal 6.0f
+
+[<Fact>]
+let ``GetSlice open-ended selects to end`` () =
+    let t = Tensor.arange (5.0, F32, Cpu) |> unwrap
+    let s = t.[2..]
+    s.Shape |> should equal [ 3 ]
+
+[<Fact>]
+let ``GetSlice with -1 end selects all`` () =
+    let t = Tensor.arange (5.0, F32, Cpu) |> unwrap
+    let s = t.[0 .. -1]
+    s.Shape |> should equal [ 5 ]
+
+[<Fact>]
+let ``at with TIdx selects correctly`` () =
+    let t = Tensor.arange (12.0, F32, Cpu) |> unwrap
+    let t = t.reshape [ 3; 4 ] |> unwrap
+    let s = t.at [ I 1; S(0, 2) ]
+    s.Shape |> should equal [ 2 ]
+
+[<Fact>]
+let ``at with Tensor TIdx performs advanced indexing`` () =
+    let t = Tensor.arange (6.0, F32, Cpu) |> unwrap
+    let t = t.reshape [ 3; 2 ] |> unwrap
+    let idx = Tensor.ofFloat32Array ([| 0.0f; 2.0f |], Cpu) |> unwrap
+    let idx = idx.toDType I64 |> unwrap
+    let s = t.at [ T idx ]
+    s.Shape |> should equal [ 2; 2 ]
+
+[<Fact>]
+let ``at with Ellipsis selects trailing dim`` () =
+    let t = Tensor.arange (24.0, F32, Cpu) |> unwrap
+    let t = t.reshape [ 2; 3; 4 ] |> unwrap
+    let s = t.at [ E; I 0 ]
+    s.Shape |> should equal [ 2; 3 ]

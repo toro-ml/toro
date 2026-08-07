@@ -500,6 +500,40 @@ type Tensor internal (inner: torch.Tensor) =
     member _.toInt64Scalar() =
         ToroError.wrap (fun () -> inner.ToInt64())
 
+    // --- Indexers (throw on error) ---
+
+    member _.Item
+        with get (i: int): Tensor = Tensor(inner.index (torch.TensorIndex.Single(int64 i)))
+
+    member _.Item
+        with get (idx: Tensor): Tensor = Tensor(inner.index (torch.TensorIndex.Tensor(idx.Inner)))
+
+    member _.GetSlice(startIdx: int option, endIdx: int option) : Tensor =
+        let s = startIdx |> Option.map int64 |> Option.toNullable
+
+        let e =
+            match endIdx with
+            | None -> System.Nullable()
+            | Some -1 -> System.Nullable()
+            | Some e -> System.Nullable(int64 (e + 1))
+
+        Tensor(inner.index (torch.TensorIndex.Slice(s, e)))
+
+    member _.at(indices: TIdx list) : Tensor =
+        let toTorchIndex =
+            function
+            | TIdx.I i -> torch.TensorIndex.Single(int64 i)
+            | TIdx.S(s, e) -> torch.TensorIndex.Slice(System.Nullable(int64 s), System.Nullable(int64 e))
+            | TIdx.Sf s -> torch.TensorIndex.Slice(System.Nullable(int64 s), System.Nullable())
+            | TIdx.St e -> torch.TensorIndex.Slice(System.Nullable(), System.Nullable(int64 e))
+            | TIdx.A -> torch.TensorIndex.Slice()
+            | TIdx.T t -> torch.TensorIndex.Tensor(t.Inner)
+            | TIdx.E -> torch.TensorIndex.Ellipsis
+            | TIdx.N -> torch.TensorIndex.None
+
+        let tIndices = indices |> List.map toTorchIndex |> List.toArray
+        Tensor(inner.index tIndices)
+
     // --- Operators (throw on error) ---
 
     static member (+)(a: Tensor, b: Tensor) = Tensor(a.Inner.add (b.Inner))
@@ -541,6 +575,16 @@ type Tensor internal (inner: torch.Tensor) =
 
         let dtype = DType.ofTorch inner.dtype
         $"Tensor[{shape}, {dtype}]"
+
+and TIdx =
+    | I of int
+    | S of start: int * stop: int
+    | Sf of start: int
+    | St of stop: int
+    | A
+    | T of Tensor
+    | E
+    | N
 
 module Toro =
     let noGrad (f: unit -> 'a) : 'a =
