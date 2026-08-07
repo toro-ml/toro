@@ -10,5 +10,6 @@
     <Project Path="examples/SimpleTraining/SimpleTraining.fsproj" />
     <Project Path="examples/MnistTraining/MnistTraining.fsproj" />
     <Project Path="examples/MnistAutoencoder/MnistAutoencoder.fsproj" />
+    <Project Path="examples/MnistCnn/MnistCnn.fsproj" />
   </Folder>
 </Solution>
