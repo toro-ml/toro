@@ -93,8 +93,7 @@ type LSTM = {
             let output = System.Collections.Generic.List<LSTMState>()
 
             for i in 0 .. seqLen - 1 do
-                let! step_input = input.narrow (1, int64 i, 1L)
-                let! step_input = step_input.squeeze 1
+                let step_input = input.at [ A; I i ]
                 let! newState = this.step step_input state
                 state <- newState
                 output.Add newState
@@ -232,8 +231,7 @@ type GRU = {
             let output = System.Collections.Generic.List<GRUState>()
 
             for i in 0 .. seqLen - 1 do
-                let! step_input = input.narrow (1, int64 i, 1L)
-                let! step_input = step_input.squeeze 1
+                let step_input = input.at [ A; I i ]
                 let! newState = this.step step_input state
                 state <- newState
                 output.Add newState

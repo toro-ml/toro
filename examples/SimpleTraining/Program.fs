@@ -82,12 +82,8 @@ let main _argv =
         "1 XOR 1"
     |]
 
-    let idx = Tensor.arange (4.0, I64, Cpu) |> unwrap
-
     for i in 0..3 do
-        let idxI = Tensor.full ([ 1 ], float i, I64, Cpu) |> unwrap
-        let scalar = pred.indexSelect (0, idxI) |> unwrap
-        let v = scalar.toFloat32Scalar () |> unwrap
+        let v = pred[i].toFloat32Scalar () |> unwrap
         printfn "  %s = %.3f" labels[i] v
 
     0

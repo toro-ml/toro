@@ -13,7 +13,7 @@ type Embedding = {
 
             let! flat = indexes.flattenAll ()
 
-            let! values = this.Embeddings.indexSelect (0, flat)
+            let values = this.Embeddings[flat]
 
             return! values.reshape finalDims
         }

@@ -438,7 +438,7 @@ let ``maskedFill replaces masked positions`` () =
 let ``Item int selects along dim 0`` () =
     let t = Tensor.arange (6.0, F32, Cpu) |> unwrap
     let t = t.reshape [ 3; 2 ] |> unwrap
-    let row = t.[0]
+    let row = t[0]
     row.Shape |> should equal [ 2 ]
     scalarF32 row |> should equal 1.0f
 
@@ -448,26 +448,26 @@ let ``Item Tensor selects rows by index`` () =
     let t = t.reshape [ 3; 2 ] |> unwrap
     let idx = Tensor.ofFloat32Array ([| 0.0f; 2.0f |], Cpu) |> unwrap
     let idx = idx.toDType I64 |> unwrap
-    let selected = t.[idx]
+    let selected = t[idx]
     selected.Shape |> should equal [ 2; 2 ]
 
 [<Fact>]
 let ``GetSlice extracts range`` () =
     let t = Tensor.arange (5.0, F32, Cpu) |> unwrap
-    let s = t.[1..3]
+    let s = t[1..3]
     s.Shape |> should equal [ 3 ]
     scalarF32 s |> should equal 6.0f
 
 [<Fact>]
 let ``GetSlice open-ended selects to end`` () =
     let t = Tensor.arange (5.0, F32, Cpu) |> unwrap
-    let s = t.[2..]
+    let s = t[2..]
     s.Shape |> should equal [ 3 ]
 
 [<Fact>]
 let ``GetSlice with -1 end selects all`` () =
     let t = Tensor.arange (5.0, F32, Cpu) |> unwrap
-    let s = t.[0 .. -1]
+    let s = t[0 .. -1]
     s.Shape |> should equal [ 5 ]
 
 [<Fact>]
