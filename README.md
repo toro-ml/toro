@@ -3,7 +3,7 @@
 [![NuGet](https://img.shields.io/nuget/v/Toro.svg)](https://www.nuget.org/packages/Toro)
 [![NuGet](https://img.shields.io/nuget/v/Toro.NN.svg)](https://www.nuget.org/packages/Toro.NN)
 
-A minimalist ML framework for F#, powered by [TorchSharp](https://github.com/dotnet/TorchSharp).
+A lightweight ML framework for F#, powered by [TorchSharp](https://github.com/dotnet/TorchSharp).
 
 Define models with F# records and computation expressions.
 Chain fallible operations with the `result { }` CE.
@@ -81,9 +81,9 @@ dotnet test
 Preview the documentation site locally:
 
 ```bash
-dotnet tool restore
-dotnet build -c Release
-dotnet fsdocs watch --properties Configuration=Release
+cd docs
+pnpm install
+pnpm dev
 ```
 
 ## License

@@ -487,7 +487,12 @@ $RECYCLE.BIN/
 .direnv/
 result
 
-# fsdocs
+# fsdocs (legacy)
 .fsdocs/
 output/
 tmp/
+
+# Docs site
+docs/node_modules/
+docs/build/
+docs/.react-router/

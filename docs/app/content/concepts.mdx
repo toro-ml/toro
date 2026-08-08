@@ -1,18 +1,13 @@
 ---
-title: Core Concepts
-category: Documentation
-categoryindex: 1
-index: 2
+title: Design
 description: DType, Device, ToroError, the result CE, operator return types, and gradient control.
 ---
-
-# Core Concepts
 
 This page explains the design decisions that apply across the Toro library.
 
 ## DType
 
-`cref:T:Toro.DType` is a discriminated union that represents data types for tensor elements:
+`DType` is a discriminated union that represents data types for tensor elements:
 
 | Case   | Description                     |
 | ------ | ------------------------------- |
@@ -27,7 +22,7 @@ This page explains the design decisions that apply across the Toro library.
 
 ## Device
 
-`cref:T:Toro.Device` is a discriminated union that specifies where tensors are stored:
+`Device` is a discriminated union that specifies where tensors are stored:
 
 | Case     | Description             |
 | -------- | ----------------------- |
@@ -46,7 +41,7 @@ result {
 ## Error Model
 
 Most Toro operations return `Result<'T, ToroError>`.
-`cref:T:Toro.ToroError` is a discriminated union with these cases:
+`ToroError` is a discriminated union with these cases:
 
 | Case                                | Description                    |
 | ----------------------------------- | ------------------------------ |

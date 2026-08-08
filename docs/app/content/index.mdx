@@ -1,0 +1,88 @@
+---
+title: Toro
+description: A lightweight ML framework for F# powered by TorchSharp.
+---
+
+## Install
+
+```bash
+dotnet add package Toro
+dotnet add package Toro.NN
+dotnet add package TorchSharp-cpu
+```
+
+## Train an XOR model
+
+```fsharp
+open Toro
+open Toro.NN
+
+let r = result {
+    let! x = Tensor.ofFloat32Array2D ([| [|0f;0f|]; [|0f;1f|]; [|1f;0f|]; [|1f;1f|] |], Cpu)
+    let! y = Tensor.ofFloat32Array2D ([| [|0f|]; [|1f|]; [|1f|]; [|0f|] |], Cpu)
+
+    let! l1 = Linear.init 2 16 F32 Cpu
+    let! l2 = Linear.init 16 1 F32 Cpu
+    let model = sequential { l1; Relu; l2 }
+
+    let! opt = AdamW.createWithLr 0.01 (Model.trainableVars model)
+    for _ in 1..500 do
+        let! pred = model.forward x
+        let! loss = Loss.mse pred y
+        do! (opt :> IOptimizer).backwardStep loss
+}
+```
+
+Every operation that can fail returns `Result<'T, ToroError>`.
+The `result { }` CE chains them with `let!` and `do!`.
+
+## Define a CNN
+
+```fsharp
+let mnist = result {
+    let! conv1 = Conv2d.initDefault 1 32 3 F32 Cpu
+    let! conv2 = Conv2d.initDefault 32 64 3 F32 Cpu
+    let! fc1   = Linear.init (64 * 5 * 5) 128 F32 Cpu
+    let! fc2   = Linear.init 128 10 F32 Cpu
+    let drop   = Dropout.create 0.5
+    let pool   = MaxPool2d.createDefault 2
+
+    return sequentialT {
+        conv1; Relu; pool
+        conv2; Relu; pool
+        Func.create _.flatten(1, -1)
+        fc1; Relu; drop; fc2
+    }
+}
+```
+
+`sequential { }` composes `IModule` layers.
+`sequentialT { }` adds the `train` flag for Dropout and BatchNorm.
+
+## Evaluate
+
+```fsharp
+Toro.noGrad (fun () ->
+    let r = result {
+        let! pred = model.forward testX
+        let! argmax = pred.argmax 1
+        let! eq = (argmax .=. testY).toDType F32
+        let! acc = eq.meanAll ()
+        printfn "Accuracy: %.1f%%" (acc.item () * 100.0)
+    }
+    match r with Ok () -> () | Error e -> eprintfn "%A" e
+)
+```
+
+## Examples
+
+| Example | Description |
+| ------- | ----------- |
+| [LinearRegression](https://github.com/toro-ml/toro/tree/main/examples/LinearRegression) | Gradient descent with raw tensors |
+| [SimpleTraining](https://github.com/toro-ml/toro/tree/main/examples/SimpleTraining) | XOR with `sequential { }` CE |
+| [MnistTraining](https://github.com/toro-ml/toro/tree/main/examples/MnistTraining) | CNN image classification |
+| [MnistCnn](https://github.com/toro-ml/toro/tree/main/examples/MnistCnn) | CNN with BatchNorm, Dropout, `sequentialT { }` |
+| [MnistAutoencoder](https://github.com/toro-ml/toro/tree/main/examples/MnistAutoencoder) | Autoencoder with image output |
+| [MnistGan](https://github.com/toro-ml/toro/tree/main/examples/MnistGan) | GAN image generation |
+| [CharRnn](https://github.com/toro-ml/toro/tree/main/examples/CharRnn) | Character-level text generation with LSTM |
+| [TextClassifier](https://github.com/toro-ml/toro/tree/main/examples/TextClassifier) | Transformer-based text classification |

@@ -1,17 +1,12 @@
 ---
 title: Tensor
-category: Documentation
-categoryindex: 1
-index: 3
 description: Create tensors, do arithmetic, reshape, index, reduce, and manage autograd.
 ---
-
-# Tensor
 
 A `Tensor` is a multi-dimensional array. Toro wraps TorchSharp tensors with a safe F# API.
 Most tensor methods return `Result<Tensor, ToroError>`.
 Arithmetic operators (`+`, `-`, `*`, `/`) throw exceptions directly and return `Tensor`.
-See [Core Concepts](concepts.html) for the full operator return type rules.
+See [Design](/concepts) for the full operator return type rules.
 
 ## Properties
 
