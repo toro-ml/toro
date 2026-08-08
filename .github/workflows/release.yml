@@ -90,7 +90,7 @@ jobs:
       # (prefix reservation vs id/version conflict).
       - name: NuGet push Toro.NN
         run: >
-          dotnet nuget push artifacts/Toro.NN.${{ steps.version.outputs.version }}.nupkg
+          dotnet nuget push
+          artifacts/Toro.NN.${{ steps.version.outputs.version }}.nupkg
           --api-key ${{ steps.login.outputs.NUGET_API_KEY }}
           --source https://api.nuget.org/v3/index.json
-          -v detailed
