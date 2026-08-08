@@ -7,10 +7,7 @@ import "~/ui/layout/global.css";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html
-      lang="en"
-      style={{ scrollPaddingTop: "3.5rem" }}
-    >
+    <html lang="en">
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />

@@ -1,20 +1,30 @@
 import { globalStyle, style } from "@vanilla-extract/css";
-import { color, fontSize, lineHeight, space } from "~/ui/tokens";
+import {
+  borderWidth,
+  color,
+  fontFamily,
+  fontSize,
+  fontWeight,
+  layout,
+  lineHeight,
+  radius,
+  space,
+} from "~/ui/tokens";
 
 export const article = style({
   minWidth: 0,
-  padding: `1.25rem ${space[7]} ${space[9]}`,
+  padding: `${layout.navIndent} ${space[7]} ${space[9]}`,
   fontSize: fontSize.base,
   viewTransitionName: "doc-content",
 });
 
 globalStyle(`${article} :is(h1, h2, h3)`, {
-  scrollMarginTop: "var(--header-height)",
+  scrollMarginTop: "var(--header-offset)",
 });
 
 globalStyle(`${article} h1`, {
   fontSize: fontSize["2xl"],
-  fontWeight: 700,
+  fontWeight: fontWeight.bold,
   marginTop: 0,
   marginBottom: space[5],
   color: color.textEmphasis,
@@ -22,17 +32,17 @@ globalStyle(`${article} h1`, {
 
 globalStyle(`${article} h2`, {
   fontSize: fontSize.xl,
-  fontWeight: 600,
+  fontWeight: fontWeight.semibold,
   marginTop: space[8],
   marginBottom: space[4],
   color: color.textEmphasis,
-  borderBottom: `1px solid ${color.border}`,
+  borderBottom: `${borderWidth.default} solid ${color.border}`,
   paddingBottom: space[2],
 });
 
 globalStyle(`${article} h3`, {
   fontSize: fontSize.lg,
-  fontWeight: 600,
+  fontWeight: fontWeight.semibold,
   marginTop: space[7],
   marginBottom: space[3],
   color: color.textEmphasis,
@@ -53,19 +63,19 @@ globalStyle(`${article} a:hover`, {
 });
 
 globalStyle(`${article} code`, {
-  fontFamily: '"Fira Code", ui-monospace, monospace',
+  fontFamily: fontFamily.mono,
   fontSize: "0.875em",
   backgroundColor: color.bgCode,
   padding: `${space[1]} ${space[3]}`,
-  borderRadius: space[2],
+  borderRadius: radius.sm,
 });
 
 globalStyle(`${article} pre`, {
-  fontFamily: '"Fira Code", ui-monospace, monospace',
+  fontFamily: fontFamily.mono,
   fontSize: fontSize.code,
   backgroundColor: color.bgCode,
   padding: `${space[5]} ${space[6]}`,
-  borderRadius: space[3],
+  borderRadius: radius.md,
   overflowX: "auto",
   lineHeight: lineHeight.code,
   margin: `0 0 ${space[6]}`,
@@ -79,7 +89,7 @@ globalStyle(`${article} pre code`, {
 });
 
 globalStyle(`${article} ul, ${article} ol`, {
-  paddingLeft: "1.25rem",
+  paddingLeft: layout.navIndent,
   marginBottom: space[5],
 });
 
@@ -97,9 +107,9 @@ globalStyle(`${article} table`, {
 
 globalStyle(`${article} th`, {
   textAlign: "left",
-  borderBottom: `2px solid ${color.borderStrong}`,
-  padding: `${space[3]} 0.625rem`,
-  fontWeight: 600,
+  borderBottom: `${borderWidth.strong} solid ${color.borderStrong}`,
+  padding: `${space[3]} ${layout.navPaddingInline}`,
+  fontWeight: fontWeight.semibold,
   color: color.textEmphasis,
 });
 
@@ -108,10 +118,10 @@ globalStyle(`${article} th:first-child, ${article} td:first-child`, {
 });
 
 globalStyle(`${article} td`, {
-  borderBottom: `1px solid ${color.border}`,
-  padding: `${space[4]} 0.625rem`,
+  borderBottom: `${borderWidth.default} solid ${color.border}`,
+  padding: `${space[4]} ${layout.navPaddingInline}`,
   wordBreak: "break-word",
-  lineHeight: 1.6,
+  lineHeight: lineHeight.normal,
 });
 
 globalStyle(`${article} td code`, {
@@ -128,7 +138,7 @@ globalStyle(`${article} td .katex-html`, {
 });
 
 globalStyle(`${article} blockquote`, {
-  borderLeft: `3px solid ${color.borderEmphasis}`,
+  borderLeft: `${borderWidth.emphasis} solid ${color.borderEmphasis}`,
   margin: `0 0 ${space[6]}`,
   padding: `${space[3]} ${space[5]}`,
   color: color.text,
@@ -136,7 +146,7 @@ globalStyle(`${article} blockquote`, {
 
 globalStyle(`${article} hr`, {
   border: "none",
-  borderTop: `1px solid ${color.border}`,
+  borderTop: `${borderWidth.default} solid ${color.border}`,
   margin: `${space[7]} 0`,
 });
 
@@ -144,42 +154,4 @@ export const namespaceBadge = style({
   fontSize: fontSize.sm,
   color: color.textMuted,
   marginBottom: space[2],
-});
-
-export const pageNav = style({
-  display: "flex",
-  justifyContent: "space-between",
-  gap: space[6],
-  borderTop: `1px solid ${color.border}`,
-  marginTop: space[8],
-  paddingTop: space[7],
-});
-
-export const pageNavLink = style({
-  display: "flex",
-  flexDirection: "column",
-  gap: space[1],
-  textDecoration: "none",
-  color: color.text,
-  transition: "color 0.15s",
-  ":hover": {
-    color: color.textEmphasis,
-  },
-});
-
-export const pageNavNext = style([
-  pageNavLink,
-  { alignItems: "flex-end", marginLeft: "auto" },
-]);
-
-export const pageNavLabel = style({
-  fontSize: fontSize.xs,
-  color: color.textMuted,
-  textTransform: "uppercase",
-  letterSpacing: "0.05em",
-});
-
-export const pageNavTitle = style({
-  fontSize: fontSize.base,
-  fontWeight: 500,
 });

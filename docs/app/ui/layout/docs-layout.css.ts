@@ -1,5 +1,5 @@
 import { style } from "@vanilla-extract/css";
-import { breakpoint } from "~/ui/tokens";
+import { breakpoint, layout } from "~/ui/tokens";
 
 export const docsGrid = style({
   display: "grid",
@@ -8,10 +8,19 @@ export const docsGrid = style({
   paddingTop: "var(--header-height)",
   "@media": {
     [breakpoint.sidebar]: {
-      gridTemplateColumns: "14rem 1fr",
+      gridTemplateColumns: `${layout.sidebarWidth} minmax(0, 1fr)`,
     },
+  },
+});
+
+export const docsMain = style({
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr)",
+  minWidth: 0,
+  alignItems: "start",
+  "@media": {
     [breakpoint.toc]: {
-      gridTemplateColumns: "14rem 1fr 14rem",
+      gridTemplateColumns: `minmax(0, 1fr) ${layout.tocWidth}`,
     },
   },
 });

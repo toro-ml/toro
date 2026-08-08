@@ -1,29 +1,30 @@
 import { style } from "@vanilla-extract/css";
-import { breakpoint, color, fontSize, space } from "~/ui/tokens";
+import {
+  borderWidth,
+  breakpoint,
+  color,
+  duration,
+  fontSize,
+  layout,
+  lineHeight,
+  space,
+} from "~/ui/tokens";
 
 export const nav = style({
   position: "sticky",
   top: "var(--header-height)",
   height: "calc(100dvh - var(--header-height))",
+  boxSizing: "border-box",
   padding: `${space[6]} ${space[5]} ${space[6]} ${space[4]}`,
   overflowY: "auto",
-  borderLeft: `1px solid ${color.border}`,
+  overscrollBehavior: "contain",
+  borderLeft: `${borderWidth.default} solid ${color.border}`,
   display: "none",
   "@media": {
     [breakpoint.toc]: {
       display: "block",
     },
   },
-});
-
-export const heading = style({
-  fontSize: fontSize.xs,
-  fontWeight: 600,
-  textTransform: "uppercase",
-  letterSpacing: "0.05em",
-  color: color.textEmphasis,
-  marginBottom: space[3],
-  padding: `0 0.625rem`,
 });
 
 export const list = style({
@@ -35,21 +36,21 @@ export const list = style({
 export const link = style({
   display: "block",
   position: "relative",
-  padding: `${space[2]} 0.625rem`,
+  padding: `${space[2]} ${layout.navPaddingInline}`,
   fontSize: fontSize.sm,
-  lineHeight: 1.5,
+  lineHeight: lineHeight.code,
   color: color.textMuted,
   textDecoration: "none",
-  transition: "color 0.15s",
+  transition: `color ${duration.normal}`,
   "::before": {
     content: '""',
     position: "absolute",
     left: 0,
     top: "10%",
     height: "80%",
-    width: "2px",
+    width: borderWidth.strong,
     backgroundColor: "transparent",
-    transition: "background-color 0.15s",
+    transition: `background-color ${duration.normal}`,
   },
   ":hover": {
     color: color.textEmphasis,
@@ -64,13 +65,13 @@ export const linkActive = style({
 });
 
 export const linkDepth2 = style({
-  paddingLeft: "1.25rem",
+  paddingLeft: layout.navIndent,
 });
 
 export const linkDepth3 = style({
-  paddingLeft: "2rem",
+  paddingLeft: layout.tocDepth3Indent,
 });
 
 export const linkDepth4 = style({
-  paddingLeft: "2.75rem",
+  paddingLeft: layout.tocDepth4Indent,
 });

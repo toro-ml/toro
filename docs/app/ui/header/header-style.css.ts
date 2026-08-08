@@ -1,16 +1,26 @@
 import { style, styleVariants } from "@vanilla-extract/css";
-import { breakpoint, color, fontSize, space } from "~/ui/tokens";
+import {
+  breakpoint,
+  color,
+  duration,
+  fontSize,
+  fontWeight,
+  layout,
+  radius,
+  space,
+  zIndex,
+} from "~/ui/tokens";
 
 export const headerStyle = style({
   position: "fixed",
   height: "var(--header-height)",
   display: "flex",
   alignItems: "center",
-  backdropFilter: "blur(0.25rem)",
+  backdropFilter: `blur(${space[2]})`,
   top: 0,
   left: 0,
   right: 0,
-  zIndex: 1000,
+  zIndex: zIndex.header,
 });
 
 export const headerInner = style({
@@ -21,8 +31,7 @@ export const headerInner = style({
   padding: `0 ${space[5]}`,
   "@media": {
     [breakpoint.sidebar]: {
-      paddingLeft: "1.375rem",
-      paddingRight: "1.375rem",
+      paddingInline: fontSize.xl,
     },
   },
 });
@@ -30,57 +39,78 @@ export const headerInner = style({
 export const headerRight = style({
   display: "flex",
   alignItems: "center",
-  gap: "0.75rem",
+  gap: space[5],
 });
 
-export const menuButton = style({
+const iconControl = style({
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  background: "none",
-  border: "none",
+  minWidth: space[8],
+  minHeight: space[8],
+  borderRadius: radius.sm,
   color: "inherit",
-  cursor: "pointer",
-  padding: "0.25rem",
-  "@media": {
-    [breakpoint.sidebar]: {
-      display: "none",
+});
+
+export const menuButton = style([
+  iconControl,
+  {
+    background: "none",
+    border: "none",
+    cursor: "pointer",
+    padding: space[2],
+    "@media": {
+      [breakpoint.sidebar]: {
+        display: "none",
+      },
     },
   },
-});
+]);
 
 export const logoLink = style({
   display: "flex",
   alignItems: "center",
-  gap: "0.75rem",
+  gap: space[5],
   textDecoration: "none",
   color: "inherit",
 });
 
 export const logoImage = style({
-  borderRadius: "50%",
+  borderRadius: radius.full,
 });
 
-export const iconLink = style({
-  display: "flex",
-  color: "inherit",
+export const logoTitle = style({
+  fontSize: fontSize.lg,
+  fontWeight: fontWeight.bold,
+  color: color.textEmphasis,
 });
+
+export const iconLink = style([
+  iconControl,
+  {
+    textDecoration: "none",
+  },
+]);
 
 const drawerBase = style({
   position: "fixed",
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  backdropFilter: "blur(0.25rem)",
+  inset: 0,
+  backdropFilter: `blur(${space[2]})`,
   paddingTop: "var(--header-height)",
-  paddingLeft: "1.5rem",
-  paddingRight: "1.5rem",
-  paddingBottom: "1rem",
+  paddingInline: space[7],
+  paddingBottom: space[6],
   overflowY: "auto",
-  zIndex: 999,
-  transition: "transform 0.25s ease, opacity 0.25s ease",
+  zIndex: zIndex.drawer,
+  transition: `transform ${duration.slow} ease, opacity ${duration.slow} ease`,
   transformOrigin: "top",
+  "@media": {
+    [breakpoint.sidebar]: {
+      display: "none",
+    },
+    "(prefers-reduced-motion: reduce)": {
+      transitionDuration: "0.01ms",
+    },
+  },
 });
 
 export const drawer = styleVariants({
@@ -91,79 +121,20 @@ export const drawer = styleVariants({
 const backdropBase = style({
   position: "fixed",
   inset: 0,
-  zIndex: 998,
-  backgroundColor: "rgba(0, 0, 0, 0.5)",
-  transition: "opacity 0.2s ease",
+  zIndex: zIndex.backdrop,
+  backgroundColor: color.backdrop,
+  transition: `opacity ${duration.slow} ease`,
+  "@media": {
+    [breakpoint.sidebar]: {
+      display: "none",
+    },
+    "(prefers-reduced-motion: reduce)": {
+      transitionDuration: "0.01ms",
+    },
+  },
 });
 
 export const backdrop = styleVariants({
   open: [backdropBase, { opacity: 1 }],
   closed: [backdropBase, { opacity: 0, pointerEvents: "none" }],
-});
-
-export const drawerLink = style({
-  display: "block",
-  padding: `${space[4]} ${space[5]}`,
-  borderRadius: space[2],
-  textDecoration: "none",
-  fontSize: fontSize.base,
-  color: color.text,
-  transition: "color 0.15s, background-color 0.15s",
-  ":hover": {
-    color: color.textEmphasis,
-  },
-});
-
-export const drawerLinkActive = style([
-  drawerLink,
-  {
-    backgroundColor: color.bgActive,
-    color: color.textEmphasis,
-    fontWeight: 500,
-  },
-]);
-
-export const drawerSectionHeading = style({
-  fontSize: fontSize.xs,
-  fontWeight: 600,
-  textTransform: "uppercase",
-  letterSpacing: "0.05em",
-  color: color.textMuted,
-  padding: `${space[7]} ${space[5]} ${space[3]}`,
-});
-
-export const drawerGroupSummary = style({
-  display: "flex",
-  alignItems: "center",
-  gap: space[3],
-  fontSize: fontSize.base,
-  fontWeight: 500,
-  color: color.textMuted,
-  padding: `${space[3]} ${space[5]}`,
-  cursor: "pointer",
-  listStyle: "none",
-  selectors: {
-    "&::marker": { display: "none" },
-    "&::-webkit-details-marker": { display: "none" },
-    "details[open] > &": {
-      color: color.text,
-    },
-  },
-});
-
-export const drawerGroupChevron = style({
-  width: "0.875rem",
-  height: "0.875rem",
-  flexShrink: 0,
-  marginLeft: "auto",
-  transition: "transform 0.15s ease",
-  selectors: {
-    "details[open] > summary > &": {
-      transform: "rotate(90deg)",
-    },
-  },
-});
-
-export const drawerGroupItems = style({
-  paddingLeft: "1.25rem",
 });

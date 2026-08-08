@@ -1,36 +1,71 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { TocEntry } from "~/content/mdx.server";
+import { classNames } from "~/ui/class-names";
 import * as s from "./toc-style.css";
 
-function useActiveHeading(ids: string[]) {
+interface HeadingPosition {
+  id: string;
+  top: number;
+}
+
+function readHeadingPositions(ids: readonly string[]): HeadingPosition[] {
+  return ids
+    .map((id) => {
+      const element = document.getElementById(id);
+      return element
+        ? { id, top: element.getBoundingClientRect().top }
+        : null;
+    })
+    .filter((position): position is HeadingPosition => position !== null);
+}
+
+function resolveActiveHeading(
+  positions: readonly HeadingPosition[],
+  viewportHeight: number,
+  atBottom: boolean,
+) {
+  const current = positions.reduce(
+    (activeId, { id, top }) =>
+      top <= viewportHeight * 0.2 ? id : activeId,
+    "",
+  );
+
+  if (!atBottom) return current;
+
+  return (
+    positions.reduceRight(
+      (activeId, { id, top }) =>
+        activeId || (top < viewportHeight ? id : ""),
+      "",
+    ) || current
+  );
+}
+
+function depthClass(depth: number) {
+  if (depth >= 4) return s.linkDepth4;
+  return {
+    2: s.linkDepth2,
+    3: s.linkDepth3,
+  }[depth] ?? "";
+}
+
+function useActiveHeading(ids: readonly string[]) {
   const [activeId, setActiveId] = useState("");
 
   useEffect(() => {
     if (ids.length === 0) return;
 
     const onScroll = () => {
-      let current = "";
-      for (const id of ids) {
-        const el = document.getElementById(id);
-        if (el && el.getBoundingClientRect().top <= window.innerHeight * 0.2) {
-          current = id;
-        }
-      }
-
       const atBottom =
         window.scrollY + window.innerHeight >=
         document.documentElement.scrollHeight - 1;
-      if (atBottom) {
-        for (let i = ids.length - 1; i >= 0; i--) {
-          const el = document.getElementById(ids[i]);
-          if (el && el.getBoundingClientRect().top < window.innerHeight) {
-            current = ids[i];
-            break;
-          }
-        }
-      }
-
-      setActiveId(current);
+      setActiveId(
+        resolveActiveHeading(
+          readHeadingPositions(ids),
+          window.innerHeight,
+          atBottom,
+        ),
+      );
     };
 
     onScroll();
@@ -41,8 +76,16 @@ function useActiveHeading(ids: string[]) {
   return activeId;
 }
 
-export const TableOfContents = ({ entries }: { entries: TocEntry[] }) => {
-  const activeId = useActiveHeading(entries.map((e) => e.id));
+export const TableOfContents = ({
+  entries,
+}: {
+  entries: readonly TocEntry[];
+}) => {
+  const headingIds = useMemo(
+    () => entries.map(({ id }) => id),
+    [entries],
+  );
+  const activeId = useActiveHeading(headingIds);
 
   if (entries.length === 0) return null;
   return (
@@ -56,19 +99,21 @@ export const TableOfContents = ({ entries }: { entries: TocEntry[] }) => {
                 e.preventDefault();
                 const el = document.getElementById(id);
                 if (el) {
-                  el.scrollIntoView({ behavior: "smooth" });
+                  const reduceMotion = window.matchMedia(
+                    "(prefers-reduced-motion: reduce)",
+                  ).matches;
+                  el.scrollIntoView({
+                    behavior: reduceMotion ? "auto" : "smooth",
+                  });
                   history.replaceState(null, "", `#${id}`);
                 }
               }}
-              className={[
+              aria-current={activeId === id ? "location" : undefined}
+              className={classNames(
                 s.link,
-                depth === 2 ? s.linkDepth2 : "",
-                depth === 3 ? s.linkDepth3 : "",
-                depth >= 4 ? s.linkDepth4 : "",
-                activeId === id ? s.linkActive : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
+                depthClass(depth),
+                activeId === id && s.linkActive,
+              )}
             >
               {text}
             </a>

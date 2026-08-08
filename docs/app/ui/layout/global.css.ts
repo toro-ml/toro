@@ -1,22 +1,39 @@
 import { grayDark, whiteA } from "@radix-ui/colors";
 import { globalStyle, keyframes } from "@vanilla-extract/css";
-import { lineHeight, space } from "~/ui/tokens";
+import {
+  color,
+  duration,
+  easing,
+  fontFamily,
+  layout,
+  lineHeight,
+  space,
+} from "~/ui/tokens";
 
 globalStyle(":root", {
   vars: {
-    "--header-height": space[9],
+    "--header-height": layout.headerHeight,
+    "--header-offset": `calc(${layout.headerHeight} + ${space[4]})`,
     "--color-text": whiteA.whiteA9,
     "--color-text-emphasis": whiteA.whiteA12,
     "--color-text-muted": whiteA.whiteA8,
     "--color-bg": grayDark.gray2,
     "--color-bg-code": grayDark.gray3,
     "--color-bg-active": grayDark.gray4,
+    "--color-backdrop": "rgba(0, 0, 0, 0.5)",
     "--color-border": grayDark.gray4,
     "--color-border-strong": grayDark.gray5,
     "--color-border-emphasis": grayDark.gray6,
+    "--color-focus": "#93c5fd",
     "--color-link": "#93c5fd",
   },
   scrollBehavior: "smooth",
+  scrollPaddingTop: "var(--header-offset)",
+  "@media": {
+    "(prefers-reduced-motion: reduce)": {
+      scrollBehavior: "auto",
+    },
+  },
 });
 
 globalStyle(`:root[data-direction]`, {
@@ -31,8 +48,13 @@ globalStyle(".radix-themes", {
   backgroundColor: "var(--color-bg)",
   color: "var(--color-text)",
   lineHeight: lineHeight.normal,
-  fontFamily: '"Noto Sans JP", sans-serif',
+  fontFamily: fontFamily.sans,
   minHeight: "100vh",
+});
+
+globalStyle(":where(a, button, summary):focus-visible", {
+  outline: `2px solid ${color.focus}`,
+  outlineOffset: space[1],
 });
 
 const slideOutToLeft = keyframes({
@@ -49,13 +71,23 @@ const slideInFromLeft = keyframes({
 });
 
 globalStyle("::view-transition-old(doc-content)", {
-  animationDuration: "150ms",
-  animationTimingFunction: "ease-out",
+  animationDuration: duration.normal,
+  animationTimingFunction: easing.exit,
+  "@media": {
+    "(prefers-reduced-motion: reduce)": {
+      animationDuration: "0.01ms",
+    },
+  },
 });
 
 globalStyle("::view-transition-new(doc-content)", {
-  animationDuration: "200ms",
-  animationTimingFunction: "ease-in",
+  animationDuration: duration.slow,
+  animationTimingFunction: easing.enter,
+  "@media": {
+    "(prefers-reduced-motion: reduce)": {
+      animationDuration: "0.01ms",
+    },
+  },
 });
 
 globalStyle(
