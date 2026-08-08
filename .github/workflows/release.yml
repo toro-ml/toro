@@ -78,5 +78,19 @@ jobs:
         with:
           user: ${{ vars.NUGET_USER }}
 
-      - name: NuGet push
-        run: dotnet nuget push artifacts/*.nupkg --api-key ${{ steps.login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+      # Toro may already be published for this version; skip duplicates.
+      - name: NuGet push Toro
+        run: >
+          dotnet nuget push artifacts/Toro.${{ steps.version.outputs.version }}.nupkg
+          --api-key ${{ steps.login.outputs.NUGET_API_KEY }}
+          --source https://api.nuget.org/v3/index.json
+          --skip-duplicate
+
+      # No --skip-duplicate: surface the real NuGet 409 body for Toro.NN
+      # (prefix reservation vs id/version conflict).
+      - name: NuGet push Toro.NN
+        run: >
+          dotnet nuget push artifacts/Toro.NN.${{ steps.version.outputs.version }}.nupkg
+          --api-key ${{ steps.login.outputs.NUGET_API_KEY }}
+          --source https://api.nuget.org/v3/index.json
+          -v detailed
