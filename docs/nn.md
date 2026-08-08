@@ -3,6 +3,7 @@ title: Neural Networks
 category: Documentation
 categoryindex: 1
 index: 4
+description: Layers, recurrent modules, attention, Sequential and SequentialT composition, and model persistence.
 ---
 
 # Neural Networks
@@ -64,21 +65,27 @@ A 2D convolution layer. Implements `IModule`:
 
 ```fsharp
 result {
-    let! conv = Conv2d.init { Conv2dConfig.defaultConfig with InChannels = 1; OutChannels = 32; KernelSize = 3 } F32 Cpu
+    let! conv = Conv2d.initDefault 1 32 3 F32 Cpu  // inCh=1, outCh=32, kernel=3
     let! out = conv.forward input
 }
 ```
 
-`Conv2dConfig` has the same fields as `Conv1dConfig`: `Padding`, `Stride`, `Dilation`, `Groups`.
+Configure with `Conv2dConfig` (same fields as `Conv1dConfig`: `Padding`, `Stride`, `Dilation`, `Groups`):
+
+```fsharp
+result {
+    let! conv = Conv2d.init 1 32 3 { Conv2dConfig.defaultConfig with Padding = 1 } F32 Cpu
+}
+```
 
 ### Pooling
 
 Pooling layers reduce spatial dimensions. All implement `IModule`:
 
-| Layer | Factory | Description |
-| --- | --- | --- |
-| `MaxPool1d` | `MaxPool1d.createDefault kernelSize` | 1D max pooling |
-| `MaxPool2d` | `MaxPool2d.createDefault kernelSize` | 2D max pooling |
+| Layer       | Factory                              | Description        |
+| ----------- | ------------------------------------ | ------------------ |
+| `MaxPool1d` | `MaxPool1d.createDefault kernelSize` | 1D max pooling     |
+| `MaxPool2d` | `MaxPool2d.createDefault kernelSize` | 2D max pooling     |
 | `AvgPool2d` | `AvgPool2d.createDefault kernelSize` | 2D average pooling |
 
 Use `create` for full control:
@@ -161,16 +168,16 @@ let drop = Dropout.create 0.5
 
 Activation functions implement `IModule`:
 
-| Case | Description |
-| --- | --- |
-| `Relu` | ReLU |
-| `Gelu` | GELU |
-| `Silu` | SiLU (Swish) |
-| `Tanh` | Tanh |
-| `Sigmoid` | Sigmoid |
-| `LeakyRelu slope` | Leaky ReLU |
-| `Elu alpha` | ELU |
-| `Mish` | Mish |
+| Case              | Description  |
+| ----------------- | ------------ |
+| `Relu`            | ReLU         |
+| `Gelu`            | GELU         |
+| `Silu`            | SiLU (Swish) |
+| `Tanh`            | Tanh         |
+| `Sigmoid`         | Sigmoid      |
+| `LeakyRelu slope` | Leaky ReLU   |
+| `Elu alpha`       | ELU          |
+| `Mish`            | Mish         |
 
 Use them in a sequential model or call `forward` directly:
 
@@ -314,12 +321,12 @@ let! evalOut = model.forwardT input false
 
 The `Init` type controls how layer weights are initialized:
 
-| Case | Description |
-| --- | --- |
-| `Const v` | Fill with constant value `v` |
-| `Randn (mean, stdev)` | Normal distribution |
-| `Uniform (lo, up)` | Uniform distribution |
-| `KaimingNormal` | Kaiming normal (default for most layers) |
+| Case                  | Description                              |
+| --------------------- | ---------------------------------------- |
+| `Const v`             | Fill with constant value `v`             |
+| `Randn (mean, stdev)` | Normal distribution                      |
+| `Uniform (lo, up)`    | Uniform distribution                     |
+| `KaimingNormal`       | Kaiming normal (default for most layers) |
 
 Use `Init.toTensor` to create a tensor, or `Init.toParam` to create a tensor with `requiresGrad`:
 
@@ -349,7 +356,7 @@ It traverses nested records and lists (including `Sequential` and `SequentialT`)
 `Model.namedParams` returns all parameters with their names:
 
 ```fsharp
-let params = Model.namedParams myModel
+let namedVars = Model.namedParams myModel
 // [("Layer1.Weight", tensor); ("Layer1.Bias", tensor); ...]
 ```
 

@@ -3,6 +3,7 @@ title: Core Concepts
 category: Documentation
 categoryindex: 1
 index: 2
+description: DType, Device, ToroError, the result CE, operator return types, and gradient control.
 ---
 
 # Core Concepts
@@ -11,26 +12,26 @@ This page explains the design decisions that apply across the Toro library.
 
 ## DType
 
-`DType` is a discriminated union that represents data types for tensor elements:
+`cref:T:Toro.DType` is a discriminated union that represents data types for tensor elements:
 
-| Case | Description |
-| --- | --- |
-| `F16` | 16-bit floating point |
-| `BF16` | BFloat16 |
-| `F32` | 32-bit floating point (default) |
-| `F64` | 64-bit floating point |
-| `I32` | 32-bit integer |
-| `I64` | 64-bit integer |
-| `U8` | Unsigned 8-bit integer |
-| `Bool` | Boolean |
+| Case   | Description                     |
+| ------ | ------------------------------- |
+| `F16`  | 16-bit floating point           |
+| `BF16` | BFloat16                        |
+| `F32`  | 32-bit floating point (default) |
+| `F64`  | 64-bit floating point           |
+| `I32`  | 32-bit integer                  |
+| `I64`  | 64-bit integer                  |
+| `U8`   | Unsigned 8-bit integer          |
+| `Bool` | Boolean                         |
 
 ## Device
 
-`Device` is a discriminated union that specifies where tensors are stored:
+`cref:T:Toro.Device` is a discriminated union that specifies where tensors are stored:
 
-| Case | Description |
-| --- | --- |
-| `Cpu` | CPU memory |
+| Case     | Description             |
+| -------- | ----------------------- |
+| `Cpu`    | CPU memory              |
 | `Cuda n` | CUDA GPU with index `n` |
 
 Move a tensor to a different device with `toDevice`:
@@ -45,18 +46,18 @@ result {
 ## Error Model
 
 Most Toro operations return `Result<'T, ToroError>`.
-`ToroError` is a discriminated union with these cases:
+`cref:T:Toro.ToroError` is a discriminated union with these cases:
 
-| Case | Description |
-| --- | --- |
+| Case                                | Description                    |
+| ----------------------------------- | ------------------------------ |
 | `ShapeMismatch(msg, expected, got)` | Shape mismatch between tensors |
-| `DTypeMismatch msg` | Incompatible data types |
-| `DeviceError msg` | Device-related error |
-| `TensorNotFound path` | File not found during load |
-| `UnsupportedDType s` | Data type is not supported |
-| `UnsupportedDevice s` | Device is not supported |
-| `Msg s` | General error message |
-| `Wrapped exn` | Wrapped .NET exception |
+| `DTypeMismatch msg`                 | Incompatible data types        |
+| `DeviceError msg`                   | Device-related error           |
+| `TensorNotFound path`               | File not found during load     |
+| `UnsupportedDType s`                | Data type is not supported     |
+| `UnsupportedDevice s`               | Device is not supported        |
+| `Msg s`                             | General error message          |
+| `Wrapped exn`                       | Wrapped .NET exception         |
 
 ## The `result { }` Computation Expression
 
@@ -104,20 +105,24 @@ This split keeps common arithmetic concise while preserving safety for operation
 When you chain multiple `Result`-returning operations, use the `~` operators.
 They accept both `Tensor` and `Result<Tensor, ToroError>` as operands:
 
-| Operator | Description |
-| --- | --- |
-| `+~` | Add (tensor-tensor) |
-| `-~` | Subtract (tensor-tensor) |
-| `*~` | Multiply (tensor-tensor) |
-| `/~` | Divide (tensor-tensor) |
-| `+~.` | Add scalar |
-| `-~.` | Subtract scalar |
-| `*~.` | Multiply by scalar |
-| `/~.` | Divide by scalar |
+| Operator | Description              |
+| -------- | ------------------------ |
+| `+~`     | Add (tensor-tensor)      |
+| `-~`     | Subtract (tensor-tensor) |
+| `*~`     | Multiply (tensor-tensor) |
+| `/~`     | Divide (tensor-tensor)   |
+| `+~.`    | Add scalar               |
+| `-~.`    | Subtract scalar          |
+| `*~.`    | Multiply by scalar       |
+| `/~.`    | Divide by scalar         |
 
 ```fsharp
 result {
-    let! loss = (inp.sub target) |> TensorR.sqr |> TensorR.meanAll
+    let! a = Tensor.randn ([ 2; 3 ], F32, Cpu)
+    let! b = Tensor.randn ([ 3; 2 ], F32, Cpu)
+    let! c = a.matmul b                 // Result<Tensor>
+    let! d = c +~ a.sumAll ()           // Result + Result
+    let! e = d *~. 0.5                  // Result * scalar
 }
 ```
 
@@ -125,16 +130,16 @@ result {
 
 `TensorR` provides pipe-friendly functions that accept both `Tensor` and `Result<Tensor, ToroError>`:
 
-| Function | Description |
-| --- | --- |
-| `TensorR.scale s t` | Multiply by scalar `s` |
-| `TensorR.shift s t` | Add scalar `s` |
-| `TensorR.sqr t` | Element-wise square |
-| `TensorR.sqrt t` | Element-wise square root |
-| `TensorR.neg t` | Negate |
-| `TensorR.exp t` | Element-wise exponential |
-| `TensorR.log t` | Element-wise natural log |
-| `TensorR.meanAll t` | Mean of all elements |
+| Function            | Description              |
+| ------------------- | ------------------------ |
+| `TensorR.scale s t` | Multiply by scalar `s`   |
+| `TensorR.shift s t` | Add scalar `s`           |
+| `TensorR.sqr t`     | Element-wise square      |
+| `TensorR.sqrt t`    | Element-wise square root |
+| `TensorR.neg t`     | Negate                   |
+| `TensorR.exp t`     | Element-wise exponential |
+| `TensorR.log t`     | Element-wise natural log |
+| `TensorR.meanAll t` | Mean of all elements     |
 
 ```fsharp
 let! loss = inp.sub target |> TensorR.sqr |> TensorR.meanAll

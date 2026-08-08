@@ -3,6 +3,7 @@ title: Toro
 category: Documentation
 categoryindex: 1
 index: 0
+description: A minimalist ML framework for F# powered by TorchSharp. Install, train an XOR model, and explore examples.
 ---
 
 # Toro
@@ -33,6 +34,9 @@ open Toro
 open Toro.NN
 
 let r = result {
+    let! x = Tensor.ofFloat32Array2D ([| [| 0f; 0f |]; [| 0f; 1f |]; [| 1f; 0f |]; [| 1f; 1f |] |], Cpu)
+    let! y = Tensor.ofFloat32Array2D ([| [| 0f |]; [| 1f |]; [| 1f |]; [| 0f |] |], Cpu)
+
     let! l1 = Linear.init 2 16 F32 Cpu
     let! l2 = Linear.init 16 1 F32 Cpu
     let model = sequential { l1; Relu; l2 }
@@ -49,6 +53,7 @@ let r = result {
 
 The `result { }` computation expression chains operations that return `Result<'T, ToroError>`.
 Use `let!` to unwrap each result. Use `do!` for operations that return `Result<unit, ToroError>`.
+See the `cref:T:Toro.Tensor` and `cref:T:Toro.ToroError` API reference for the full member list.
 
 ## Documentation
 
@@ -62,13 +67,13 @@ Use `let!` to unwrap each result. Use `do!` for operations that return `Result<u
 
 The repository has these examples:
 
-| Example | Description |
-| --- | --- |
-| [LinearRegression](https://github.com/toro-ml/toro/tree/main/examples/LinearRegression) | Gradient descent with raw tensors |
-| [SimpleTraining](https://github.com/toro-ml/toro/tree/main/examples/SimpleTraining) | XOR with `sequential { }` CE |
-| [MnistTraining](https://github.com/toro-ml/toro/tree/main/examples/MnistTraining) | CNN image classification |
-| [MnistCnn](https://github.com/toro-ml/toro/tree/main/examples/MnistCnn) | CNN with BatchNorm, Dropout, `sequentialT { }` |
-| [MnistAutoencoder](https://github.com/toro-ml/toro/tree/main/examples/MnistAutoencoder) | Autoencoder with image output |
-| [MnistGan](https://github.com/toro-ml/toro/tree/main/examples/MnistGan) | GAN image generation |
-| [CharRnn](https://github.com/toro-ml/toro/tree/main/examples/CharRnn) | Character-level text generation with LSTM |
-| [TextClassifier](https://github.com/toro-ml/toro/tree/main/examples/TextClassifier) | Transformer-based text classification |
+| Example                                                                                 | Description                                    |
+| --------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| [LinearRegression](https://github.com/toro-ml/toro/tree/main/examples/LinearRegression) | Gradient descent with raw tensors              |
+| [SimpleTraining](https://github.com/toro-ml/toro/tree/main/examples/SimpleTraining)     | XOR with `sequential { }` CE                   |
+| [MnistTraining](https://github.com/toro-ml/toro/tree/main/examples/MnistTraining)       | CNN image classification                       |
+| [MnistCnn](https://github.com/toro-ml/toro/tree/main/examples/MnistCnn)                 | CNN with BatchNorm, Dropout, `sequentialT { }` |
+| [MnistAutoencoder](https://github.com/toro-ml/toro/tree/main/examples/MnistAutoencoder) | Autoencoder with image output                  |
+| [MnistGan](https://github.com/toro-ml/toro/tree/main/examples/MnistGan)                 | GAN image generation                           |
+| [CharRnn](https://github.com/toro-ml/toro/tree/main/examples/CharRnn)                   | Character-level text generation with LSTM      |
+| [TextClassifier](https://github.com/toro-ml/toro/tree/main/examples/TextClassifier)     | Transformer-based text classification          |

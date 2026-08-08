@@ -3,6 +3,7 @@ title: Training
 category: Documentation
 categoryindex: 1
 index: 5
+description: Loss functions, SGD and AdamW optimizers, training and evaluation loops, learning rate scheduling, and checkpointing.
 ---
 
 # Training
@@ -14,12 +15,12 @@ For the `result { }` CE and operator return type rules, see [Core Concepts](conc
 
 Toro.NN provides these loss functions. Each takes two tensors and returns `Result<Tensor, ToroError>`:
 
-| Function | Description |
-| --- | --- |
-| `Loss.mse inp target` | Mean squared error |
-| `Loss.nll inp target` | Negative log-likelihood |
-| `Loss.crossEntropy inp target` | Cross-entropy (combines log-softmax and NLL) |
-| `Loss.binaryCrossEntropyWithLogit inp target` | Binary cross-entropy with logits |
+| Function                                      | Description                                  |
+| --------------------------------------------- | -------------------------------------------- |
+| `Loss.mse inp target`                         | Mean squared error                           |
+| `Loss.nll inp target`                         | Negative log-likelihood                      |
+| `Loss.crossEntropy inp target`                | Cross-entropy (combines log-softmax and NLL) |
+| `Loss.binaryCrossEntropyWithLogit inp target` | Binary cross-entropy with logits             |
 
 ```fsharp
 result {
@@ -96,3 +97,68 @@ for epoch in 1..epochs do
     if epoch % 10 = 0 then
         printfn "epoch %d" epoch
 ```
+
+## Evaluation
+
+Wrap inference in `Toro.noGrad` to disable gradient tracking.
+This reduces memory use and speeds up the forward pass:
+
+```fsharp
+Toro.noGrad (fun () ->
+    let r = result {
+        let! pred = model.forward testX
+        let! loss = Loss.crossEntropy pred testY
+        printfn "Test loss: %.4f" (loss.item ())
+
+        let! argmax = pred.argmax (1)
+        let! eq = (argmax .=. testY).toDType F32
+        let! total = eq.sumAll ()
+        printfn "Accuracy: %.2f%%" (total.item () / float testY.ElemCount * 100.0)
+    }
+
+    match r with
+    | Ok () -> ()
+    | Error e -> eprintfn "%A" e
+)
+```
+
+## Learning Rate Scheduling
+
+Use `setLearningRate` on `IOptimizer` to adjust the learning rate during training.
+This example halves the rate every 100 epochs:
+
+```fsharp
+for epoch in 1..epochs do
+    if epoch % 100 = 0 then
+        let lr = opt.learningRate () * 0.5
+        opt.setLearningRate lr
+        printfn "lr -> %f" lr
+
+    let! pred = model.forward x
+    let! loss = Loss.mse pred y
+    do! opt.backwardStep loss
+```
+
+## Checkpointing
+
+Save and restore model parameters with `Model.save` and `Model.loadInto`.
+Each parameter is stored as a separate file under the given directory:
+
+```fsharp
+for epoch in 1..epochs do
+    let! pred = model.forward x
+    let! loss = Loss.crossEntropy pred y
+    do! opt.backwardStep loss
+
+    if epoch % 50 = 0 then
+        do! Model.save model $"checkpoints/epoch{epoch}"
+```
+
+Load a checkpoint into an existing model:
+
+```fsharp
+do! Model.loadInto model "checkpoints/epoch200"
+```
+
+`Model.loadInto` matches parameters by name and copies values into the model tensors.
+Parameters not found on disk are left unchanged.

@@ -3,6 +3,7 @@ title: Getting Started
 category: Documentation
 categoryindex: 1
 index: 1
+description: Install Toro and train a two-layer network on the XOR problem step by step.
 ---
 
 # Getting Started

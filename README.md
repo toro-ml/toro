@@ -69,6 +69,23 @@ let r = result {
 | [CharRnn](examples/CharRnn) | Character-level text generation with LSTM |
 | [TextClassifier](examples/TextClassifier) | Transformer-based text classification |
 
+## Development
+
+Build and run tests:
+
+```bash
+dotnet build
+dotnet test
+```
+
+Preview the documentation site locally:
+
+```bash
+dotnet tool restore
+dotnet build -c Release
+dotnet fsdocs watch --properties Configuration=Release
+```
+
 ## License
 
 [MIT](LICENSE)
