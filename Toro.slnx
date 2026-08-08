@@ -12,5 +12,6 @@
     <Project Path="examples/MnistAutoencoder/MnistAutoencoder.fsproj" />
     <Project Path="examples/MnistCnn/MnistCnn.fsproj" />
     <Project Path="examples/MnistGan/MnistGan.fsproj" />
+    <Project Path="examples/LinearRegression/LinearRegression.fsproj" />
   </Folder>
 </Solution>
