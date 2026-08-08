@@ -10,7 +10,41 @@ permissions:
   id-token: write
 
 jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore tools
+        run: dotnet tool restore
+
+      - name: Check formatting
+        run: dotnet fantomas --check src/ tests/
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test --configuration Release --no-build
+
   publish:
+    needs: [format, test]
     runs-on: ubuntu-latest
     environment: release
 
@@ -29,11 +63,14 @@ jobs:
       - name: Restore
         run: dotnet restore
 
-      - name: Test
-        run: dotnet test --configuration Release --no-restore
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
 
-      - name: Pack
-        run: dotnet pack src/Toro/Toro.fsproj --configuration Release --no-restore --output artifacts /p:Version=${{ steps.version.outputs.version }}
+      - name: Pack Toro
+        run: dotnet pack src/Toro/Toro.fsproj --configuration Release --no-build --output artifacts /p:Version=${{ steps.version.outputs.version }}
+
+      - name: Pack Toro.NN
+        run: dotnet pack src/Toro.NN/Toro.NN.fsproj --configuration Release --no-build --output artifacts /p:Version=${{ steps.version.outputs.version }}
 
       - name: NuGet login
         uses: NuGet/login@v1
