@@ -31,3 +31,8 @@ jobs:
 
       - name: Pack
         run: dotnet pack src/Toro/Toro.fsproj --configuration Release --no-restore --no-build --output artifacts
+
+      - name: Docs build
+        run: |
+          dotnet tool restore
+          dotnet fsdocs build --properties Configuration=Release
