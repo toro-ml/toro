@@ -1,0 +1,79 @@
+---
+title: "Model"
+description: "Model composition and parameter management."
+namespace: "Toro.NN"
+---
+
+Reflection-based parameter discovery, serialization, and deserialization for F# record models.
+
+| Function | Description |
+| --- | --- |
+| `loadInto model dirPath` | Load tensors from the given directory into the model in place. |
+| `namedParams model` | Return all named tensors in the model via reflection. |
+| `save model dirPath` | Save all model tensors to the given directory. |
+| `trainableVars model` | Return all tensors that require gradients. |
+
+## loadInto
+
+```fsharp
+loadInto model dirPath
+```
+
+Load tensors from the given directory into the model in place.
+
+**Parameters**
+
+- `model` : `'T`
+- `dirPath` : `string`
+
+**Returns** ``Result<unit, ToroError>``
+
+---
+
+## namedParams
+
+```fsharp
+namedParams model
+```
+
+Return all named tensors in the model via reflection.
+
+**Parameters**
+
+- `model` : `'T`
+
+**Returns** `(string * Tensor) list`
+
+---
+
+## save
+
+```fsharp
+save model dirPath
+```
+
+Save all model tensors to the given directory.
+
+**Parameters**
+
+- `model` : `'T`
+- `dirPath` : `string`
+
+**Returns** ``Result<unit, ToroError>``
+
+---
+
+## trainableVars
+
+```fsharp
+trainableVars model
+```
+
+Return all tensors that require gradients.
+
+**Parameters**
+
+- `model` : `'T`
+
+**Returns** `Tensor list`
+

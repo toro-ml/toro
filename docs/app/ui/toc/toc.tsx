@@ -47,7 +47,6 @@ export const TableOfContents = ({ entries }: { entries: TocEntry[] }) => {
   if (entries.length === 0) return null;
   return (
     <nav className={s.nav} aria-label="Table of contents">
-      <div className={s.heading}>On this page</div>
       <ul className={s.list}>
         {entries.map(({ id, text, depth }) => (
           <li key={id}>
@@ -63,7 +62,9 @@ export const TableOfContents = ({ entries }: { entries: TocEntry[] }) => {
               }}
               className={[
                 s.link,
-                depth >= 3 ? s.linkDepth3 : "",
+                depth === 2 ? s.linkDepth2 : "",
+                depth === 3 ? s.linkDepth3 : "",
+                depth >= 4 ? s.linkDepth4 : "",
                 activeId === id ? s.linkActive : "",
               ]
                 .filter(Boolean)

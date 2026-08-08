@@ -1,0 +1,34 @@
+---
+title: "ToroError"
+description: "Error type for Toro operations."
+namespace: "Toro"
+---
+
+All errors that Toro operations can produce.
+
+## Union cases
+
+| Name | Description |
+| --- | --- |
+| `DTypeMismatch msg` |  |
+| `DeviceError msg` |  |
+| `Msg string` |  |
+| `ShapeMismatch(msg, expected, got)` |  |
+| `TensorNotFound path` |  |
+| `UnsupportedDType string` |  |
+| `UnsupportedDevice string` |  |
+| `Wrapped exn` | A .NET exception caught at the TorchSharp boundary. |
+
+## Instance members
+
+| Name | Description |
+| --- | --- |
+| `this.IsDTypeMismatch` |  |
+| `this.IsDeviceError` |  |
+| `this.IsMsg` |  |
+| `this.IsShapeMismatch` |  |
+| `this.IsTensorNotFound` |  |
+| `this.IsUnsupportedDType` |  |
+| `this.IsUnsupportedDevice` |  |
+| `this.IsWrapped` |  |
+

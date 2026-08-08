@@ -63,6 +63,14 @@ export const linkActive = style({
   },
 });
 
+export const linkDepth2 = style({
+  paddingLeft: "1.25rem",
+});
+
 export const linkDepth3 = style({
-  paddingLeft: space[7],
+  paddingLeft: "2rem",
+});
+
+export const linkDepth4 = style({
+  paddingLeft: "2.75rem",
 });

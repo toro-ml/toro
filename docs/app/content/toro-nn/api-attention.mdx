@@ -1,0 +1,46 @@
+---
+title: "Attention layers"
+description: "Multi-head attention and transformer block."
+namespace: "Toro.NN"
+showTitle: false
+---
+
+# MultiHeadAttention
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `HeadDim` |  |
+| `NumHeads` |  |
+| `WK` |  |
+| `WO` |  |
+| `WQ` |  |
+| `WV` |  |
+
+## Instance members
+
+| Name | Description |
+| --- | --- |
+| `this.forward (x, ?mask, ?kvCache)` |  |
+
+---
+
+# TransformerBlock
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `Attn` |  |
+| `Ff1` |  |
+| `Ff2` |  |
+| `Norm1` |  |
+| `Norm2` |  |
+
+## Instance members
+
+| Name | Description |
+| --- | --- |
+| `this.forward (x, ?mask)` |  |
+

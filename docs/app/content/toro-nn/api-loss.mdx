@@ -1,0 +1,81 @@
+---
+title: "Loss"
+description: "Loss functions for training."
+namespace: "Toro.NN"
+---
+
+Loss functions. Each takes (input, target) and returns a scalar loss tensor.
+
+| Function | Description |
+| --- | --- |
+| `binaryCrossEntropyWithLogit inp target` | $\text{BCE} = \max(x,0) - x \cdot y + \ln(1 + e^{-\lvert x \rvert})$ |
+| `crossEntropy inp target` | $H(p,q) = -(1/n)\sum \log\text{softmax}(x)_{y_i}$ |
+| `mse inp target` | $\text{MSE} = (1/n)\sum(x_i - y_i)^2$ |
+| `nll inp target` | $\text{NLL} = -(1/n)\sum x_{i,y_i}$ |
+
+## binaryCrossEntropyWithLogit
+
+```fsharp
+binaryCrossEntropyWithLogit inp target
+```
+
+$\text{BCE} = \max(x,0) - x \cdot y + \ln(1 + e^{-\lvert x \rvert})$
+
+**Parameters**
+
+- `inp` : `Tensor`
+- `target` : `Tensor`
+
+**Returns** ``Result<Tensor, ToroError>``
+
+---
+
+## crossEntropy
+
+```fsharp
+crossEntropy inp target
+```
+
+$H(p,q) = -(1/n)\sum \log\text{softmax}(x)_{y_i}$
+
+**Parameters**
+
+- `inp` : `Tensor`
+- `target` : `Tensor`
+
+**Returns** ``Result<Tensor, ToroError>``
+
+---
+
+## mse
+
+```fsharp
+mse inp target
+```
+
+$\text{MSE} = (1/n)\sum(x_i - y_i)^2$
+
+**Parameters**
+
+- `inp` : `Tensor`
+- `target` : `Tensor`
+
+**Returns** ``Result<Tensor, ToroError>``
+
+---
+
+## nll
+
+```fsharp
+nll inp target
+```
+
+$\text{NLL} = -(1/n)\sum x_{i,y_i}$
+
+**Parameters**
+
+- `inp` : `Tensor`
+- `target` : `Tensor`
+
+**Returns** ``Result<Tensor, ToroError>``
+

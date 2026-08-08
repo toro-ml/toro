@@ -140,6 +140,12 @@ globalStyle(`${article} hr`, {
   margin: `${space[7]} 0`,
 });
 
+export const namespaceBadge = style({
+  fontSize: fontSize.sm,
+  color: color.textMuted,
+  marginBottom: space[2],
+});
+
 export const pageNav = style({
   display: "flex",
   justifyContent: "space-between",

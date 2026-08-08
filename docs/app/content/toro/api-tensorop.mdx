@@ -1,0 +1,301 @@
+---
+title: "Tensor operations"
+description: "Result-returning operators and pipeable functions."
+namespace: "Toro"
+showTitle: false
+---
+
+# TensorOp
+
+Result-returning arithmetic operators (`+~`, `-~`, `*~`, `/~`) and scalar variants (`*~.` etc.).
+
+| Function | Description |
+| --- | --- |
+| `a *~ b` | $a \times b$ |
+| `t *~. s` | $t \times s$ (scalar) |
+| `a +~ b` | $a + b$ |
+| `t +~. s` | $t + s$ (scalar) |
+| `a -~ b` | $a - b$ |
+| `t -~. s` | $t - s$ (scalar) |
+| `a /~ b` | $a / b$ |
+| `t /~. s` | $t / s$ (scalar) |
+
+## ( *~ )
+
+```fsharp
+a *~ b
+```
+
+$a \times b$
+
+**Parameters**
+
+- `a` : `^a`
+- `b` : `^b`
+
+**Returns** ``Result<Tensor, ToroError>``
+
+---
+
+## ( *~. )
+
+```fsharp
+t *~. s
+```
+
+$t \times s$ (scalar)
+
+**Parameters**
+
+- `t` : `^a`
+- `s` : `float`
+
+**Returns** ``Result<Tensor, ToroError>``
+
+---
+
+## (+~)
+
+```fsharp
+a +~ b
+```
+
+$a + b$
+
+**Parameters**
+
+- `a` : `^a`
+- `b` : `^b`
+
+**Returns** ``Result<Tensor, ToroError>``
+
+---
+
+## (+~.)
+
+```fsharp
+t +~. s
+```
+
+$t + s$ (scalar)
+
+**Parameters**
+
+- `t` : `^a`
+- `s` : `float`
+
+**Returns** ``Result<Tensor, ToroError>``
+
+---
+
+## (-~)
+
+```fsharp
+a -~ b
+```
+
+$a - b$
+
+**Parameters**
+
+- `a` : `^a`
+- `b` : `^b`
+
+**Returns** ``Result<Tensor, ToroError>``
+
+---
+
+## (-~.)
+
+```fsharp
+t -~. s
+```
+
+$t - s$ (scalar)
+
+**Parameters**
+
+- `t` : `^a`
+- `s` : `float`
+
+**Returns** ``Result<Tensor, ToroError>``
+
+---
+
+## (/~)
+
+```fsharp
+a /~ b
+```
+
+$a / b$
+
+**Parameters**
+
+- `a` : `^a`
+- `b` : `^b`
+
+**Returns** ``Result<Tensor, ToroError>``
+
+---
+
+## (/~.)
+
+```fsharp
+t /~. s
+```
+
+$t / s$ (scalar)
+
+**Parameters**
+
+- `t` : `^a`
+- `s` : `float`
+
+**Returns** ``Result<Tensor, ToroError>``
+
+---
+
+# TensorR
+
+Pipeable Result-returning tensor functions (e.g. `tensor |> TensorR.sqrt`).
+
+| Function | Description |
+| --- | --- |
+| `exp t` | $e^t$ |
+| `log t` | $\ln t$ |
+| `meanAll t` | Mean of all elements. |
+| `neg t` | $-t$ |
+| `scale s t` | $s \cdot t$ |
+| `shift s t` | $t + s$ |
+| `sqr t` | $t^2$ |
+| `sqrt t` | $\sqrt{t}$ |
+
+## exp
+
+```fsharp
+exp t
+```
+
+$e^t$
+
+**Parameters**
+
+- `t` : `^a`
+
+**Returns** ``Result<Tensor, ToroError>``
+
+---
+
+## log
+
+```fsharp
+log t
+```
+
+$\ln t$
+
+**Parameters**
+
+- `t` : `^a`
+
+**Returns** ``Result<Tensor, ToroError>``
+
+---
+
+## meanAll
+
+```fsharp
+meanAll t
+```
+
+Mean of all elements.
+
+**Parameters**
+
+- `t` : `^a`
+
+**Returns** ``Result<Tensor, ToroError>``
+
+---
+
+## neg
+
+```fsharp
+neg t
+```
+
+$-t$
+
+**Parameters**
+
+- `t` : `^a`
+
+**Returns** ``Result<Tensor, ToroError>``
+
+---
+
+## scale
+
+```fsharp
+scale s t
+```
+
+$s \cdot t$
+
+**Parameters**
+
+- `s` : `float`
+- `t` : `^a`
+
+**Returns** ``Result<Tensor, ToroError>``
+
+---
+
+## shift
+
+```fsharp
+shift s t
+```
+
+$t + s$
+
+**Parameters**
+
+- `s` : `float`
+- `t` : `^a`
+
+**Returns** ``Result<Tensor, ToroError>``
+
+---
+
+## sqr
+
+```fsharp
+sqr t
+```
+
+$t^2$
+
+**Parameters**
+
+- `t` : `^a`
+
+**Returns** ``Result<Tensor, ToroError>``
+
+---
+
+## sqrt
+
+```fsharp
+sqrt t
+```
+
+$\sqrt{t}$
+
+**Parameters**
+
+- `t` : `^a`
+
+**Returns** ``Result<Tensor, ToroError>``
+

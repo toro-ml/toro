@@ -1,3 +1,4 @@
+import { mkdirSync } from "node:fs";
 import { readFileSync, writeFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
@@ -5,63 +6,245 @@ const root = join(import.meta.dirname, "..");
 const refDir = join(root, ".fsdocs-out", "reference");
 const outDir = join(root, "docs", "app", "content");
 
-const modulePages = {
-  "toro-tensor.html": {
-    slug: "api-tensor",
-    title: "Tensor Module",
-    description: "Tensor creation, manipulation, and computation.",
+// ── File-based page definitions ──────────────────────────────────────
+// Each entry corresponds to a single .fs file in the fsproj.
+// `sources` lists the FSDocs HTML files produced by that file.
+// Multi-source pages are merged into a single MDX with per-type h2 headings.
+
+const filePages = [
+  // ── Toro ── (fsproj compile order)
+  {
+    subdir: "toro",
+    namespace: "Toro",
+    slug: "api-error",
+    title: "Error",
+    description: "Error type for Toro operations.",
+    sources: [{ html: "toro-toroerror.html", heading: "ToroError" }],
   },
-  "toro-device.html": {
+  {
+    subdir: "toro",
+    namespace: "Toro",
     slug: "api-device",
-    title: "Device Module",
+    title: "Device",
     description: "Device selection (CPU / CUDA).",
+    sources: [{ html: "toro-device.html", heading: "Device" }],
   },
-  "toro-dtype.html": {
+  {
+    subdir: "toro",
+    namespace: "Toro",
     slug: "api-dtype",
-    title: "DType Module",
+    title: "DType",
     description: "Data type definitions for tensors.",
+    sources: [{ html: "toro-dtype.html", heading: "DType" }],
   },
-  "toro-shape.html": {
+  {
+    subdir: "toro",
+    namespace: "Toro",
     slug: "api-shape",
-    title: "Shape Module",
+    title: "Shape",
     description: "Tensor shape utilities.",
+    sources: [{ html: "toro-shape.html", heading: "Shape" }],
   },
-  "toro-nn-linear.html": {
-    slug: "api-linear",
-    title: "Linear Module",
-    description: "Fully connected linear layer.",
+  {
+    subdir: "toro",
+    namespace: "Toro",
+    slug: "api-tensor",
+    title: "Tensor APIs",
+    description: "Tensor creation, manipulation, and indexing.",
+    sources: [
+      { html: "toro-tensor.html", heading: "Tensor" },
+      { html: "toro-tidx.html", heading: "TIdx" },
+    ],
   },
-  "toro-nn-conv1d.html": {
-    slug: "api-conv1d",
-    title: "Conv1d Module",
-    description: "1D convolutional layer.",
-  },
-  "toro-nn-conv2d.html": {
-    slug: "api-conv2d",
-    title: "Conv2d Module",
-    description: "2D convolutional layer.",
-  },
-  "toro-nn-loss.html": {
-    slug: "api-loss",
-    title: "Loss Module",
-    description: "Loss functions for training.",
-  },
-  "toro-nn-model.html": {
-    slug: "api-model",
-    title: "Model Module",
-    description: "Model composition and parameter management.",
-  },
-  "toro-tensorop.html": {
+  {
+    subdir: "toro",
+    namespace: "Toro",
     slug: "api-tensorop",
-    title: "TensorOp Module",
-    description: "Result-returning arithmetic operators.",
+    title: "Tensor operations",
+    description: "Result-returning operators and pipeable functions.",
+    sources: [
+      { html: "toro-tensorop.html", heading: "TensorOp" },
+      { html: "toro-tensorr.html", heading: "TensorR" },
+    ],
   },
-  "toro-tensorr.html": {
-    slug: "api-tensorr",
-    title: "TensorR Module",
-    description: "Pipeable Result-returning tensor functions.",
+
+  // ── Toro.NN ── (fsproj compile order)
+  {
+    subdir: "toro-nn",
+    namespace: "Toro.NN",
+    slug: "api-init",
+    title: "Init",
+    description: "Weight initialization strategies.",
+    sources: [{ html: "toro-nn-init.html", heading: "Init" }],
   },
-};
+  {
+    subdir: "toro-nn",
+    namespace: "Toro.NN",
+    slug: "api-model",
+    title: "Model",
+    description: "Model composition and parameter management.",
+    sources: [{ html: "toro-nn-model.html", heading: "Model" }],
+  },
+  // Layer/
+  {
+    subdir: "toro-nn",
+    namespace: "Toro.NN",
+    slug: "api-linear",
+    title: "Linear",
+    description: "Fully connected linear layer.",
+    sources: [{ html: "toro-nn-linear.html", heading: "Linear" }],
+  },
+  {
+    subdir: "toro-nn",
+    namespace: "Toro.NN",
+    slug: "api-embedding",
+    title: "Embedding",
+    description: "Embedding lookup layer.",
+    sources: [{ html: "toro-nn-embedding.html", heading: "Embedding" }],
+  },
+  {
+    subdir: "toro-nn",
+    namespace: "Toro.NN",
+    slug: "api-conv",
+    title: "Convolution layers",
+    description: "Convolutional layers (1-D and 2-D).",
+    sources: [
+      { html: "toro-nn-conv1d.html", heading: "Conv1d" },
+      { html: "toro-nn-conv2d.html", heading: "Conv2d" },
+    ],
+  },
+  {
+    subdir: "toro-nn",
+    namespace: "Toro.NN",
+    slug: "api-dropout",
+    title: "Dropout",
+    description: "Dropout regularization layer.",
+    sources: [{ html: "toro-nn-dropout.html", heading: "Dropout" }],
+  },
+  {
+    subdir: "toro-nn",
+    namespace: "Toro.NN",
+    slug: "api-layernorm",
+    title: "Normalization layers",
+    description: "Layer normalization and RMS normalization.",
+    sources: [
+      { html: "toro-nn-layernorm.html", heading: "LayerNorm" },
+      { html: "toro-nn-rmsnorm.html", heading: "RmsNorm" },
+    ],
+  },
+  {
+    subdir: "toro-nn",
+    namespace: "Toro.NN",
+    slug: "api-batchnorm",
+    title: "BatchNorm",
+    description: "Batch normalization.",
+    sources: [{ html: "toro-nn-batchnorm.html", heading: "BatchNorm" }],
+  },
+  {
+    subdir: "toro-nn",
+    namespace: "Toro.NN",
+    slug: "api-groupnorm",
+    title: "GroupNorm",
+    description: "Group normalization.",
+    sources: [{ html: "toro-nn-groupnorm.html", heading: "GroupNorm" }],
+  },
+  {
+    subdir: "toro-nn",
+    namespace: "Toro.NN",
+    slug: "api-activation",
+    title: "Activation",
+    description: "Activation functions as module wrappers.",
+    sources: [{ html: "toro-nn-activation.html", heading: "Activation" }],
+  },
+  {
+    subdir: "toro-nn",
+    namespace: "Toro.NN",
+    slug: "api-pooling",
+    title: "Pooling layers",
+    description: "Pooling layers (max and average).",
+    sources: [
+      { html: "toro-nn-maxpool1d.html", heading: "MaxPool1d" },
+      { html: "toro-nn-maxpool2d.html", heading: "MaxPool2d" },
+      { html: "toro-nn-avgpool2d.html", heading: "AvgPool2d" },
+    ],
+  },
+  // Block/
+  {
+    subdir: "toro-nn",
+    namespace: "Toro.NN",
+    slug: "api-sequential",
+    title: "Sequential",
+    description: "Sequential module composition.",
+    sources: [{ html: "toro-nn-sequential.html", heading: "Sequential" }],
+  },
+  {
+    subdir: "toro-nn",
+    namespace: "Toro.NN",
+    slug: "api-sequentialt",
+    title: "SequentialT",
+    description: "Sequential composition with train/eval mode.",
+    sources: [{ html: "toro-nn-sequentialt.html", heading: "SequentialT" }],
+  },
+  {
+    subdir: "toro-nn",
+    namespace: "Toro.NN",
+    slug: "api-func",
+    title: "Func",
+    description: "Custom function as a module.",
+    sources: [{ html: "toro-nn-func.html", heading: "Func" }],
+  },
+  {
+    subdir: "toro-nn",
+    namespace: "Toro.NN",
+    slug: "api-rnn",
+    title: "Recurrent layers",
+    description: "Recurrent layers (LSTM and GRU).",
+    sources: [
+      { html: "toro-nn-lstm.html", heading: "LSTM" },
+      { html: "toro-nn-gru.html", heading: "GRU" },
+    ],
+  },
+  {
+    subdir: "toro-nn",
+    namespace: "Toro.NN",
+    slug: "api-kvcache",
+    title: "KvCache",
+    description: "Key-value cache for inference.",
+    sources: [{ html: "toro-nn-kvcache.html", heading: "KvCache" }],
+  },
+  {
+    subdir: "toro-nn",
+    namespace: "Toro.NN",
+    slug: "api-attention",
+    title: "Attention layers",
+    description: "Multi-head attention and transformer block.",
+    sources: [
+      { html: "toro-nn-multiheadattention.html", heading: "MultiHeadAttention" },
+      { html: "toro-nn-transformerblock.html", heading: "TransformerBlock" },
+    ],
+  },
+  {
+    subdir: "toro-nn",
+    namespace: "Toro.NN",
+    slug: "api-loss",
+    title: "Loss",
+    description: "Loss functions for training.",
+    sources: [{ html: "toro-nn-loss.html", heading: "Loss" }],
+  },
+  {
+    subdir: "toro-nn",
+    namespace: "Toro.NN",
+    slug: "api-optim",
+    title: "Optimizers",
+    description: "Optimizers (SGD and AdamW).",
+    sources: [
+      { html: "toro-nn-sgd.html", heading: "SGD" },
+      { html: "toro-nn-adamw.html", heading: "AdamW" },
+    ],
+  },
+];
+
+// ── HTML helpers ──────────────────────────────────────────────────────
 
 function decodeEntities(text) {
   return text
@@ -161,7 +344,13 @@ function extractModuleSummary(html) {
   return match ? stripTagsKeepCode(match[1]) : "";
 }
 
-function generateModuleMdx(pageInfo, html) {
+// ── MDX generation ───────────────────────────────────────────────────
+
+function h(level) {
+  return "#".repeat(level);
+}
+
+function generateSourceContent(html, sourceLevel) {
   const summary = extractModuleSummary(html);
 
   const sections = [];
@@ -180,14 +369,16 @@ function generateModuleMdx(pageInfo, html) {
 
   const typeSections = extractTypeMembers(html);
 
-  let mdx = `---\ntitle: "${pageInfo.title}"\ndescription: "${pageInfo.description}"\n---\n\n`;
+  let mdx = "";
+  const sectionLevel = sourceLevel + 1;
+  const memberLevel = sectionLevel + 1;
 
   if (summary) {
     mdx += `${escapeMdx(summary)}\n\n`;
   }
 
   for (const section of typeSections) {
-    mdx += `## ${section.section}\n\n`;
+    mdx += `${h(sectionLevel)} ${section.section}\n\n`;
     mdx += "| Name | Description |\n";
     mdx += "| --- | --- |\n";
     for (const m of section.members) {
@@ -200,7 +391,7 @@ function generateModuleMdx(pageInfo, html) {
 
   for (const section of sections) {
     if (section.title !== "Functions and values") {
-      mdx += `## ${section.title}\n\n`;
+      mdx += `${h(sectionLevel)} ${section.title}\n\n`;
     }
 
     mdx += "| Function | Description |\n";
@@ -219,7 +410,11 @@ function generateModuleMdx(pageInfo, html) {
       if (mi > 0) {
         mdx += `---\n\n`;
       }
-      mdx += `### ${escapeMdx(m.name)}\n\n`;
+      const level =
+        section.title === "Functions and values"
+          ? sectionLevel
+          : memberLevel;
+      mdx += `${h(level)} ${escapeMdx(m.name)}\n\n`;
       mdx += "```fsharp\n";
       mdx += m.signature;
       mdx += "\n```\n\n";
@@ -245,6 +440,37 @@ function generateModuleMdx(pageInfo, html) {
   return mdx;
 }
 
+function generateFileMdx(filePage) {
+  const ns = filePage.namespace
+    ? `\nnamespace: "${filePage.namespace}"`
+    : "";
+  const multi = filePage.sources.length > 1;
+  const title = multi ? filePage.title : filePage.sources[0].heading;
+  const showTitle = multi ? "\nshowTitle: false" : "";
+  let mdx = `---\ntitle: "${title}"\ndescription: "${filePage.description}"${ns}${showTitle}\n---\n\n`;
+
+  if (multi) {
+    for (let i = 0; i < filePage.sources.length; i++) {
+      const source = filePage.sources[i];
+      const filePath = join(refDir, source.html);
+      const html = readFileSync(filePath, "utf-8");
+
+      if (i > 0) mdx += "---\n\n";
+      mdx += `# ${source.heading}\n\n`;
+      mdx += generateSourceContent(html, 1);
+    }
+  } else {
+    const source = filePage.sources[0];
+    const filePath = join(refDir, source.html);
+    const html = readFileSync(filePath, "utf-8");
+    mdx += generateSourceContent(html, 1);
+  }
+
+  return mdx;
+}
+
+// ── Main ─────────────────────────────────────────────────────────────
+
 function main() {
   let files;
   try {
@@ -255,16 +481,26 @@ function main() {
     process.exit(1);
   }
 
-  for (const [filename, pageInfo] of Object.entries(modulePages)) {
-    const filePath = join(refDir, filename);
+  const subdirs = new Set(
+    filePages.map((p) => p.subdir).filter(Boolean),
+  );
+  for (const sub of subdirs) {
+    mkdirSync(join(outDir, sub), { recursive: true });
+  }
+
+  for (const filePage of filePages) {
     try {
-      const html = readFileSync(filePath, "utf-8");
-      const mdx = generateModuleMdx(pageInfo, html);
-      const outPath = join(outDir, `${pageInfo.slug}.mdx`);
+      const mdx = generateFileMdx(filePage);
+      const dir = filePage.subdir ? join(outDir, filePage.subdir) : outDir;
+      const outPath = join(dir, `${filePage.slug}.mdx`);
       writeFileSync(outPath, mdx);
-      console.log(`  ${pageInfo.slug}.mdx`);
+      const label = filePage.subdir
+        ? `${filePage.subdir}/${filePage.slug}.mdx`
+        : `${filePage.slug}.mdx`;
+      console.log(`  ${label}`);
     } catch (e) {
-      console.error(`Error processing ${filename}: ${e.message}`);
+      const htmlList = filePage.sources.map((s) => s.html).join(", ");
+      console.error(`Error processing ${htmlList}: ${e.message}`);
     }
   }
 }

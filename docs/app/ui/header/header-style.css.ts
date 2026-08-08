@@ -71,6 +71,7 @@ const drawerBase = style({
   top: 0,
   left: 0,
   right: 0,
+  bottom: 0,
   backdropFilter: "blur(0.25rem)",
   paddingTop: "var(--header-height)",
   paddingLeft: "1.5rem",
@@ -129,4 +130,40 @@ export const drawerSectionHeading = style({
   letterSpacing: "0.05em",
   color: color.textMuted,
   padding: `${space[7]} ${space[5]} ${space[3]}`,
+});
+
+export const drawerGroupSummary = style({
+  display: "flex",
+  alignItems: "center",
+  gap: space[3],
+  fontSize: fontSize.base,
+  fontWeight: 500,
+  color: color.textMuted,
+  padding: `${space[3]} ${space[5]}`,
+  cursor: "pointer",
+  listStyle: "none",
+  selectors: {
+    "&::marker": { display: "none" },
+    "&::-webkit-details-marker": { display: "none" },
+    "details[open] > &": {
+      color: color.text,
+    },
+  },
+});
+
+export const drawerGroupChevron = style({
+  width: "0.875rem",
+  height: "0.875rem",
+  flexShrink: 0,
+  marginLeft: "auto",
+  transition: "transform 0.15s ease",
+  selectors: {
+    "details[open] > summary > &": {
+      transform: "rotate(90deg)",
+    },
+  },
+});
+
+export const drawerGroupItems = style({
+  paddingLeft: "1.25rem",
 });

@@ -4,6 +4,7 @@ import { getDoc } from "~/content/mdx.server";
 import { MdxContent } from "~/ui/mdx/mdx-components";
 import {
   article,
+  namespaceBadge,
   pageNav,
   pageNavLabel,
   pageNavLink,
@@ -52,7 +53,12 @@ export default function DocPage({
   return (
     <>
       <article className={article}>
-        <h1>{meta.title}</h1>
+        {meta.namespace && (
+          <div className={namespaceBadge}>
+            <code>{meta.namespace}</code>
+          </div>
+        )}
+        {meta.showTitle && <h1 id="top">{meta.title}</h1>}
         <MdxContent code={code} />
         {(prev || next) && (
           <nav className={pageNav}>
