@@ -28,7 +28,7 @@ export default function Landing({ loaderData }: { loaderData: Awaited<ReturnType
           <Heading size="8" className={heroTitle}>
             Toro
           </Heading>
-          <Text size="4" className={heroSubtitle}>
+          <Text size="3" className={heroSubtitle}>
             A lightweight ML framework for F# powered by TorchSharp.
           </Text>
         </Flex>

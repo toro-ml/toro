@@ -32,6 +32,10 @@ jobs:
       - name: Pack
         run: dotnet pack src/Toro/Toro.fsproj --configuration Release --no-restore --no-build --output artifacts
 
+      - name: Restore tools
+        run: dotnet tool restore
+      - name: Generate API docs (FSDocs)
+        run: dotnet fsi scripts/generate-api-docs.fsx
       - uses: pnpm/action-setup@v4
         with:
           version: 9
@@ -40,6 +44,8 @@ jobs:
           node-version: 22
           cache: pnpm
           cache-dependency-path: docs/pnpm-lock.yaml
+      - name: Generate API MDX
+        run: node scripts/generate-api-mdx.mjs
       - name: Docs build
         working-directory: docs
         run: |

@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "generate:api": "cd .. && dotnet build -c Release && dotnet fsi scripts/generate-api-docs.fsx && node scripts/generate-api-mdx.mjs",
     "dev": "react-router dev",
     "build": "react-router build",
     "preview": "vite preview"

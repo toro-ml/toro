@@ -1,7 +1,7 @@
 import { style, styleVariants } from "@vanilla-extract/css";
-import { breakpoint, color } from "~/ui/tokens";
+import { breakpoint, color, fontSize, space } from "~/ui/tokens";
 
-const baseStyle = style({
+export const headerStyle = style({
   position: "fixed",
   height: "var(--header-height)",
   display: "flex",
@@ -11,25 +11,6 @@ const baseStyle = style({
   left: 0,
   right: 0,
   zIndex: 1000,
-  overscrollBehaviorY: "contain",
-  transition: "visibility 0.2s, opacity 0.2s",
-});
-
-export const headerStyle = styleVariants({
-  hidden: [
-    baseStyle,
-    {
-      visibility: "hidden",
-      opacity: 0,
-    },
-  ],
-  visible: [
-    baseStyle,
-    {
-      visibility: "visible",
-      opacity: 1,
-    },
-  ],
 });
 
 export const headerInner = style({
@@ -37,7 +18,13 @@ export const headerInner = style({
   alignItems: "center",
   justifyContent: "space-between",
   flex: 1,
-  padding: "0 1rem",
+  padding: `0 ${space[5]}`,
+  "@media": {
+    [breakpoint.sidebar]: {
+      paddingLeft: "1.375rem",
+      paddingRight: "1.375rem",
+    },
+  },
 });
 
 export const headerRight = style({
@@ -111,4 +98,35 @@ const backdropBase = style({
 export const backdrop = styleVariants({
   open: [backdropBase, { opacity: 1 }],
   closed: [backdropBase, { opacity: 0, pointerEvents: "none" }],
+});
+
+export const drawerLink = style({
+  display: "block",
+  padding: `${space[4]} ${space[5]}`,
+  borderRadius: space[2],
+  textDecoration: "none",
+  fontSize: fontSize.base,
+  color: color.text,
+  transition: "color 0.15s, background-color 0.15s",
+  ":hover": {
+    color: color.textEmphasis,
+  },
+});
+
+export const drawerLinkActive = style([
+  drawerLink,
+  {
+    backgroundColor: color.bgActive,
+    color: color.textEmphasis,
+    fontWeight: 500,
+  },
+]);
+
+export const drawerSectionHeading = style({
+  fontSize: fontSize.xs,
+  fontWeight: 600,
+  textTransform: "uppercase",
+  letterSpacing: "0.05em",
+  color: color.textMuted,
+  padding: `${space[7]} ${space[5]} ${space[3]}`,
 });

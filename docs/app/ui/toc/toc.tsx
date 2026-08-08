@@ -53,6 +53,14 @@ export const TableOfContents = ({ entries }: { entries: TocEntry[] }) => {
           <li key={id}>
             <a
               href={`#${id}`}
+              onClick={(e) => {
+                e.preventDefault();
+                const el = document.getElementById(id);
+                if (el) {
+                  el.scrollIntoView({ behavior: "smooth" });
+                  history.replaceState(null, "", `#${id}`);
+                }
+              }}
               className={[
                 s.link,
                 depth >= 3 ? s.linkDepth3 : "",

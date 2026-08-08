@@ -8,7 +8,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="en"
-      style={{ scrollPaddingTop: "4rem", scrollBehavior: "smooth" }}
+      style={{ scrollPaddingTop: "3.5rem" }}
     >
       <head>
         <meta charSet="utf-8" />

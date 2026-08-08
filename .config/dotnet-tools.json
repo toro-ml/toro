@@ -11,6 +11,11 @@
       "version": "0.83.0",
       "commands": ["fsautocomplete"],
       "rollForward": false
+    },
+    "fsdocs-tool": {
+      "version": "22.1.0",
+      "commands": ["fsdocs"],
+      "rollForward": false
     }
   }
 }

@@ -1,11 +1,11 @@
 import { style } from "@vanilla-extract/css";
-import { breakpoint, color } from "~/ui/tokens";
+import { breakpoint, color, fontSize, space } from "~/ui/tokens";
 
 export const nav = style({
   position: "sticky",
   top: "var(--header-height)",
   height: "calc(100dvh - var(--header-height))",
-  padding: "1.5rem 0.75rem 1.5rem 1rem",
+  padding: `${space[6]} ${space[4]} ${space[6]} ${space[5]}`,
   overflowY: "auto",
   borderRight: `1px solid ${color.border}`,
   display: "none",
@@ -22,15 +22,15 @@ export const list = style({
   margin: 0,
   display: "flex",
   flexDirection: "column",
-  gap: "0.125rem",
+  gap: space[1],
 });
 
 export const link = style({
   display: "block",
-  padding: "0.375rem 0.75rem",
-  borderRadius: "0.25rem",
+  padding: `${space[2]} 0.625rem`,
+  borderRadius: space[2],
   textDecoration: "none",
-  fontSize: "0.875rem",
+  fontSize: fontSize.sm,
   color: color.text,
   transition: "color 0.15s, background-color 0.15s",
   ":hover": {
@@ -46,3 +46,12 @@ export const linkActive = style([
     fontWeight: 500,
   },
 ]);
+
+export const sectionHeading = style({
+  fontSize: fontSize.xs,
+  fontWeight: 600,
+  textTransform: "uppercase",
+  letterSpacing: "0.05em",
+  color: color.textMuted,
+  padding: `${space[7]} 0.625rem ${space[3]}`,
+});

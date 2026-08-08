@@ -8,10 +8,10 @@ export const docsGrid = style({
   paddingTop: "var(--header-height)",
   "@media": {
     [breakpoint.sidebar]: {
-      gridTemplateColumns: "15rem 1fr",
+      gridTemplateColumns: "14rem 1fr",
     },
     [breakpoint.toc]: {
-      gridTemplateColumns: "15rem 1fr 15rem",
+      gridTemplateColumns: "14rem 1fr 14rem",
     },
   },
 });

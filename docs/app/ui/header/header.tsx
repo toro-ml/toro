@@ -4,13 +4,15 @@ import {
   HamburgerMenuIcon,
 } from "@radix-ui/react-icons";
 import { Heading } from "@radix-ui/themes";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router";
-import { navItems } from "~/ui/sidebar";
-import { link, linkActive } from "~/ui/sidebar/sidebar-style.css";
+import { navSections } from "~/ui/sidebar";
 import {
   backdrop,
   drawer,
+  drawerLink,
+  drawerLinkActive,
+  drawerSectionHeading,
   headerInner,
   headerRight,
   headerStyle,
@@ -20,26 +22,7 @@ import {
   menuButton,
 } from "./header-style.css";
 
-function useScrollDirection() {
-  const [visible, setVisible] = useState(true);
-  const lastY = useRef(0);
-
-  const onScroll = useCallback(() => {
-    const y = window.scrollY;
-    setVisible(y <= 0 || y < lastY.current);
-    lastY.current = y;
-  }, []);
-
-  useEffect(() => {
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [onScroll]);
-
-  return visible;
-}
-
 export const Header = () => {
-  const visible = useScrollDirection();
   const [open, setOpen] = useState(false);
   const location = useLocation();
 
@@ -49,9 +32,9 @@ export const Header = () => {
 
   return (
     <>
-      <header className={headerStyle[visible || open ? "visible" : "hidden"]}>
+      <header className={headerStyle}>
         <div className={headerInner}>
-          <Link to="/" className={logoLink}>
+          <Link to="/" className={logoLink} viewTransition>
             <img
               src="/toro/img/favicon.png"
               alt="Toro"
@@ -90,18 +73,28 @@ export const Header = () => {
         onClick={() => setOpen(false)}
       />
       <nav className={drawer[open ? "open" : "closed"]}>
-        <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-          {navItems.map(({ to, label }) => (
-            <li key={to}>
-              <NavLink
-                to={to}
-                className={({ isActive }) => (isActive ? linkActive : link)}
-              >
-                {label}
-              </NavLink>
-            </li>
-          ))}
-        </ul>
+        {navSections.map((section, i) => (
+          <div key={i}>
+            {section.title && (
+              <div className={drawerSectionHeading}>{section.title}</div>
+            )}
+            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+              {section.items.map(({ to, label }) => (
+                <li key={to}>
+                  <NavLink
+                    to={to}
+                    viewTransition
+                    className={({ isActive }) =>
+                      isActive ? drawerLinkActive : drawerLink
+                    }
+                  >
+                    {label}
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
       </nav>
     </>
   );
