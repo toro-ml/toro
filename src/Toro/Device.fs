@@ -2,6 +2,7 @@ namespace Toro
 
 open TorchSharp
 
+/// Compute device for tensor storage.
 type Device =
     | Cpu
     | Cuda of int

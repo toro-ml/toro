@@ -6,6 +6,8 @@ open TorchSharp
 module internal ScalarHelper =
     let toScalar (v: float) : Scalar = Scalar.op_Implicit v
 
+/// Wrapper around TorchSharp tensor. Most methods return Result&lt;'T, ToroError&gt;;
+/// arithmetic operators throw on failure for ergonomic use in expressions.
 type Tensor internal (inner: torch.Tensor) =
 
     member _.Inner = inner
@@ -642,6 +644,7 @@ type Tensor internal (inner: torch.Tensor) =
         let dtype = DType.ofTorch inner.dtype
         $"Tensor[{shape}, {dtype}]"
 
+/// Index specifier for <c>Tensor.at</c>. I=single, S=slice, A=all, T=tensor, E=ellipsis, N=newaxis.
 and TIdx =
     | I of int
     | S of start: int * stop: int
@@ -653,6 +656,7 @@ and TIdx =
     | N
 
 module Toro =
+    /// Run f with gradient tracking disabled.
     let noGrad (f: unit -> 'a) : 'a =
         use _scope = torch.no_grad ()
         f ()

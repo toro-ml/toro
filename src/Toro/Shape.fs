@@ -1,5 +1,6 @@
 namespace Toro
 
+/// Utilities for tensor shapes represented as <c>int list</c>.
 module Shape =
     let rank (shape: int list) = shape.Length
 

@@ -2,8 +2,10 @@ namespace Toro.NN
 
 open Toro
 
+/// Common optimizer interface. Use <c>backwardStep</c> for the typical backward+step+zeroGrad cycle.
 type IOptimizer =
     abstract step: unit -> Result<unit, ToroError>
+    /// Calls backward, step, and zeroGrad in sequence.
     abstract backwardStep: Tensor -> Result<unit, ToroError>
     abstract learningRate: unit -> float
     abstract setLearningRate: float -> unit

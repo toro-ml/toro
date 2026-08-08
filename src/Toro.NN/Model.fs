@@ -5,6 +5,7 @@ open System.Reflection
 open Microsoft.FSharp.Reflection
 open Toro
 
+/// Reflection-based parameter discovery, serialization, and deserialization for F# record models.
 module Model =
 
     let private flags = BindingFlags.Public ||| BindingFlags.Instance

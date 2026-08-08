@@ -1,5 +1,6 @@
 namespace Toro
 
+/// All errors that Toro operations can produce.
 type ToroError =
     | ShapeMismatch of msg: string * expected: int list * got: int list
     | DTypeMismatch of msg: string
@@ -8,6 +9,7 @@ type ToroError =
     | UnsupportedDType of string
     | UnsupportedDevice of string
     | Msg of string
+    /// A .NET exception caught at the TorchSharp boundary.
     | Wrapped of exn
 
     override this.ToString() =
@@ -24,6 +26,7 @@ type ToroError =
         | Wrapped ex -> $"Error: {ex.Message}"
 
 module ToroError =
+    /// Run f, catching any exception as Error(Wrapped exn).
     let inline wrap ([<InlineIfLambda>] f: unit -> 'a) : Result<'a, ToroError> =
         try
             Ok(f ())

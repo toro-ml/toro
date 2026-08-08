@@ -12,6 +12,9 @@
     <RepositoryUrl>https://github.com/toro-ml/toro</RepositoryUrl>
     <RepositoryBranch>main</RepositoryBranch>
     <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://toro-ml.github.io/toro</PackageProjectUrl>
+    <FsDocsLicenseLink>https://github.com/toro-ml/toro/blob/main/LICENSE</FsDocsLicenseLink>
+    <FsDocsReleaseNotesLink>https://github.com/toro-ml/toro/releases</FsDocsReleaseNotesLink>
   </PropertyGroup>
 
   <ItemGroup>

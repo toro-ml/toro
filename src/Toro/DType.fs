@@ -2,6 +2,7 @@ namespace Toro
 
 open TorchSharp
 
+/// Element data type of a tensor.
 type DType =
     | F16
     | BF16

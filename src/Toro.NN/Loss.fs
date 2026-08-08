@@ -2,6 +2,7 @@ namespace Toro.NN
 
 open Toro
 
+/// Loss functions. Each takes (input, target) and returns a scalar loss tensor.
 module Loss =
 
     let mse (inp: Tensor) (target: Tensor) : Result<Tensor, ToroError> =

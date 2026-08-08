@@ -1,5 +1,6 @@
 namespace Toro
 
+/// Result-returning arithmetic operators (<c>+~</c>, <c>-~</c>, <c>*~</c>, <c>/~</c>) and scalar variants (<c>*~.</c> etc.).
 [<AutoOpen>]
 module TensorOp =
 
@@ -64,6 +65,7 @@ module TensorOp =
             return! t.subScalar s
         }
 
+/// Pipeable Result-returning tensor functions (e.g. <c>tensor |&gt; TensorR.sqrt</c>).
 module TensorR =
 
     let inline scale (s: float) t =
