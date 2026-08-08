@@ -55,12 +55,15 @@ module Model =
         |> Seq.collect (fun (i, item) -> collect (makePath prefix (string i)) item)
         |> Seq.toList
 
+    /// Return all named tensors in the model via reflection.
     let namedParams (model: 'T) : (string * Tensor) list = collect "" (box model)
 
+    /// Return all tensors that require gradients.
     let trainableVars (model: 'T) : Tensor list =
         namedParams model
         |> List.choose (fun (_, t) -> if t.RequiresGrad then Some t else None)
 
+    /// Save all model tensors to the given directory.
     let save (model: 'T) (dirPath: string) : Result<unit, ToroError> =
         result {
             do! ToroError.wrap (fun () -> Directory.CreateDirectory dirPath |> ignore)
@@ -75,6 +78,7 @@ module Model =
                 do! tensor.save filePath
         }
 
+    /// Load tensors from the given directory into the model in place.
     let loadInto (model: 'T) (dirPath: string) : Result<unit, ToroError> =
         result {
             for name, tensor in namedParams model do

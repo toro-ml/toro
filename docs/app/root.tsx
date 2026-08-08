@@ -1,5 +1,6 @@
 import { Theme } from "@radix-ui/themes";
 import "@radix-ui/themes/styles.css";
+import "katex/dist/katex.min.css";
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "react-router";
 import { Header } from "~/ui/header";
 import "~/ui/layout/global.css";

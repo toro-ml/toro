@@ -4,16 +4,25 @@ open TorchSharp
 
 /// Element data type of a tensor.
 type DType =
+    /// IEEE 754 half-precision (16-bit) float.
     | F16
+    /// Brain floating-point (16-bit) float.
     | BF16
+    /// Single-precision (32-bit) float.
     | F32
+    /// Double-precision (64-bit) float.
     | F64
+    /// Signed 32-bit integer.
     | I32
+    /// Signed 64-bit integer.
     | I64
+    /// Unsigned 8-bit integer.
     | U8
+    /// Boolean.
     | Bool
 
 module DType =
+    /// Convert to a TorchSharp scalar type.
     let toTorch (dtype: DType) : torch.ScalarType =
         match dtype with
         | F16 -> torch.ScalarType.Float16
@@ -25,6 +34,7 @@ module DType =
         | U8 -> torch.ScalarType.Byte
         | Bool -> torch.ScalarType.Bool
 
+    /// Try to convert a TorchSharp scalar type. Return Error for unsupported types.
     let tryOfTorch (dtype: torch.ScalarType) : Result<DType, ToroError> =
         match dtype with
         | torch.ScalarType.Float16 -> Ok F16
@@ -37,6 +47,7 @@ module DType =
         | torch.ScalarType.Bool -> Ok Bool
         | dt -> Error(UnsupportedDType(string dt))
 
+    /// Convert a TorchSharp scalar type. Raise on unsupported types.
     let ofTorch (dtype: torch.ScalarType) : DType =
         match tryOfTorch dtype with
         | Ok d -> d

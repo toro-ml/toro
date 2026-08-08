@@ -89,6 +89,7 @@ globalStyle(`${article} li`, {
 
 globalStyle(`${article} table`, {
   width: "100%",
+  tableLayout: "fixed",
   borderCollapse: "collapse",
   marginBottom: space[6],
   fontSize: fontSize.sm,
@@ -102,9 +103,28 @@ globalStyle(`${article} th`, {
   color: color.textEmphasis,
 });
 
+globalStyle(`${article} th:first-child, ${article} td:first-child`, {
+  width: "45%",
+});
+
 globalStyle(`${article} td`, {
   borderBottom: `1px solid ${color.border}`,
-  padding: `${space[3]} 0.625rem`,
+  padding: `${space[4]} 0.625rem`,
+  wordBreak: "break-word",
+  lineHeight: 1.6,
+});
+
+globalStyle(`${article} td code`, {
+  whiteSpace: "normal",
+  wordBreak: "break-all",
+});
+
+globalStyle(`${article} td .katex`, {
+  fontSize: "1.1em",
+});
+
+globalStyle(`${article} td .katex-html`, {
+  overflow: "visible",
 });
 
 globalStyle(`${article} blockquote`, {

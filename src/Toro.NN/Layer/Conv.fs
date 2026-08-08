@@ -4,6 +4,7 @@ open Toro
 
 // --- Conv1d ---
 
+/// Configuration for 1-D convolution.
 type Conv1dConfig = {
     Padding: int
     Stride: int
@@ -12,6 +13,7 @@ type Conv1dConfig = {
 }
 
 module Conv1dConfig =
+    /// Default configuration: no padding, stride 1, dilation 1, groups 1.
     let defaultConfig = {
         Padding = 0
         Stride = 1
@@ -19,12 +21,14 @@ module Conv1dConfig =
         Groups = 1
     }
 
+/// 1-D convolution layer.
 type Conv1d = {
     Weight: Tensor
     Bias: Tensor option
     Config: Conv1dConfig
 } with
 
+    /// Apply 1-D convolution to the input.
     member this.forward(x: Tensor) : Result<Tensor, ToroError> =
         let c = this.Config
 
@@ -41,6 +45,7 @@ type Conv1d = {
         member this.forward x = this.forward x
 
 module Conv1d =
+    /// Create a Conv1d layer with bias.
     let init
         (inChannels: int)
         (outChannels: int)
@@ -64,6 +69,7 @@ module Conv1d =
             }
         }
 
+    /// Create a Conv1d layer with default configuration.
     let initDefault
         (inChannels: int)
         (outChannels: int)
@@ -73,6 +79,7 @@ module Conv1d =
         : Result<Conv1d, ToroError> =
         init inChannels outChannels kernelSize Conv1dConfig.defaultConfig dtype device
 
+    /// Create a Conv1d layer without bias.
     let initNoBias
         (inChannels: int)
         (outChannels: int)
@@ -95,6 +102,7 @@ module Conv1d =
 
 // --- Conv2d ---
 
+/// Configuration for 2-D convolution.
 type Conv2dConfig = {
     Padding: int
     Stride: int
@@ -103,6 +111,7 @@ type Conv2dConfig = {
 }
 
 module Conv2dConfig =
+    /// Default configuration: no padding, stride 1, dilation 1, groups 1.
     let defaultConfig = {
         Padding = 0
         Stride = 1
@@ -110,12 +119,14 @@ module Conv2dConfig =
         Groups = 1
     }
 
+/// 2-D convolution layer.
 type Conv2d = {
     Weight: Tensor
     Bias: Tensor option
     Config: Conv2dConfig
 } with
 
+    /// Apply 2-D convolution to the input.
     member this.forward(x: Tensor) : Result<Tensor, ToroError> =
         let c = this.Config
 
@@ -132,6 +143,7 @@ type Conv2d = {
         member this.forward x = this.forward x
 
 module Conv2d =
+    /// Create a Conv2d layer with bias.
     let init
         (inChannels: int)
         (outChannels: int)
@@ -155,6 +167,7 @@ module Conv2d =
             }
         }
 
+    /// Create a Conv2d layer with default configuration.
     let initDefault
         (inChannels: int)
         (outChannels: int)
@@ -164,6 +177,7 @@ module Conv2d =
         : Result<Conv2d, ToroError> =
         init inChannels outChannels kernelSize Conv2dConfig.defaultConfig dtype device
 
+    /// Create a Conv2d layer without bias.
     let initNoBias
         (inChannels: int)
         (outChannels: int)

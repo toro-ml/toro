@@ -32,6 +32,8 @@ export const navSections: NavSection[] = [
       { to: "/api-linear", label: "Linear" },
       { to: "/api-conv1d", label: "Conv1d" },
       { to: "/api-conv2d", label: "Conv2d" },
+      { to: "/api-tensorop", label: "TensorOp" },
+      { to: "/api-tensorr", label: "TensorR" },
       { to: "/api-loss", label: "Loss" },
       { to: "/api-model", label: "Model" },
     ],

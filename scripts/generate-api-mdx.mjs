@@ -51,6 +51,16 @@ const modulePages = {
     title: "Model Module",
     description: "Model composition and parameter management.",
   },
+  "toro-tensorop.html": {
+    slug: "api-tensorop",
+    title: "TensorOp Module",
+    description: "Result-returning arithmetic operators.",
+  },
+  "toro-tensorr.html": {
+    slug: "api-tensorr",
+    title: "TensorR Module",
+    description: "Pipeable Result-returning tensor functions.",
+  },
 };
 
 function decodeEntities(text) {
@@ -65,6 +75,14 @@ function decodeEntities(text) {
 
 function stripTags(html) {
   return decodeEntities(html.replace(/<[^>]+>/g, "")).trim();
+}
+
+function stripTagsKeepCode(html) {
+  return decodeEntities(
+    html
+      .replace(/<(?:code|c)>([\s\S]*?)<\/(?:code|c)>/g, "`$1`")
+      .replace(/<[^>]+>/g, ""),
+  ).trim();
 }
 
 function escapeMdx(text) {
@@ -92,7 +110,7 @@ function extractMembers(html) {
     const summaryMatch = docHtml.match(
       /<p class="fsdocs-summary">([\s\S]*?)<\/p>/,
     );
-    const summary = summaryMatch ? stripTags(summaryMatch[1]) : "";
+    const summary = summaryMatch ? stripTagsKeepCode(summaryMatch[1]) : "";
 
     const params = [];
     const paramRegex =
@@ -140,7 +158,7 @@ function extractModuleSummary(html) {
   const match = html.match(
     /<div class="fsdocs-summary-contents">\s*<p class="fsdocs-summary">([\s\S]*?)<\/p>/,
   );
-  return match ? stripTags(match[1]) : "";
+  return match ? stripTagsKeepCode(match[1]) : "";
 }
 
 function generateModuleMdx(pageInfo, html) {

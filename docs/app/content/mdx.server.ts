@@ -3,8 +3,10 @@ import rehypeShiki from "@shikijs/rehype";
 import fs from "node:fs/promises";
 import path from "node:path";
 import matter from "gray-matter";
+import rehypeKatex from "rehype-katex";
 import rehypeSlug from "rehype-slug";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
 import type { Root, Element } from "hast";
 import type { Plugin } from "unified";
 
@@ -53,9 +55,10 @@ export async function getDoc(slug: string) {
 
   const compiled = await compile(content, {
     outputFormat: "function-body",
-    remarkPlugins: [remarkGfm],
+    remarkPlugins: [remarkGfm, remarkMath],
     rehypePlugins: [
       rehypeSlug,
+      rehypeKatex,
       [
         rehypeShiki,
         {

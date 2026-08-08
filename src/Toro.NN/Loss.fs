@@ -5,9 +5,11 @@ open Toro
 /// Loss functions. Each takes (input, target) and returns a scalar loss tensor.
 module Loss =
 
+    /// $\text{MSE} = (1/n)\sum(x_i - y_i)^2$
     let mse (inp: Tensor) (target: Tensor) : Result<Tensor, ToroError> =
         inp.sub target |> TensorR.sqr |> TensorR.meanAll
 
+    /// $\text{NLL} = -(1/n)\sum x_{i,y_i}$
     let nll (inp: Tensor) (target: Tensor) : Result<Tensor, ToroError> =
         result {
             let! bSz = inp.dim 0
@@ -17,6 +19,7 @@ module Loss =
             return! total.affine (1.0 / float bSz, 0.0)
         }
 
+    /// $H(p,q) = -(1/n)\sum \log\text{softmax}(x)_{y_i}$
     let crossEntropy (inp: Tensor) (target: Tensor) : Result<Tensor, ToroError> =
         result {
             let! logSm = inp.logSoftmax -1
@@ -24,7 +27,7 @@ module Loss =
             return! nll logSm target'
         }
 
-    /// Binary cross-entropy with logits: max(x,0) - x*y + log(1 + exp(-|x|))
+    /// $\text{BCE} = \max(x,0) - x \cdot y + \ln(1 + e^{-\lvert x \rvert})$
     let binaryCrossEntropyWithLogit (inp: Tensor) (target: Tensor) : Result<Tensor, ToroError> =
         result {
             let! loss =

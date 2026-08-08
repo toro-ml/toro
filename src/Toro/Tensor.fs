@@ -10,22 +10,30 @@ module internal ScalarHelper =
 /// arithmetic operators throw on failure for ergonomic use in expressions.
 type Tensor internal (inner: torch.Tensor) =
 
+    /// Underlying TorchSharp tensor.
     member _.Inner = inner
 
+    /// Shape of the tensor.
     member _.Shape = inner.shape |> Shape.ofInt64Array
 
+    /// Number of dimensions.
     member _.Rank = int inner.ndim
 
+    /// Data type of the elements.
     member _.DType = DType.ofTorch inner.dtype
 
+    /// Device where the tensor resides.
     member _.Device = Device.ofTorch inner.device
 
+    /// Total number of elements.
     member _.ElemCount = inner.NumberOfElements
 
+    /// True if the tensor is contiguous in memory.
     member _.IsContiguous = inner.is_contiguous ()
 
     // --- Factory methods ---
 
+    /// Create a tensor of zeros with the given shape.
     static member zeros(shape: int list, dtype: DType, device: Device) =
         ToroError.wrap (fun () ->
             let t =
@@ -33,6 +41,7 @@ type Tensor internal (inner: torch.Tensor) =
 
             Tensor t)
 
+    /// Create a tensor of ones with the given shape.
     static member ones(shape: int list, dtype: DType, device: Device) =
         ToroError.wrap (fun () ->
             let t =
@@ -40,6 +49,7 @@ type Tensor internal (inner: torch.Tensor) =
 
             Tensor t)
 
+    /// Create a tensor filled with a scalar value.
     static member full(shape: int list, value: float, dtype: DType, device: Device) =
         ToroError.wrap (fun () ->
             let t =
@@ -52,6 +62,7 @@ type Tensor internal (inner: torch.Tensor) =
 
             Tensor t)
 
+    /// Create a tensor with uniform random values in [0, 1).
     static member rand(shape: int list, dtype: DType, device: Device) =
         ToroError.wrap (fun () ->
             let t =
@@ -59,6 +70,7 @@ type Tensor internal (inner: torch.Tensor) =
 
             Tensor t)
 
+    /// Create a tensor with standard-normal random values.
     static member randn(shape: int list, dtype: DType, device: Device) =
         ToroError.wrap (fun () ->
             let t =
@@ -66,6 +78,7 @@ type Tensor internal (inner: torch.Tensor) =
 
             Tensor t)
 
+    /// Create a 1-D tensor with values [0, stop).
     static member arange(stop: float, dtype: DType, device: Device) =
         ToroError.wrap (fun () ->
             let t =
@@ -73,6 +86,7 @@ type Tensor internal (inner: torch.Tensor) =
 
             Tensor t)
 
+    /// Create a 1-D tensor with values [start, stop).
     static member arange(start: float, stop: float, dtype: DType, device: Device) =
         ToroError.wrap (fun () ->
             let t =
@@ -80,6 +94,7 @@ type Tensor internal (inner: torch.Tensor) =
 
             Tensor t)
 
+    /// Create a 2-D tensor from a jagged float32 array.
     static member ofFloat32Array2D(data: float32 array array, device: Device) =
         ToroError.wrap (fun () ->
             let rows = data.Length
@@ -91,144 +106,181 @@ type Tensor internal (inner: torch.Tensor) =
 
             Tensor t)
 
+    /// Create a 1-D tensor from a float32 array.
     static member ofFloat32Array(data: float32 array, device: Device) =
         ToroError.wrap (fun () ->
             let t = torch.tensor (data, device = Device.toTorch device)
 
             Tensor t)
 
+    /// Concatenate tensors along a dimension.
     static member cat(tensors: Tensor list, dim: int) =
         ToroError.wrap (fun () ->
             let ts = tensors |> List.toArray |> Array.map _.Inner
 
             Tensor(torch.cat (ts, int64 dim)))
 
+    /// Stack tensors along a new dimension.
     static member stack(tensors: Tensor list, dim: int) =
         ToroError.wrap (fun () ->
             let ts = tensors |> List.toArray |> Array.map _.Inner
 
             Tensor(torch.stack (ts, int64 dim)))
 
+    /// Wrap a raw TorchSharp tensor.
     static member ofTorchTensor(t: torch.Tensor) = ToroError.wrap (fun () -> Tensor t)
 
     // --- Dimension query ---
 
+    /// Return the size of dimension d.
     member t.dim(d: int) =
         ToroError.wrap (fun () -> inner.size d |> int)
 
     // --- Arithmetic (tensor-tensor) ---
 
+    /// Elementwise addition.
     member _.add(other: Tensor) =
         ToroError.wrap (fun () -> Tensor(inner.add other.Inner))
 
+    /// Elementwise subtraction.
     member _.sub(other: Tensor) =
         ToroError.wrap (fun () -> Tensor(inner.sub other.Inner))
 
+    /// Elementwise multiplication.
     member _.mul(other: Tensor) =
         ToroError.wrap (fun () -> Tensor(inner.mul other.Inner))
 
+    /// Elementwise division.
     member _.div(other: Tensor) =
         ToroError.wrap (fun () -> Tensor(inner.div other.Inner))
 
     // --- Arithmetic (scalar) ---
 
+    /// Add a scalar to each element.
     member _.addScalar(s: float) =
         ToroError.wrap (fun () -> Tensor(inner.add (toScalar s: Scalar)))
 
+    /// Multiply each element by a scalar.
     member _.mulScalar(s: float) =
         ToroError.wrap (fun () -> Tensor(inner.mul (toScalar s: Scalar)))
 
+    /// Subtract a scalar from each element.
     member _.subScalar(s: float) =
         ToroError.wrap (fun () -> Tensor(inner.sub (toScalar s: Scalar)))
 
+    /// Divide each element by a scalar.
     member _.divScalar(s: float) =
         ToroError.wrap (fun () -> Tensor(inner.div (toScalar s: Scalar)))
 
     // --- Matrix ops ---
 
+    /// Matrix multiplication.
     member _.matmul(other: Tensor) =
         ToroError.wrap (fun () -> Tensor(inner.matmul other.Inner))
 
+    /// Transpose a 2-D tensor.
     member _.t() =
         ToroError.wrap (fun () -> Tensor(inner.t ()))
 
+    /// Swap two dimensions.
     member _.transpose(dim0: int, dim1: int) =
         ToroError.wrap (fun () -> Tensor(inner.transpose (int64 dim0, int64 dim1)))
 
     // --- Shape manipulation ---
 
+    /// Reshape to the given shape.
     member _.reshape(shape: int list) =
         ToroError.wrap (fun () -> Tensor(inner.reshape (Shape.toInt64Array shape)))
 
+    /// View with the given shape (must be contiguous).
     member _.view(shape: int list) =
         ToroError.wrap (fun () -> Tensor(inner.view (Shape.toInt64Array shape)))
 
+    /// Flatten dimensions [startDim, endDim].
     member _.flatten(startDim: int, endDim: int) =
         ToroError.wrap (fun () -> Tensor(inner.flatten (int64 startDim, int64 endDim)))
 
+    /// Flatten all dimensions to 1-D.
     member _.flattenAll() =
         ToroError.wrap (fun () -> Tensor(inner.flatten (0L, -1L)))
 
+    /// Remove a size-1 dimension.
     member _.squeeze(dim: int) =
         ToroError.wrap (fun () -> Tensor(inner.squeeze (int64 dim)))
 
+    /// Insert a size-1 dimension.
     member _.unsqueeze(dim: int) =
         ToroError.wrap (fun () -> Tensor(inner.unsqueeze (int64 dim)))
 
+    /// Return a contiguous copy.
     member _.contiguous() =
         ToroError.wrap (fun () -> Tensor(inner.contiguous ()))
 
+    /// Reorder dimensions.
     member _.permute(dims: int list) =
         ToroError.wrap (fun () -> Tensor(inner.permute (dims |> List.map int64 |> List.toArray)))
 
+    /// Broadcast to the given shape.
     member _.expand(shape: int list) =
         ToroError.wrap (fun () -> Tensor(inner.expand (Shape.toInt64Array shape)))
 
+    /// Repeat elements along a dimension.
     member _.repeatInterleave(repeats: int, dim: int) =
         ToroError.wrap (fun () -> Tensor(inner.repeat_interleave (int64 repeats, int64 dim)))
 
+    /// Pad with a constant value.
     member _.pad(padding: int list, value: float) =
         ToroError.wrap (fun () ->
             let p = padding |> List.map int64 |> List.toArray
             Tensor(torch.nn.functional.pad (inner, p, value = value)))
 
+    /// Lower-triangular part.
     member _.tril(?diagonal: int) =
         let d = defaultArg diagonal 0
         ToroError.wrap (fun () -> Tensor(inner.tril (int64 d)))
 
+    /// Upper-triangular part.
     member _.triu(?diagonal: int) =
         let d = defaultArg diagonal 0
         ToroError.wrap (fun () -> Tensor(inner.triu (int64 d)))
 
+    /// Broadcast to the given shape (left-aligned).
     member _.broadcastLeft(shape: int list) =
         ToroError.wrap (fun () -> Tensor(inner.broadcast_to (Shape.toInt64Array shape)))
 
     // --- Reduction ---
 
+    /// Sum of all elements.
     member _.sumAll() =
         ToroError.wrap (fun () -> Tensor(inner.sum ()))
 
+    /// Sum along a dimension.
     member _.sum(dim: int, ?keepDim: bool) =
         let kd = defaultArg keepDim false
 
         ToroError.wrap (fun () -> Tensor(inner.sum ([| int64 dim |], keepdim = kd)))
 
+    /// Mean of all elements.
     member _.meanAll() =
         ToroError.wrap (fun () -> Tensor(inner.mean ()))
 
+    /// Mean along a dimension.
     member _.mean(dim: int, ?keepDim: bool) =
         let kd = defaultArg keepDim false
 
         ToroError.wrap (fun () -> Tensor(inner.mean ([| int64 dim |], keepdim = kd)))
 
+    /// Index of the maximum along a dimension.
     member _.argmax(dim: int, ?keepDim: bool) =
         let kd = defaultArg keepDim false
         ToroError.wrap (fun () -> Tensor(inner.argmax (int64 dim, kd)))
 
+    /// Index of the minimum along a dimension.
     member _.argmin(dim: int, ?keepDim: bool) =
         let kd = defaultArg keepDim false
         ToroError.wrap (fun () -> Tensor(inner.argmin (int64 dim, kd)))
 
+    /// Maximum values and indices along a dimension.
     member _.max(dim: int, ?keepDim: bool) =
         let kd = defaultArg keepDim false
 
@@ -236,6 +288,7 @@ type Tensor internal (inner: torch.Tensor) =
             let struct (values, indices) = inner.max (int64 dim, kd)
             Tensor values, Tensor indices)
 
+    /// Minimum values and indices along a dimension.
     member _.min(dim: int, ?keepDim: bool) =
         let kd = defaultArg keepDim false
 
@@ -243,68 +296,89 @@ type Tensor internal (inner: torch.Tensor) =
             let struct (values, indices) = inner.min (int64 dim, kd)
             Tensor values, Tensor indices)
 
+    /// Select elements from x or y by condition.
     static member where(condition: Tensor, x: Tensor, y: Tensor) =
         ToroError.wrap (fun () -> Tensor(torch.where (condition.Inner, x.Inner, y.Inner)))
 
     // --- Unary ops ---
 
+    /// $-x$
     member _.neg() =
         ToroError.wrap (fun () -> Tensor(inner.neg ()))
 
+    /// $\lvert x \rvert$
     member _.abs() =
         ToroError.wrap (fun () -> Tensor(inner.abs ()))
 
+    /// $\sqrt{x}$
     member _.sqrt() =
         ToroError.wrap (fun () -> Tensor(inner.sqrt ()))
 
+    /// $x^2$
     member _.sqr() =
         ToroError.wrap (fun () -> Tensor(inner.square ()))
 
+    /// $x^n$
     member _.pow(exponent: float) =
         ToroError.wrap (fun () -> Tensor(inner.pow (toScalar exponent)))
 
+    /// $e^x$
     member _.exp() =
         ToroError.wrap (fun () -> Tensor(inner.exp ()))
 
+    /// $\ln x$
     member _.log() =
         ToroError.wrap (fun () -> Tensor(inner.log ()))
 
+    /// $\max(0, x)$
     member _.relu() =
         ToroError.wrap (fun () -> Tensor(inner.relu ()))
 
+    /// $\text{GELU}(x) = x \cdot \Phi(x)$
     member _.gelu() =
         ToroError.wrap (fun () -> Tensor(torch.nn.functional.gelu inner))
 
+    /// $\text{SiLU}(x) = x \cdot \sigma(x)$
     member _.silu() =
         ToroError.wrap (fun () -> Tensor(torch.nn.functional.silu inner))
 
+    /// $\tanh(x)$
     member _.tanh() =
         ToroError.wrap (fun () -> Tensor(inner.tanh ()))
 
+    /// $\sigma(x) = 1 / (1+e^{-x})$
     member _.sigmoid() =
         ToroError.wrap (fun () -> Tensor(inner.sigmoid ()))
 
+    /// $\max(\alpha x, x)$
     member _.leakyRelu(negativeSlope: float) =
         ToroError.wrap (fun () -> Tensor(torch.nn.functional.leaky_relu (inner, negativeSlope)))
 
+    /// $\text{ELU}(x) = \max(0,x) + \min(0, \alpha(e^x - 1))$
     member _.elu(alpha: float) =
         ToroError.wrap (fun () -> Tensor(torch.nn.functional.elu (inner, alpha)))
 
+    /// $x \cdot \tanh(\text{softplus}(x))$
     member _.mish() =
         ToroError.wrap (fun () -> Tensor(torch.nn.functional.mish inner))
 
+    /// Randomly zero elements with probability p.
     member _.dropout(p: float, train: bool) =
         ToroError.wrap (fun () -> Tensor(torch.nn.functional.dropout (inner, p, train)))
 
+    /// $\text{softmax}(x_i) = e^{x_i} / \sum_j e^{x_j}$
     member _.softmax(dim: int) =
         ToroError.wrap (fun () -> Tensor(torch.nn.functional.softmax (inner, int64 dim)))
 
+    /// $\log\text{softmax}(x_i) = x_i - \log\sum_j e^{x_j}$
     member _.logSoftmax(dim: int) =
         ToroError.wrap (fun () -> Tensor(torch.nn.functional.log_softmax (inner, int64 dim)))
 
+    /// Clamp elements to [min, max].
     member _.clamp(min: float, max: float) =
         ToroError.wrap (fun () -> Tensor(inner.clamp (toScalar min, toScalar max)))
 
+    /// $ax + b$
     member _.affine(mul: float, add: float) =
         ToroError.wrap (fun () ->
             let t = inner.mul (toScalar mul: Scalar)
@@ -312,15 +386,19 @@ type Tensor internal (inner: torch.Tensor) =
 
     // --- Indexing ---
 
+    /// Select slices along a dimension by index.
     member _.indexSelect(dim: int, index: Tensor) =
         ToroError.wrap (fun () -> Tensor(inner.index_select (int64 dim, index.Inner)))
 
+    /// Gather elements along a dimension by index.
     member _.gather(dim: int, index: Tensor) =
         ToroError.wrap (fun () -> Tensor(inner.gather (int64 dim, index.Inner)))
 
+    /// Narrow a dimension to [start, start+length).
     member _.narrow(dim: int, start: int64, length: int64) =
         ToroError.wrap (fun () -> Tensor(inner.narrow (int64 dim, start, length)))
 
+    /// Split into chunks along a dimension.
     member _.chunk(chunks: int, dim: int) =
         ToroError.wrap (fun () ->
             inner.chunk (int64 chunks, int64 dim)
@@ -329,24 +407,30 @@ type Tensor internal (inner: torch.Tensor) =
 
     // --- Type / Device conversion ---
 
+    /// Move to a device.
     member _.toDevice(device: Device) =
         ToroError.wrap (fun () -> Tensor(inner.``to`` (Device.toTorch device)))
 
+    /// Cast to a data type.
     member _.toDType(dtype: DType) =
         ToroError.wrap (fun () -> Tensor(inner.``to`` (DType.toTorch dtype)))
 
     // --- Autograd ---
 
+    /// True if gradient tracking is enabled.
     member _.RequiresGrad = inner.requires_grad
 
+    /// Enable or disable gradient tracking.
     member _.requiresGrad(?requiresGrad: bool) =
         let rg = defaultArg requiresGrad true
 
         ToroError.wrap (fun () -> Tensor(inner.requires_grad_ rg))
 
+    /// Compute gradients by backpropagation.
     member _.backward() =
         ToroError.wrap (fun () -> inner.backward ())
 
+    /// Return the accumulated gradient.
     member _.grad() =
         ToroError.wrap (fun () ->
             if isNull inner.grad then
@@ -354,13 +438,16 @@ type Tensor internal (inner: torch.Tensor) =
             else
                 Tensor inner.grad)
 
+    /// Detach from the computation graph.
     member _.detach() =
         ToroError.wrap (fun () -> Tensor(inner.detach ()))
 
+    /// Zero the accumulated gradient.
     member _.zeroGrad() =
         if not (isNull inner.grad) then
             inner.grad.zero_ () |> ignore
 
+    /// Copy data from src without gradient tracking.
     member _.copyInPlace(src: Tensor) =
         ToroError.wrap (fun () ->
             use _scope = torch.no_grad ()
@@ -368,6 +455,7 @@ type Tensor internal (inner: torch.Tensor) =
 
     // --- Convolution ---
 
+    /// Apply 1-D convolution.
     member _.conv1d(weight: Tensor, ?bias: Tensor, ?stride: int, ?padding: int, ?dilation: int, ?groups: int) =
         ToroError.wrap (fun () ->
             let s = int64 (defaultArg stride 1)
@@ -379,6 +467,7 @@ type Tensor internal (inner: torch.Tensor) =
 
             Tensor(torch.nn.functional.conv1d (inner, weight.Inner, b, s, p, d, g)))
 
+    /// Apply 2-D convolution.
     member _.conv2d(weight: Tensor, ?bias: Tensor, ?stride: int, ?padding: int, ?dilation: int, ?groups: int) =
         ToroError.wrap (fun () ->
             let s = int64 (defaultArg stride 1)
@@ -392,6 +481,7 @@ type Tensor internal (inner: torch.Tensor) =
 
     // --- Normalization ---
 
+    /// Apply batch normalization.
     member _.batchNorm
         (
             weight: Tensor option,
@@ -416,6 +506,7 @@ type Tensor internal (inner: torch.Tensor) =
 
             Tensor(torch.nn.functional.batch_norm (inner, rm, rv, w, b, train, momentum, eps)))
 
+    /// Apply group normalization.
     member _.groupNorm(numGroups: int, ?weight: Tensor, ?bias: Tensor, ?eps: float) =
         ToroError.wrap (fun () ->
             let e = defaultArg eps 1e-5
@@ -428,6 +519,7 @@ type Tensor internal (inner: torch.Tensor) =
 
     // --- Pooling ---
 
+    /// Apply 1-D max pooling.
     member _.maxPool1d(kernelSize: int, ?stride: int, ?padding: int) =
         ToroError.wrap (fun () ->
             let s = int64 (defaultArg stride kernelSize)
@@ -435,6 +527,7 @@ type Tensor internal (inner: torch.Tensor) =
 
             Tensor(torch.nn.functional.max_pool1d (inner, int64 kernelSize, stride = s, padding = p)))
 
+    /// Apply 2-D max pooling.
     member _.maxPool2d(kernelSize: int, ?stride: int, ?padding: int) =
         ToroError.wrap (fun () ->
             let s = int64 (defaultArg stride kernelSize)
@@ -442,6 +535,7 @@ type Tensor internal (inner: torch.Tensor) =
 
             Tensor(torch.nn.functional.max_pool2d (inner, int64 kernelSize, stride = s, padding = p)))
 
+    /// Apply 2-D average pooling.
     member _.avgPool2d(kernelSize: int, ?stride: int, ?padding: int) =
         ToroError.wrap (fun () ->
             let s = int64 (defaultArg stride kernelSize)
@@ -451,6 +545,7 @@ type Tensor internal (inner: torch.Tensor) =
 
     // --- Attention ---
 
+    /// $\text{Attention}(Q,K,V) = \text{softmax}(QK^\top / \sqrt{d_k})\,V$
     member _.scaledDotProductAttention(key: Tensor, value: Tensor, ?attnMask: Tensor, ?dropoutP: float, ?isCausal: bool) =
         ToroError.wrap (fun () ->
             let dp = defaultArg dropoutP 0.0
@@ -469,9 +564,11 @@ type Tensor internal (inner: torch.Tensor) =
                 )
             ))
 
+    /// Fill positions where mask is true with a value.
     member _.maskedFill(mask: Tensor, value: float) =
         ToroError.wrap (fun () -> Tensor(inner.masked_fill (mask.Inner, toScalar value)))
 
+    /// Create a causal attention mask.
     static member causalMask(seqLen: int, dtype: DType, device: Device) =
         ToroError.wrap (fun () ->
             let ones =
@@ -486,52 +583,67 @@ type Tensor internal (inner: torch.Tensor) =
 
     // --- Encoding ---
 
+    /// One-hot encode along numClasses.
     member _.oneHot(numClasses: int) =
         ToroError.wrap (fun () -> Tensor(torch.nn.functional.one_hot(inner, int64 numClasses).``to`` torch.float32))
 
     // --- Misc ---
 
+    /// Return a deep copy.
     member _.clone() =
         ToroError.wrap (fun () -> Tensor(inner.clone ()))
 
     // --- Persistence ---
 
+    /// Save to a file.
     member _.save(path: string) =
         ToroError.wrap (fun () -> inner.save path)
 
+    /// Load a tensor from a file.
     static member load(path: string) =
         ToroError.wrap (fun () -> Tensor(torch.Tensor.load path))
 
     // --- Scalar extraction ---
 
+    /// Extract a float32 scalar.
     member _.toFloat32Scalar() =
         ToroError.wrap (fun () -> inner.ToSingle())
 
+    /// Extract a float64 scalar.
     member _.toFloat64Scalar() =
         ToroError.wrap (fun () -> inner.ToDouble())
 
+    /// Extract an int32 scalar.
     member _.toInt32Scalar() =
         ToroError.wrap (fun () -> inner.ToInt32())
 
+    /// Extract an int64 scalar.
     member _.toInt64Scalar() =
         ToroError.wrap (fun () -> inner.ToInt64())
 
+    /// Extract as float64 (throw on error).
     member _.item() : float = inner.ToDouble()
 
+    /// Extract as float32 (throw on error).
     member _.itemF32() : float32 = inner.ToSingle()
 
+    /// Extract as int64 (throw on error).
     member _.itemI64() : int64 = inner.ToInt64()
 
+    /// Extract as int32 (throw on error).
     member _.itemI32() : int = inner.ToInt32()
 
     // --- Indexers (throw on error) ---
 
+    /// Get element at index i.
     member _.Item
         with get (i: int): Tensor = Tensor(inner.index (torch.TensorIndex.Single(int64 i)))
 
+    /// Index by a tensor.
     member _.Item
         with get (idx: Tensor): Tensor = Tensor(inner.index (torch.TensorIndex.Tensor(idx.Inner)))
 
+    /// Slice the first dimension.
     member _.GetSlice(startIdx: int option, endIdx: int option) : Tensor =
         let s = startIdx |> Option.map int64 |> Option.toNullable
 
@@ -543,6 +655,7 @@ type Tensor internal (inner: torch.Tensor) =
 
         Tensor(inner.index (torch.TensorIndex.Slice(s, e)))
 
+    /// Index by a list of TIdx specifiers.
     member _.at(indices: TIdx list) : Tensor =
         let toTorchIndex =
             function
@@ -560,73 +673,103 @@ type Tensor internal (inner: torch.Tensor) =
 
     // --- Operators (throw on error) ---
 
+    /// $a + b$
     static member (+)(a: Tensor, b: Tensor) = Tensor(a.Inner.add b.Inner)
 
+    /// $a - b$
     static member (-)(a: Tensor, b: Tensor) = Tensor(a.Inner.sub b.Inner)
 
+    /// $a \times b$
     static member (*)(a: Tensor, b: Tensor) = Tensor(a.Inner.mul b.Inner)
 
+    /// $a / b$
     static member (/)(a: Tensor, b: Tensor) = Tensor(a.Inner.div b.Inner)
 
+    /// $-t$
     static member (~-)(t: Tensor) = Tensor(t.Inner.neg ())
 
+    /// $t + s$
     static member (+)(t: Tensor, s: float) =
         Tensor(t.Inner.add (toScalar s: Scalar))
 
+    /// $s + t$
     static member (+)(s: float, t: Tensor) =
         Tensor(t.Inner.add (toScalar s: Scalar))
 
+    /// $t \times s$
     static member (*)(t: Tensor, s: float) =
         Tensor(t.Inner.mul (toScalar s: Scalar))
 
+    /// $s \times t$
     static member (*)(s: float, t: Tensor) =
         Tensor(t.Inner.mul (toScalar s: Scalar))
 
+    /// $t - s$
     static member (-)(t: Tensor, s: float) =
         Tensor(t.Inner.sub (toScalar s: Scalar))
 
+    /// $s - t$
     static member (-)(s: float, t: Tensor) =
         Tensor(t.Inner.neg().add (toScalar s: Scalar))
 
+    /// $t / s$
     static member (/)(t: Tensor, s: float) =
         Tensor(t.Inner.div (toScalar s: Scalar))
 
     // --- Comparison (throw on error) ---
 
+    /// Elementwise equal.
     member _.eq(other: Tensor) = Tensor(inner.eq other.Inner)
 
+    /// Elementwise not-equal.
     member _.ne(other: Tensor) = Tensor(inner.ne other.Inner)
 
+    /// Elementwise greater-than.
     member _.gt(other: Tensor) = Tensor(inner.gt other.Inner)
 
+    /// Elementwise less-than.
     member _.lt(other: Tensor) = Tensor(inner.lt other.Inner)
 
+    /// Elementwise greater-or-equal.
     member _.ge(other: Tensor) = Tensor(inner.ge other.Inner)
 
+    /// Elementwise less-or-equal.
     member _.le(other: Tensor) = Tensor(inner.le other.Inner)
 
+    /// Elementwise equal to a scalar.
     member _.eqScalar(s: float) = Tensor(inner.eq (toScalar s))
 
+    /// Elementwise not-equal to a scalar.
     member _.neScalar(s: float) = Tensor(inner.ne (toScalar s))
 
+    /// Elementwise greater-than a scalar.
     member _.gtScalar(s: float) = Tensor(inner.gt (toScalar s))
 
+    /// Elementwise less-than a scalar.
     member _.ltScalar(s: float) = Tensor(inner.lt (toScalar s))
 
+    /// Elementwise greater-or-equal to a scalar.
     member _.geScalar(s: float) = Tensor(inner.ge (toScalar s))
 
+    /// Elementwise less-or-equal to a scalar.
     member _.leScalar(s: float) = Tensor(inner.le (toScalar s))
 
+    /// Elementwise $a = b$.
     static member (.=.)(a: Tensor, b: Tensor) = Tensor(a.Inner.eq b.Inner)
 
+    /// Elementwise $a \neq b$.
     static member (.<>.)(a: Tensor, b: Tensor) = Tensor(a.Inner.ne b.Inner)
 
+    /// Elementwise $a > b$.
     static member (.>.)(a: Tensor, b: Tensor) = Tensor(a.Inner.gt b.Inner)
 
+    /// Elementwise $a < b$.
     static member (.<.)(a: Tensor, b: Tensor) = Tensor(a.Inner.lt b.Inner)
 
+    /// Elementwise $a \geq b$.
     static member (.>=.)(a: Tensor, b: Tensor) = Tensor(a.Inner.ge b.Inner)
 
+    /// Elementwise $a \leq b$.
     static member (.<=.)(a: Tensor, b: Tensor) = Tensor(a.Inner.le b.Inner)
 
     // --- Disposal ---

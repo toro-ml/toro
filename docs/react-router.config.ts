@@ -1,23 +1,14 @@
 import type { Config } from "@react-router/dev/config";
+import { readdirSync } from "node:fs";
+import { join } from "node:path";
+
+const contentDir = join(import.meta.dirname, "app", "content");
+const slugs = readdirSync(contentDir)
+  .filter((f) => f.endsWith(".mdx"))
+  .map((f) => `/${f.replace(/\.mdx$/, "")}`);
 
 export default {
   ssr: false,
   basename: "/toro/",
-  prerender: [
-    "/",
-    "/getting-started",
-    "/concepts",
-    "/tensor",
-    "/nn",
-    "/training",
-    "/api-tensor",
-    "/api-device",
-    "/api-dtype",
-    "/api-shape",
-    "/api-linear",
-    "/api-conv1d",
-    "/api-conv2d",
-    "/api-loss",
-    "/api-model",
-  ],
+  prerender: ["/", ...slugs],
 } satisfies Config;
