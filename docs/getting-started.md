@@ -127,6 +127,7 @@ epoch 500  loss=0.000001
 
 ## Next Steps
 
-- [Tensor](tensor.html) -- Learn tensor operations
-- [Neural Networks](nn.html) -- Learn about layers and model composition
-- [Training](training.html) -- Learn about loss functions and optimizers
+- [Core Concepts](concepts.html) -- Error handling, `result { }` CE, DType, Device
+- [Tensor](tensor.html) -- Tensor operations
+- [Neural Networks](nn.html) -- Layers and model composition
+- [Training](training.html) -- Loss functions and optimizers

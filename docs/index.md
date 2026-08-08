@@ -53,6 +53,7 @@ Use `let!` to unwrap each result. Use `do!` for operations that return `Result<u
 ## Documentation
 
 - [Getting Started](getting-started.html) -- Install Toro and train your first model
+- [Core Concepts](concepts.html) -- Error handling, `result { }` CE, DType, Device
 - [Tensor](tensor.html) -- Create tensors, do arithmetic, reshape, and index
 - [Neural Networks](nn.html) -- Layers, modules, Sequential, and SequentialT
 - [Training](training.html) -- Loss functions, optimizers, and the training loop

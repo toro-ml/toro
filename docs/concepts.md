@@ -1,0 +1,162 @@
+---
+title: Core Concepts
+category: Documentation
+categoryindex: 1
+index: 2
+---
+
+# Core Concepts
+
+This page explains the design decisions that apply across the Toro library.
+
+## DType
+
+`DType` is a discriminated union that represents data types for tensor elements:
+
+| Case | Description |
+| --- | --- |
+| `F16` | 16-bit floating point |
+| `BF16` | BFloat16 |
+| `F32` | 32-bit floating point (default) |
+| `F64` | 64-bit floating point |
+| `I32` | 32-bit integer |
+| `I64` | 64-bit integer |
+| `U8` | Unsigned 8-bit integer |
+| `Bool` | Boolean |
+
+## Device
+
+`Device` is a discriminated union that specifies where tensors are stored:
+
+| Case | Description |
+| --- | --- |
+| `Cpu` | CPU memory |
+| `Cuda n` | CUDA GPU with index `n` |
+
+Move a tensor to a different device with `toDevice`:
+
+```fsharp
+result {
+    let! t = Tensor.randn ([ 2; 3 ], F32, Cpu)
+    let! tGpu = t.toDevice (Cuda 0)
+}
+```
+
+## Error Model
+
+Most Toro operations return `Result<'T, ToroError>`.
+`ToroError` is a discriminated union with these cases:
+
+| Case | Description |
+| --- | --- |
+| `ShapeMismatch(msg, expected, got)` | Shape mismatch between tensors |
+| `DTypeMismatch msg` | Incompatible data types |
+| `DeviceError msg` | Device-related error |
+| `TensorNotFound path` | File not found during load |
+| `UnsupportedDType s` | Data type is not supported |
+| `UnsupportedDevice s` | Device is not supported |
+| `Msg s` | General error message |
+| `Wrapped exn` | Wrapped .NET exception |
+
+## The `result { }` Computation Expression
+
+The `result { }` CE chains operations that return `Result<'T, ToroError>`.
+Use `let!` to unwrap `Result` values. Use `do!` for `Result<unit, ToroError>`.
+Use `let` for values that are not wrapped in `Result`.
+
+```fsharp
+let r = result {
+    let! x = Tensor.randn ([ 4; 2 ], F32, Cpu)    // Result -> let!
+    let! w = Tensor.randn ([ 2; 1 ], F32, Cpu)     // Result -> let!
+    let! pred = x.matmul w                          // Result -> let!
+    let shifted = pred + 1.0                        // Tensor -> let
+    let! loss = shifted.meanAll ()                   // Result -> let!
+    do! loss.backward ()                             // Result<unit> -> do!
+}
+
+match r with
+| Ok () -> printfn "Success"
+| Error e -> eprintfn "Error: %A" e
+```
+
+## Operator Return Types
+
+Toro has two categories of operations:
+
+**Operators that return `Tensor` directly** (throw on error):
+
+- Arithmetic: `+`, `-`, `*`, `/`, unary `-`
+- Comparison: `.=.`, `.<>.`, `.>.`, `.<.`, `.>=.`, `.<=.`
+- Indexing: `t[i]`, `t[s..e]`
+
+**Methods that return `Result<Tensor, ToroError>`**:
+
+- Factory methods: `Tensor.zeros`, `Tensor.randn`, `Tensor.cat`, etc.
+- Shape operations: `reshape`, `view`, `squeeze`, `unsqueeze`, etc.
+- Math operations: `matmul`, `softmax`, `exp`, `log`, etc.
+- Reduction: `sumAll`, `meanAll`, `sum`, `mean`, etc.
+- Module forward: `model.forward`, `model.forwardT`
+
+This split keeps common arithmetic concise while preserving safety for operations that can fail in non-obvious ways.
+
+## Result-Based Operators
+
+When you chain multiple `Result`-returning operations, use the `~` operators.
+They accept both `Tensor` and `Result<Tensor, ToroError>` as operands:
+
+| Operator | Description |
+| --- | --- |
+| `+~` | Add (tensor-tensor) |
+| `-~` | Subtract (tensor-tensor) |
+| `*~` | Multiply (tensor-tensor) |
+| `/~` | Divide (tensor-tensor) |
+| `+~.` | Add scalar |
+| `-~.` | Subtract scalar |
+| `*~.` | Multiply by scalar |
+| `/~.` | Divide by scalar |
+
+```fsharp
+result {
+    let! loss = (inp.sub target) |> TensorR.sqr |> TensorR.meanAll
+}
+```
+
+### `TensorR` Module
+
+`TensorR` provides pipe-friendly functions that accept both `Tensor` and `Result<Tensor, ToroError>`:
+
+| Function | Description |
+| --- | --- |
+| `TensorR.scale s t` | Multiply by scalar `s` |
+| `TensorR.shift s t` | Add scalar `s` |
+| `TensorR.sqr t` | Element-wise square |
+| `TensorR.sqrt t` | Element-wise square root |
+| `TensorR.neg t` | Negate |
+| `TensorR.exp t` | Element-wise exponential |
+| `TensorR.log t` | Element-wise natural log |
+| `TensorR.meanAll t` | Mean of all elements |
+
+```fsharp
+let! loss = inp.sub target |> TensorR.sqr |> TensorR.meanAll
+```
+
+## Disabling Gradients
+
+Use `Toro.noGrad` to disable gradient tracking during evaluation:
+
+```fsharp
+Toro.noGrad (fun () ->
+    let r = result {
+        let! pred = model.forward testX
+        let! loss = Loss.crossEntropy pred testY
+        printfn "Test loss: %.4f" (loss.item ())
+    }
+
+    match r with
+    | Ok () -> ()
+    | Error e -> eprintfn "%A" e
+)
+```
+
+`Toro.noGrad` wraps a function call in a `torch.no_grad()` scope.
+This reduces memory use and speeds up inference.

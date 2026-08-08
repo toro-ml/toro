@@ -2,16 +2,17 @@
 title: Training
 category: Documentation
 categoryindex: 1
-index: 4
+index: 5
 ---
 
 # Training
 
-This page covers loss functions, optimizers, the training loop, and the `result { }` pattern.
+This page covers loss functions, optimizers, and the training loop.
+For the `result { }` CE and operator return type rules, see [Core Concepts](concepts.html).
 
 ## Loss Functions
 
-Toro.NN provides these loss functions:
+Toro.NN provides these loss functions. Each takes two tensors and returns `Result<Tensor, ToroError>`:
 
 | Function | Description |
 | --- | --- |
@@ -19,8 +20,6 @@ Toro.NN provides these loss functions:
 | `Loss.nll inp target` | Negative log-likelihood |
 | `Loss.crossEntropy inp target` | Cross-entropy (combines log-softmax and NLL) |
 | `Loss.binaryCrossEntropyWithLogit inp target` | Binary cross-entropy with logits |
-
-Each function takes two tensors and returns `Result<Tensor, ToroError>`.
 
 ```fsharp
 result {
@@ -97,63 +96,3 @@ for epoch in 1..epochs do
     if epoch % 10 = 0 then
         printfn "epoch %d" epoch
 ```
-
-## The `result { }` Pattern
-
-Toro uses `Result<'T, ToroError>` to report errors from tensor and module operations.
-The `result { }` computation expression chains these operations.
-
-### Operator Categories
-
-**Operators that return `Tensor` directly** (throw on error):
-
-- Arithmetic: `+`, `-`, `*`, `/`, unary `-`
-- Comparison: `.=.`, `.<>.`, `.>.`, `.<.`, `.>=.`, `.<=.`
-
-**Methods that return `Result<Tensor, ToroError>`**:
-
-- Factory methods: `Tensor.zeros`, `Tensor.randn`, etc.
-- Shape operations: `reshape`, `view`, `squeeze`, `unsqueeze`, etc.
-- Math operations: `matmul`, `softmax`, `exp`, `log`, etc.
-- Reduction operations: `sumAll`, `meanAll`, `sum`, `mean`, etc.
-- Module forward: `model.forward`, `model.forwardT`
-
-### Usage in `result { }`
-
-Use `let!` for `Result`-returning operations and `let` for direct values:
-
-```fsharp
-let r = result {
-    let! x = Tensor.randn ([ 4; 2 ], F32, Cpu)    // Result -> use let!
-    let! w = Tensor.randn ([ 2; 1 ], F32, Cpu)     // Result -> use let!
-    let! pred = x.matmul w                          // Result -> use let!
-    let shifted = pred + 1.0                        // Tensor -> use let
-    let! loss = shifted.meanAll ()                   // Result -> use let!
-    do! loss.backward ()                             // Result<unit> -> use do!
-}
-
-match r with
-| Ok () -> printfn "Success"
-| Error e -> eprintfn "Error: %A" e
-```
-
-## Disabling Gradients
-
-Use `Toro.noGrad` to disable gradient tracking during evaluation:
-
-```fsharp
-Toro.noGrad (fun () ->
-    let r = result {
-        let! pred = model.forward testX
-        let! loss = Loss.crossEntropy pred testY
-        printfn "Test loss: %.4f" (loss.item ())
-    }
-
-    match r with
-    | Ok () -> ()
-    | Error e -> eprintfn "%A" e
-)
-```
-
-`Toro.noGrad` wraps a function call in a `torch.no_grad()` scope.
-This reduces memory use and speeds up inference.
