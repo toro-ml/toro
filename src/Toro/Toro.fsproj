@@ -15,7 +15,9 @@
     <RepositoryType>git</RepositoryType>
     <NoWarn>FS0760</NoWarn>
     <PackageReleaseNotes>https://github.com/toro-ml/toro/releases</PackageReleaseNotes>
-    <PackageProjectUrl>https://github.com/toro-ml/toro</PackageProjectUrl>
+    <PackageProjectUrl>https://toro-ml.github.io/toro</PackageProjectUrl>
+    <FsDocsLicenseLink>https://github.com/toro-ml/toro/blob/main/LICENSE</FsDocsLicenseLink>
+    <FsDocsReleaseNotesLink>https://github.com/toro-ml/toro/releases</FsDocsReleaseNotesLink>
   </PropertyGroup>
 
   <ItemGroup>

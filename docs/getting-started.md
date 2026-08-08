@@ -1,0 +1,132 @@
+---
+title: Getting Started
+category: Documentation
+categoryindex: 1
+index: 1
+---
+
+# Getting Started
+
+This guide shows how to install Toro and train a model on the XOR problem.
+
+## Prerequisites
+
+- .NET SDK 10.0 or later
+
+## Step 1: Create a Project
+
+Run these commands:
+
+```bash
+dotnet new console -lang F# -o MyModel
+cd MyModel
+```
+
+## Step 2: Add Packages
+
+Add Toro, Toro.NN, and a TorchSharp runtime:
+
+```bash
+dotnet add package Toro
+dotnet add package Toro.NN
+dotnet add package TorchSharp-cpu
+```
+
+## Step 3: Define Training Data
+
+Open `Program.fs` and add the training data for XOR:
+
+```fsharp
+open Toro
+open Toro.NN
+
+let r = result {
+    let! x =
+        Tensor.ofFloat32Array2D (
+            [| [| 0f; 0f |]; [| 0f; 1f |]; [| 1f; 0f |]; [| 1f; 1f |] |],
+            Cpu
+        )
+
+    let! y =
+        Tensor.ofFloat32Array2D (
+            [| [| 0f |]; [| 1f |]; [| 1f |]; [| 0f |] |],
+            Cpu
+        )
+```
+
+`Tensor.ofFloat32Array2D` creates a 2D tensor from an F# array.
+The function returns `Result<Tensor, ToroError>`.
+Use `let!` to unwrap the result inside `result { }`.
+
+## Step 4: Build the Model
+
+Create a two-layer network with the `sequential { }` computation expression:
+
+```fsharp
+    let! l1 = Linear.init 2 16 F32 Cpu
+    let! l2 = Linear.init 16 1 F32 Cpu
+
+    let model = sequential {
+        l1; Relu; l2
+    }
+```
+
+- `Linear.init inDim outDim dtype device` creates a fully connected layer.
+- `Relu` is an activation function from the `Activation` type.
+- `sequential { }` combines layers into a `Sequential` model.
+
+## Step 5: Create an Optimizer
+
+Create an AdamW optimizer from the model parameters:
+
+```fsharp
+    let! opt = AdamW.createWithLr 0.01 (Model.trainableVars model)
+    let opt = opt :> IOptimizer
+```
+
+`Model.trainableVars` collects all tensors with `RequiresGrad = true` from the model record.
+
+## Step 6: Train
+
+Run the training loop:
+
+```fsharp
+    for epoch in 1..500 do
+        let! pred = model.forward x
+        let! loss = Loss.mse pred y
+        do! opt.backwardStep loss
+
+        if epoch % 100 = 0 then
+            printfn "epoch %d  loss=%.6f" epoch (loss.item ())
+}
+
+match r with
+| Ok () -> 0
+| Error e -> eprintfn "%A" e; 1
+```
+
+- `model.forward x` runs the forward pass.
+- `Loss.mse` computes mean squared error.
+- `opt.backwardStep loss` does backward propagation and updates parameters.
+
+## Step 7: Run
+
+```bash
+dotnet run
+```
+
+Expected output:
+
+```
+epoch 100  loss=0.001148
+epoch 200  loss=0.000002
+epoch 300  loss=0.000002
+epoch 400  loss=0.000001
+epoch 500  loss=0.000001
+```
+
+## Next Steps
+
+- [Tensor](tensor.html) -- Learn tensor operations
+- [Neural Networks](nn.html) -- Learn about layers and model composition
+- [Training](training.html) -- Learn about loss functions and optimizers

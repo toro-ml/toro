@@ -486,3 +486,8 @@ $RECYCLE.BIN/
 # Nix / direnv
 .direnv/
 result
+
+# fsdocs
+.fsdocs/
+output/
+tmp/

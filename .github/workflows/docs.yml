@@ -1,0 +1,49 @@
+name: docs
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet tool restore
+      - run: dotnet build -c Release
+      - run: dotnet fsdocs build --properties Configuration=Release
+      - name: Generate sitemap
+        run: |
+          BASE_URL="https://toro-ml.github.io/toro"
+          echo '<?xml version="1.0" encoding="UTF-8"?>' > ./output/sitemap.xml
+          echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' >> ./output/sitemap.xml
+          for f in $(find ./output -name '*.html' | sort); do
+            path="${f#./output}"
+            echo "  <url><loc>${BASE_URL}${path}</loc></url>" >> ./output/sitemap.xml
+          done
+          echo '</urlset>' >> ./output/sitemap.xml
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./output
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
