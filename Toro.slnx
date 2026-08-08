@@ -13,5 +13,6 @@
     <Project Path="examples/MnistCnn/MnistCnn.fsproj" />
     <Project Path="examples/MnistGan/MnistGan.fsproj" />
     <Project Path="examples/LinearRegression/LinearRegression.fsproj" />
+    <Project Path="examples/CharRnn/CharRnn.fsproj" />
   </Folder>
 </Solution>
