@@ -248,8 +248,9 @@ do! Model.save model "weights/best.safetensors"
 let! report = Model.loadInto model "weights/best.safetensors" Strict
 ```
 
-`Model.loadInto` matches parameters by name, copies values into the model tensors, and returns a `LoadReport`.
-Use `Strict` to error on missing or unexpected keys, or `Lenient` to allow partial loading.
+`Model.loadInto` matches parameters by name, validates shape and dtype, copies values into the model tensors, and returns a `LoadReport`.
+Only the tensors required by the model are loaded into memory.
+Use `Strict` to error on missing keys, unexpected keys, or shape/dtype mismatches, or `Lenient` to allow partial loading.
 
 ## Pre-trained Models (Toro.Hub)
 
@@ -313,5 +314,5 @@ let! report = Model.loadFromDict model weights (Some nameMap) Lenient
 printfn "Loaded %d params, %d missing" report.Loaded.Length report.Missing.Length
 ```
 
-`loadFromDict` returns a `LoadReport` listing `Loaded`, `Missing`, and `Unexpected` keys.
+`loadFromDict` returns a `LoadReport` listing `Loaded`, `Missing`, `Unexpected` keys, and any `ShapeMismatches` or `DTypeMismatches`.
 Use `Strict` to error on any mismatch, or `Lenient` to allow partial loading.

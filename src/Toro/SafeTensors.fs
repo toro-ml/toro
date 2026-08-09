@@ -6,8 +6,18 @@ open System.Text
 open System.Text.Json
 open TorchSharp
 
+/// Metadata for a single tensor entry in a SafeTensors header.
+type TensorMeta = {
+    DType: DType
+    Shape: int list
+    StartOffset: int64
+    EndOffset: int64
+}
+
 /// Read and write the SafeTensors binary format.
 module SafeTensors =
+
+    let private maxHeaderSize = 100_000_000L
 
     let private dtypeToString (dtype: DType) : string =
         match dtype with
@@ -32,28 +42,52 @@ module SafeTensors =
         | "BOOL" -> Ok Bool
         | other -> Error(UnsupportedDType other)
 
-    /// Load all tensors from a .safetensors file.
-    let load (filePath: string) : Result<Map<string, Tensor>, ToroError> =
-        result {
-            let! headerSize, headerJson =
-                ToroError.wrap (fun () ->
-                    use fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read)
-                    use reader = new BinaryReader(fs)
-                    let headerSize = reader.ReadUInt64()
-                    let headerBytes = reader.ReadBytes(int headerSize)
-                    headerSize, Encoding.UTF8.GetString(headerBytes))
+    let private dtypeByteSize (dtype: DType) : int =
+        match dtype with
+        | F16
+        | BF16 -> 2
+        | F32
+        | I32 -> 4
+        | F64
+        | I64 -> 8
+        | U8
+        | Bool -> 1
 
-            let dataOffset = 8L + int64 headerSize
+    /// Parse the SafeTensors header from an open stream.
+    /// Returns (headerSize, tensorMetadata).
+    let loadMetaFromStream (stream: Stream) : Result<int64 * Map<string, TensorMeta>, ToroError> =
+        result {
+            let! headerSize =
+                ToroError.wrap (fun () ->
+                    let buf = Array.zeroCreate<byte> 8
+
+                    if stream.Read(buf, 0, 8) < 8 then
+                        failwith "File too small to contain a SafeTensors header"
+
+                    BitConverter.ToUInt64(buf, 0) |> int64)
+
+            if headerSize > maxHeaderSize then
+                return! Error(Msg $"SafeTensors header too large: %d{headerSize} bytes (max %d{maxHeaderSize})")
+
+            let! headerJson =
+                ToroError.wrap (fun () ->
+                    let headerBytes = Array.zeroCreate<byte> (int headerSize)
+                    stream.ReadExactly(headerBytes, 0, int headerSize)
+                    Encoding.UTF8.GetString(headerBytes))
+
+            if headerJson.Length > 0 && headerJson[0] <> '{' then
+                return! Error(Msg "SafeTensors header must start with '{'")
 
             use doc = JsonDocument.Parse(headerJson)
-            let mutable tensors = Map.empty
+            let mutable meta = Map.empty
 
             for prop in doc.RootElement.EnumerateObject() do
                 if prop.Name <> "__metadata__" then
                     let! dtype = stringToDType (prop.Value.GetProperty("dtype").GetString())
-                    let torchDtype = DType.toTorch dtype
 
-                    let shape = [| for s in prop.Value.GetProperty("shape").EnumerateArray() -> s.GetInt64() |]
+                    let shape = [
+                        for s in prop.Value.GetProperty("shape").EnumerateArray() -> s.GetInt64() |> int
+                    ]
 
                     let offsets =
                         prop.Value.GetProperty("data_offsets").EnumerateArray()
@@ -61,24 +95,97 @@ module SafeTensors =
 
                     let startOff = offsets[0].GetInt64()
                     let endOff = offsets[1].GetInt64()
-                    let byteLen = int (endOff - startOff)
 
-                    let! t =
-                        ToroError.wrap (fun () ->
-                            use fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read)
+                    if endOff < startOff then
+                        return!
+                            Error(
+                                Msg
+                                    $"SafeTensors: tensor '%s{prop.Name}' has invalid offsets: start=%d{startOff} > end=%d{endOff}"
+                            )
 
-                            fs.Position <- dataOffset + startOff
-                            let buf = Array.zeroCreate<byte> byteLen
-                            fs.ReadExactly(buf, 0, byteLen)
+                    let expectedBytes =
+                        int64 (shape |> List.fold (fun acc d -> acc * (max d 1)) 1)
+                        * int64 (dtypeByteSize dtype)
 
-                            let tensor = torch.zeros (shape, dtype = torchDtype)
-                            buf.AsSpan().CopyTo(tensor.bytes)
-                            tensor)
+                    let actualBytes = endOff - startOff
 
-                    let! toroTensor = Tensor.ofTorchTensor t
-                    tensors <- tensors |> Map.add prop.Name toroTensor
+                    if actualBytes <> expectedBytes then
+                        return!
+                            Error(
+                                Msg
+                                    $"SafeTensors: tensor '%s{prop.Name}' size mismatch: shape %A{shape} * %s{dtypeToString dtype} = %d{expectedBytes} bytes, but data_offsets span %d{actualBytes} bytes"
+                            )
+
+                    meta <-
+                        meta
+                        |> Map.add prop.Name {
+                            DType = dtype
+                            Shape = shape
+                            StartOffset = startOff
+                            EndOffset = endOff
+                        }
+
+            return headerSize, meta
+        }
+
+    /// Load only the header metadata from a .safetensors file.
+    let loadMeta (filePath: string) : Result<Map<string, TensorMeta>, ToroError> =
+        result {
+            use fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read)
+            let! _, meta = loadMetaFromStream fs
+            return meta
+        }
+
+    let private readTensor (stream: Stream) (dataOffset: int64) (meta: TensorMeta) : Result<Tensor, ToroError> =
+        result {
+            let torchDtype = DType.toTorch meta.DType
+            let shape = meta.Shape |> List.map int64 |> Array.ofList
+            let byteLen = int (meta.EndOffset - meta.StartOffset)
+
+            let! t =
+                ToroError.wrap (fun () ->
+                    stream.Position <- dataOffset + meta.StartOffset
+                    let buf = Array.zeroCreate<byte> byteLen
+                    stream.ReadExactly(buf, 0, byteLen)
+                    let tensor = torch.zeros (shape, dtype = torchDtype)
+                    buf.AsSpan().CopyTo(tensor.bytes)
+                    tensor)
+
+            return! Tensor.ofTorchTensor t
+        }
+
+    /// Load all tensors from a .safetensors file.
+    let load (filePath: string) : Result<Map<string, Tensor>, ToroError> =
+        result {
+            use fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read)
+            let! headerSize, meta = loadMetaFromStream fs
+            let dataOffset = 8L + headerSize
+            let mutable tensors = Map.empty
+
+            for kv in meta do
+                let! t = readTensor fs dataOffset kv.Value
+                tensors <- tensors |> Map.add kv.Key t
 
             return tensors
+        }
+
+    /// Load only the tensors whose names are in the given set.
+    let loadSelected
+        (filePath: string)
+        (names: Set<string>)
+        : Result<Map<string, TensorMeta> * Map<string, Tensor>, ToroError> =
+        result {
+            use fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read)
+            let! headerSize, meta = loadMetaFromStream fs
+            let dataOffset = 8L + headerSize
+            let mutable tensors = Map.empty
+
+            for kv in meta do
+                if Set.contains kv.Key names then
+                    let! t = readTensor fs dataOffset kv.Value
+                    tensors <- tensors |> Map.add kv.Key t
+
+            return meta, tensors
         }
 
     /// Save tensors to a .safetensors file.
@@ -124,15 +231,21 @@ module SafeTensors =
 
                 writer.WriteEndObject()
                 writer.Flush()
-                Encoding.UTF8.GetString(ms.ToArray())
+                ms.ToArray()
+
+            let paddedLen = (headerJson.Length + 7) / 8 * 8
+            let padded = Array.zeroCreate<byte> paddedLen
+            Array.Copy(headerJson, padded, headerJson.Length)
+
+            for i in headerJson.Length .. paddedLen - 1 do
+                padded[i] <- 0x20uy
 
             do!
                 ToroError.wrap (fun () ->
                     use fs = new FileStream(filePath, FileMode.Create, FileAccess.Write)
                     use bw = new BinaryWriter(fs)
-                    let headerBytes = Encoding.UTF8.GetBytes(headerJson)
-                    bw.Write(uint64 headerBytes.Length)
-                    bw.Write(headerBytes)
+                    bw.Write(uint64 paddedLen)
+                    bw.Write(padded)
 
                     for inner, _ in entries do
                         let bytes = inner.bytes

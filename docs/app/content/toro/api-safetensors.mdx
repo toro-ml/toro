@@ -9,6 +9,10 @@ Read and write the SafeTensors binary format.
 | Function | Description |
 | --- | --- |
 | `load filePath` | Load all tensors from a .safetensors file. |
+| `loadMeta filePath` | Load only the header metadata from a .safetensors file. |
+| `loadMetaFromStream stream` | Parse the SafeTensors header from an open stream.
+ Returns (headerSize, tensorMetadata). |
+| `loadSelected filePath names` | Load only the tensors whose names are in the given set. |
 | `save tensors filePath` | Save tensors to a .safetensors file. |
 
 ## load
@@ -24,6 +28,56 @@ Load all tensors from a .safetensors file.
 - `filePath` : `string`
 
 **Returns** `Result<Map<string, Tensor>, ToroError>`
+
+---
+
+## loadMeta
+
+```fsharp
+loadMeta filePath
+```
+
+Load only the header metadata from a .safetensors file.
+
+**Parameters**
+
+- `filePath` : `string`
+
+**Returns** `Result<Map<string, TensorMeta>, ToroError>`
+
+---
+
+## loadMetaFromStream
+
+```fsharp
+loadMetaFromStream stream
+```
+
+Parse the SafeTensors header from an open stream.
+ Returns (headerSize, tensorMetadata).
+
+**Parameters**
+
+- `stream` : `Stream`
+
+**Returns** `Result<(int64 * Map<string, TensorMeta>), ToroError>`
+
+---
+
+## loadSelected
+
+```fsharp
+loadSelected filePath names
+```
+
+Load only the tensors whose names are in the given set.
+
+**Parameters**
+
+- `filePath` : `string`
+- `names` : `Set<string>`
+
+**Returns** `Result<(Map<string, TensorMeta> * Map<string, Tensor>), ToroError>`
 
 ---
 

@@ -113,6 +113,8 @@ let ``Model.loadFromDict without nameMap`` () =
     report.Loaded.Length |> should equal 2
     report.Missing |> should be Empty
     report.Unexpected |> should be Empty
+    report.ShapeMismatches |> should be Empty
+    report.DTypeMismatches |> should be Empty
 
     let w1 = Model.namedParams linear |> List.head |> snd |> tensorSum
     let w2 = Model.namedParams linear2 |> List.head |> snd |> tensorSum
@@ -181,3 +183,116 @@ let ``Model.loadFromDict Strict fails on unexpected keys`` () =
     match Model.loadFromDict linear2 dict None Strict with
     | Error _ -> ()
     | Ok _ -> failwith "Expected Error for unexpected keys in Strict mode"
+
+// --- Validation and mismatch tests ---
+
+[<Fact>]
+let ``SafeTensors loadMeta returns tensor metadata`` () =
+    withTempDir (fun dir ->
+        let path = Path.Combine(dir, "meta.safetensors")
+        let t1 = Tensor.randn ([ 3; 4 ], F32, Cpu) |> unwrap
+        let t2 = Tensor.randn ([ 5 ], F64, Cpu) |> unwrap
+        let tensors = Map [ "weight", t1; "bias", t2 ]
+
+        SafeTensors.save tensors path |> unwrap
+        let meta = SafeTensors.loadMeta path |> unwrap
+
+        meta |> Map.count |> should equal 2
+        meta["weight"].DType |> should equal F32
+        meta["weight"].Shape |> should equal [ 3; 4 ]
+        meta["bias"].DType |> should equal F64
+        meta["bias"].Shape |> should equal [ 5 ])
+
+[<Fact>]
+let ``SafeTensors save produces 8-byte aligned header`` () =
+    withTempDir (fun dir ->
+        let path = Path.Combine(dir, "aligned.safetensors")
+        let t = Tensor.randn ([ 2 ], F32, Cpu) |> unwrap
+        SafeTensors.save (Map [ "x", t ]) path |> unwrap
+
+        use fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read)
+        use reader = new BinaryReader(fs)
+        let headerSize = reader.ReadUInt64() |> int
+        headerSize % 8 |> should equal 0)
+
+[<Fact>]
+let ``SafeTensors loadSelected loads only requested tensors`` () =
+    withTempDir (fun dir ->
+        let path = Path.Combine(dir, "selective.safetensors")
+        let t1 = Tensor.randn ([ 3 ], F32, Cpu) |> unwrap
+        let t2 = Tensor.randn ([ 5 ], F32, Cpu) |> unwrap
+        let t3 = Tensor.randn ([ 7 ], F32, Cpu) |> unwrap
+        let tensors = Map [ "a", t1; "b", t2; "c", t3 ]
+
+        SafeTensors.save tensors path |> unwrap
+        let meta, loaded = SafeTensors.loadSelected path (Set [ "a"; "c" ]) |> unwrap
+
+        meta |> Map.count |> should equal 3
+        loaded |> Map.count |> should equal 2
+        loaded |> Map.containsKey "a" |> should equal true
+        loaded |> Map.containsKey "c" |> should equal true
+        loaded |> Map.containsKey "b" |> should equal false)
+
+[<Fact>]
+let ``Model.loadFromDict Lenient reports shape mismatch`` () =
+    let linear = Linear.init 4 2 F32 Cpu |> unwrap
+
+    let wrongShapeDict =
+        Map [
+            "Weight", Tensor.randn ([ 3; 2 ], F32, Cpu) |> unwrap
+            "Bias", Tensor.randn ([ 2 ], F32, Cpu) |> unwrap
+        ]
+
+    let report =
+        Model.loadFromDict linear wrongShapeDict None Lenient
+        |> unwrap
+
+    report.ShapeMismatches.Length |> should equal 1
+    report.ShapeMismatches[0].Name |> should equal "Weight"
+    report.Loaded |> should contain "Bias"
+
+[<Fact>]
+let ``Model.loadFromDict Lenient reports dtype mismatch`` () =
+    let linear = Linear.init 4 2 F32 Cpu |> unwrap
+
+    let wrongDTypeDict =
+        Map [
+            "Weight", Tensor.randn ([ 2; 4 ], F64, Cpu) |> unwrap
+            "Bias", Tensor.randn ([ 2 ], F32, Cpu) |> unwrap
+        ]
+
+    let report =
+        Model.loadFromDict linear wrongDTypeDict None Lenient
+        |> unwrap
+
+    report.DTypeMismatches.Length |> should equal 1
+    report.DTypeMismatches[0].Name |> should equal "Weight"
+    report.Loaded |> should contain "Bias"
+
+[<Fact>]
+let ``Model.loadFromDict Strict fails on shape mismatch`` () =
+    let linear = Linear.init 4 2 F32 Cpu |> unwrap
+
+    let wrongShapeDict =
+        Map [
+            "Weight", Tensor.randn ([ 3; 2 ], F32, Cpu) |> unwrap
+            "Bias", Tensor.randn ([ 2 ], F32, Cpu) |> unwrap
+        ]
+
+    match Model.loadFromDict linear wrongShapeDict None Strict with
+    | Error _ -> ()
+    | Ok _ -> failwith "Expected Error for shape mismatch in Strict mode"
+
+[<Fact>]
+let ``Model.loadFromDict Strict fails on dtype mismatch`` () =
+    let linear = Linear.init 4 2 F32 Cpu |> unwrap
+
+    let wrongDTypeDict =
+        Map [
+            "Weight", Tensor.randn ([ 2; 4 ], F64, Cpu) |> unwrap
+            "Bias", Tensor.randn ([ 2 ], F32, Cpu) |> unwrap
+        ]
+
+    match Model.loadFromDict linear wrongDTypeDict None Strict with
+    | Error _ -> ()
+    | Ok _ -> failwith "Expected Error for dtype mismatch in Strict mode"

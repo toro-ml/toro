@@ -8,36 +8,13 @@ Reflection-based parameter discovery, serialization, and deserialization for F# 
 
 | Function | Description |
 | --- | --- |
-| `loadFromDict model tensors nameMap mode` | Load tensors from a dictionary into the model, matching by parameter name. |
-| `loadInto model filePath mode` | Load tensors from a .safetensors file into the model in place. |
+| `loadFromDict model tensors nameMap mode` | Load tensors from a dictionary into the model, matching by parameter name.
+ When nameMap is Some, dictionary keys are translated before matching. |
+| `loadInto model filePath mode` | Load tensors from a .safetensors file into the model in place.
+ Only the tensors required by the model are loaded into memory. |
 | `namedParams model` | Return all named tensors in the model via reflection. |
 | `save model filePath` | Save all model tensors to a .safetensors file. |
 | `trainableVars model` | Return all tensors that require gradients. |
-
-## Types
-
-### LoadReport
-
-```fsharp
-type LoadReport = {
-    Loaded: string list
-    Missing: string list
-    Unexpected: string list
-}
-```
-
-### LoadMode
-
-```fsharp
-type LoadMode =
-    | Strict
-    | Lenient
-```
-
-`Strict` returns an error when there are missing or unexpected keys.
-`Lenient` always succeeds and reports mismatches in the `LoadReport`.
-
----
 
 ## loadFromDict
 
@@ -46,7 +23,7 @@ loadFromDict model tensors nameMap mode
 ```
 
 Load tensors from a dictionary into the model, matching by parameter name.
-When nameMap is Some, dictionary keys are translated before matching.
+ When nameMap is Some, dictionary keys are translated before matching.
 
 **Parameters**
 
@@ -66,6 +43,7 @@ loadInto model filePath mode
 ```
 
 Load tensors from a .safetensors file into the model in place.
+ Only the tensors required by the model are loaded into memory.
 
 **Parameters**
 
@@ -99,7 +77,7 @@ Return all named tensors in the model via reflection.
 save model filePath
 ```
 
-Save all model tensors to a .safetensors file. Validates that parameter names are unique.
+Save all model tensors to a .safetensors file.
 
 **Parameters**
 
@@ -123,3 +101,4 @@ Return all tensors that require gradients.
 - `model` : `'T`
 
 **Returns** `Tensor list`
+

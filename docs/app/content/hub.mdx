@@ -94,5 +94,5 @@ let! report = Model.loadFromDict model weights (Some nameMap) Lenient
 printfn "Loaded %d params, %d missing" report.Loaded.Length report.Missing.Length
 ```
 
-`loadFromDict` returns a `LoadReport` listing `Loaded`, `Missing`, and `Unexpected` keys.
+`loadFromDict` returns a `LoadReport` listing `Loaded`, `Missing`, `Unexpected` keys, and any `ShapeMismatches` or `DTypeMismatches`.
 Use `Strict` to error on any mismatch, or `Lenient` to allow partial loading.

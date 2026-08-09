@@ -75,12 +75,61 @@ let ``Model save and loadInto round-trips`` () =
         report.Loaded.Length |> should equal 2
         report.Missing |> should be Empty
         report.Unexpected |> should be Empty
+        report.ShapeMismatches |> should be Empty
+        report.DTypeMismatches |> should be Empty
 
         let wSum2 =
             (linear2.Weight.sumAll () |> unwrap).toFloat32Scalar ()
             |> unwrap
 
         wSum2 |> should (equalWithin 1e-5f) wSum
+    finally
+        if System.IO.Directory.Exists dir then
+            System.IO.Directory.Delete(dir, true)
+
+[<Fact>]
+let ``Model loadInto Lenient reports shape mismatch`` () =
+    let dir =
+        System.IO.Path.Combine(System.IO.Path.GetTempPath(), System.Guid.NewGuid().ToString())
+
+    try
+        System.IO.Directory.CreateDirectory dir |> ignore
+        let path = System.IO.Path.Combine(dir, "model.safetensors")
+
+        let linear = Linear.init 3 2 F32 Cpu |> unwrap
+        Model.save linear path |> unwrap
+
+        let linear2 = Linear.init 5 2 F32 Cpu |> unwrap
+        let report = Model.loadInto linear2 path Lenient |> unwrap
+
+        report.ShapeMismatches.Length |> should equal 1
+        report.ShapeMismatches[0].Name |> should equal "Weight"
+        report.Loaded |> should contain "Bias"
+    finally
+        if System.IO.Directory.Exists dir then
+            System.IO.Directory.Delete(dir, true)
+
+[<Fact>]
+let ``Model loadInto loads only required tensors`` () =
+    let dir =
+        System.IO.Path.Combine(System.IO.Path.GetTempPath(), System.Guid.NewGuid().ToString())
+
+    try
+        System.IO.Directory.CreateDirectory dir |> ignore
+        let path = System.IO.Path.Combine(dir, "model.safetensors")
+
+        let t1 = Tensor.randn ([ 1; 3 ], F32, Cpu) |> unwrap
+        let t2 = Tensor.randn ([ 1 ], F32, Cpu) |> unwrap
+        let t3 = Tensor.randn ([ 5 ], F32, Cpu) |> unwrap
+
+        SafeTensors.save (Map [ "Weight", t1; "Bias", t2; "Extra", t3 ]) path
+        |> unwrap
+
+        let linear = Linear.init 3 1 F32 Cpu |> unwrap
+        let report = Model.loadInto linear path Lenient |> unwrap
+
+        report.Unexpected |> should contain "Extra"
+        report.Loaded.Length |> should equal 2
     finally
         if System.IO.Directory.Exists dir then
             System.IO.Directory.Delete(dir, true)

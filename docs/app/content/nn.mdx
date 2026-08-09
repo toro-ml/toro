@@ -367,5 +367,5 @@ result {
 ```
 
 `Model.save` writes all parameters to a single `.safetensors` file.
-`Model.loadInto` loads parameters and returns a `LoadReport` with `Loaded`, `Missing`, and `Unexpected` keys.
+`Model.loadInto` loads only the required parameters into memory, validates shape and dtype, and returns a `LoadReport` with `Loaded`, `Missing`, `Unexpected`, `ShapeMismatches`, and `DTypeMismatches`.
 Use `Strict` to fail on mismatches, or `Lenient` to allow partial loading.
