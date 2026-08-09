@@ -53,6 +53,68 @@ module SafeTensors =
         | U8
         | Bool -> 1
 
+    let private parseEntry (prop: JsonProperty) : Result<(string * TensorMeta), ToroError> =
+        result {
+            let! dtype = stringToDType (prop.Value.GetProperty("dtype").GetString())
+
+            let shape = [
+                for s in prop.Value.GetProperty("shape").EnumerateArray() -> s.GetInt64() |> int
+            ]
+
+            if shape |> List.exists (fun d -> d < 0) then
+                return! Error(Msg $"SafeTensors: tensor '%s{prop.Name}' has negative dimension in shape %A{shape}")
+
+            let offsets =
+                prop.Value.GetProperty("data_offsets").EnumerateArray()
+                |> Seq.toArray
+
+            let startOff = offsets[0].GetInt64()
+            let endOff = offsets[1].GetInt64()
+
+            if endOff < startOff then
+                return!
+                    Error(Msg $"SafeTensors: tensor '%s{prop.Name}' has invalid offsets: start=%d{startOff} > end=%d{endOff}")
+
+            let nelements = shape |> List.fold (fun acc d -> acc * d) 1
+            let expectedBytes = int64 nelements * int64 (dtypeByteSize dtype)
+            let actualBytes = endOff - startOff
+
+            if actualBytes <> expectedBytes then
+                return!
+                    Error(
+                        Msg
+                            $"SafeTensors: tensor '%s{prop.Name}' size mismatch: shape %A{shape} * %s{dtypeToString dtype} = %d{expectedBytes} bytes, but data_offsets span %d{actualBytes} bytes"
+                    )
+
+            return
+                prop.Name,
+                {
+                    DType = dtype
+                    Shape = shape
+                    StartOffset = startOff
+                    EndOffset = endOff
+                }
+        }
+
+    let private validateOffsetContinuity (entries: (string * TensorMeta) list) : Result<unit, ToroError> =
+        let sorted = entries |> List.sortBy (fun (_, m) -> m.StartOffset)
+
+        sorted
+        |> List.fold
+            (fun acc (name, m) ->
+                match acc with
+                | Error _ -> acc
+                | Ok expectedStart ->
+                    if m.StartOffset <> expectedStart then
+                        Error(
+                            Msg
+                                $"SafeTensors: tensor '%s{name}' offset gap or overlap: expected start=%d{expectedStart}, got start=%d{m.StartOffset}"
+                        )
+                    else
+                        Ok m.EndOffset)
+            (Ok 0L)
+        |> Result.map ignore
+
     /// Parse the SafeTensors header from an open stream.
     /// Returns (headerSize, tensorMetadata).
     let loadMetaFromStream (stream: Stream) : Result<int64 * Map<string, TensorMeta>, ToroError> =
@@ -79,52 +141,28 @@ module SafeTensors =
                 return! Error(Msg "SafeTensors header must start with '{'")
 
             use doc = JsonDocument.Parse(headerJson)
-            let mutable meta = Map.empty
 
-            for prop in doc.RootElement.EnumerateObject() do
-                if prop.Name <> "__metadata__" then
-                    let! dtype = stringToDType (prop.Value.GetProperty("dtype").GetString())
+            let props =
+                doc.RootElement.EnumerateObject()
+                |> Seq.filter (fun p -> p.Name <> "__metadata__")
+                |> Seq.toList
 
-                    let shape = [
-                        for s in prop.Value.GetProperty("shape").EnumerateArray() -> s.GetInt64() |> int
-                    ]
+            let! entries =
+                props
+                |> List.fold
+                    (fun acc prop ->
+                        match acc with
+                        | Error _ -> acc
+                        | Ok xs ->
+                            match parseEntry prop with
+                            | Ok entry -> Ok(entry :: xs)
+                            | Error e -> Error e)
+                    (Ok [])
+                |> Result.map List.rev
 
-                    let offsets =
-                        prop.Value.GetProperty("data_offsets").EnumerateArray()
-                        |> Seq.toArray
+            do! validateOffsetContinuity entries
 
-                    let startOff = offsets[0].GetInt64()
-                    let endOff = offsets[1].GetInt64()
-
-                    if endOff < startOff then
-                        return!
-                            Error(
-                                Msg
-                                    $"SafeTensors: tensor '%s{prop.Name}' has invalid offsets: start=%d{startOff} > end=%d{endOff}"
-                            )
-
-                    let expectedBytes =
-                        int64 (shape |> List.fold (fun acc d -> acc * (max d 1)) 1)
-                        * int64 (dtypeByteSize dtype)
-
-                    let actualBytes = endOff - startOff
-
-                    if actualBytes <> expectedBytes then
-                        return!
-                            Error(
-                                Msg
-                                    $"SafeTensors: tensor '%s{prop.Name}' size mismatch: shape %A{shape} * %s{dtypeToString dtype} = %d{expectedBytes} bytes, but data_offsets span %d{actualBytes} bytes"
-                            )
-
-                    meta <-
-                        meta
-                        |> Map.add prop.Name {
-                            DType = dtype
-                            Shape = shape
-                            StartOffset = startOff
-                            EndOffset = endOff
-                        }
-
+            let meta = entries |> Map.ofList
             return headerSize, meta
         }
 
@@ -160,11 +198,17 @@ module SafeTensors =
             use fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read)
             let! headerSize, meta = loadMetaFromStream fs
             let dataOffset = 8L + headerSize
-            let mutable tensors = Map.empty
 
-            for kv in meta do
-                let! t = readTensor fs dataOffset kv.Value
-                tensors <- tensors |> Map.add kv.Key t
+            let! tensors =
+                meta
+                |> Map.fold
+                    (fun acc key m ->
+                        match acc with
+                        | Error _ -> acc
+                        | Ok map ->
+                            readTensor fs dataOffset m
+                            |> Result.map (fun t -> Map.add key t map))
+                    (Ok Map.empty)
 
             return tensors
         }
@@ -178,12 +222,20 @@ module SafeTensors =
             use fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read)
             let! headerSize, meta = loadMetaFromStream fs
             let dataOffset = 8L + headerSize
-            let mutable tensors = Map.empty
 
-            for kv in meta do
-                if Set.contains kv.Key names then
-                    let! t = readTensor fs dataOffset kv.Value
-                    tensors <- tensors |> Map.add kv.Key t
+            let! tensors =
+                meta
+                |> Map.fold
+                    (fun acc key m ->
+                        match acc with
+                        | Error _ -> acc
+                        | Ok map ->
+                            if Set.contains key names then
+                                readTensor fs dataOffset m
+                                |> Result.map (fun t -> Map.add key t map)
+                            else
+                                acc)
+                    (Ok Map.empty)
 
             return meta, tensors
         }
@@ -196,18 +248,20 @@ module SafeTensors =
             if not (String.IsNullOrEmpty dir) && not (Directory.Exists dir) then
                 Directory.CreateDirectory dir |> ignore
 
-            let sortedEntries = tensors |> Map.toArray |> Array.sortBy fst
+            let sortedEntries =
+                tensors
+                |> Map.toArray
+                |> Array.sortBy (fun (name, t: Tensor) -> -dtypeByteSize t.DType, name)
 
-            let mutable offset = 0L
-
-            let entries =
+            let entries, _ =
                 sortedEntries
-                |> Array.map (fun (name, (tensor: Tensor)) ->
-                    let inner = tensor.Inner.contiguous ()
-                    let byteLen = inner.NumberOfElements * inner.ElementSize
-                    let entry = (name, tensor.DType, tensor.Shape, offset, offset + byteLen)
-                    offset <- offset + byteLen
-                    (inner, entry))
+                |> Array.mapFold
+                    (fun offset (name, (tensor: Tensor)) ->
+                        let inner = tensor.Inner.contiguous ()
+                        let byteLen = inner.NumberOfElements * inner.ElementSize
+                        let entry = (name, tensor.DType, tensor.Shape, offset, offset + byteLen)
+                        (inner, entry), offset + byteLen)
+                    0L
 
             let headerJson =
                 use ms = new MemoryStream()

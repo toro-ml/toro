@@ -1,6 +1,7 @@
 module SafeTensorsTests
 
 open System.IO
+open System.Text
 open Xunit
 open FsUnit.Xunit
 open Toro
@@ -296,3 +297,103 @@ let ``Model.loadFromDict Strict fails on dtype mismatch`` () =
     match Model.loadFromDict linear wrongDTypeDict None Strict with
     | Error _ -> ()
     | Ok _ -> failwith "Expected Error for dtype mismatch in Strict mode"
+
+// --- Spec-fidelity tests ---
+
+let private writeSafeTensorsRaw (path: string) (headerJson: string) (data: byte array) =
+    use fs = new FileStream(path, FileMode.Create, FileAccess.Write)
+    use bw = new BinaryWriter(fs)
+    let headerBytes = Encoding.UTF8.GetBytes(headerJson)
+    bw.Write(uint64 headerBytes.Length)
+    bw.Write(headerBytes)
+    bw.Write(data)
+
+[<Fact>]
+let ``SafeTensors rejects negative shape dimension`` () =
+    withTempDir (fun dir ->
+        let path = Path.Combine(dir, "neg.safetensors")
+
+        let header = """{"bad":{"dtype":"F32","shape":[-1,4],"data_offsets":[0,16]}}"""
+
+        writeSafeTensorsRaw path header (Array.zeroCreate 16)
+
+        match SafeTensors.load path with
+        | Error(Msg msg) -> msg |> should haveSubstring "negative dimension"
+        | Error e -> failwith $"Expected Msg error, got: %A{e}"
+        | Ok _ -> failwith "Expected Error for negative dimension")
+
+[<Fact>]
+let ``SafeTensors allows zero-element tensor`` () =
+    withTempDir (fun dir ->
+        let path = Path.Combine(dir, "zero.safetensors")
+
+        let header = """{"empty":{"dtype":"F32","shape":[0,4],"data_offsets":[0,0]}}"""
+
+        writeSafeTensorsRaw path header Array.empty
+
+        let loaded = SafeTensors.load path |> unwrap
+        loaded |> Map.count |> should equal 1
+        loaded["empty"].Shape |> should equal [ 0; 4 ])
+
+[<Fact>]
+let ``SafeTensors rejects offset gap`` () =
+    withTempDir (fun dir ->
+        let path = Path.Combine(dir, "gap.safetensors")
+
+        let header =
+            """{"a":{"dtype":"F32","shape":[1],"data_offsets":[0,4]},"b":{"dtype":"F32","shape":[1],"data_offsets":[8,12]}}"""
+
+        writeSafeTensorsRaw path header (Array.zeroCreate 12)
+
+        match SafeTensors.load path with
+        | Error(Msg msg) -> msg |> should haveSubstring "offset gap"
+        | Error e -> failwith $"Expected Msg error, got: %A{e}"
+        | Ok _ -> failwith "Expected Error for offset gap")
+
+[<Fact>]
+let ``SafeTensors rejects overlapping offsets`` () =
+    withTempDir (fun dir ->
+        let path = Path.Combine(dir, "overlap.safetensors")
+
+        let header =
+            """{"a":{"dtype":"F32","shape":[2],"data_offsets":[0,8]},"b":{"dtype":"F32","shape":[1],"data_offsets":[4,8]}}"""
+
+        writeSafeTensorsRaw path header (Array.zeroCreate 8)
+
+        match SafeTensors.load path with
+        | Error(Msg msg) -> msg |> should haveSubstring "offset gap"
+        | Error e -> failwith $"Expected Msg error, got: %A{e}"
+        | Ok _ -> failwith "Expected Error for overlapping offsets")
+
+[<Fact>]
+let ``SafeTensors save orders by descending dtype alignment then name`` () =
+    withTempDir (fun dir ->
+        let path = Path.Combine(dir, "sorted.safetensors")
+        let u8 = Tensor.zeros ([ 1 ], U8, Cpu) |> unwrap
+        let f64 = Tensor.randn ([ 1 ], F64, Cpu) |> unwrap
+        let f32 = Tensor.randn ([ 1 ], F32, Cpu) |> unwrap
+
+        SafeTensors.save (Map [ "z_u8", u8; "a_f32", f32; "b_f64", f64 ]) path
+        |> unwrap
+
+        let meta = SafeTensors.loadMeta path |> unwrap
+
+        let ordered =
+            meta
+            |> Map.toList
+            |> List.sortBy (fun (_, m) -> m.StartOffset)
+
+        let names = ordered |> List.map fst
+        names |> should equal [ "b_f64"; "a_f32"; "z_u8" ])
+
+[<Fact>]
+let ``SafeTensors rejects header not starting with brace`` () =
+    withTempDir (fun dir ->
+        let path = Path.Combine(dir, "bad.safetensors")
+        let badHeader = "[\"not an object\"]"
+        writeSafeTensorsRaw path badHeader Array.empty
+
+        match SafeTensors.load path with
+        | Error(Msg msg) -> msg |> should haveSubstring "start with '{'"
+        | Error e -> failwith $"Expected Msg error, got: %A{e}"
+        | Ok _ -> failwith "Expected Error for invalid header")

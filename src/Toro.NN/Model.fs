@@ -90,6 +90,92 @@ module Model =
     let private formatShape (shape: int list) =
         sprintf "[%s]" (shape |> List.map string |> String.concat ", ")
 
+    type private ParamMatch =
+        | Matched of name: string * target: Tensor * source: Tensor
+        | MissingParam of name: string
+        | ShapeMismatch of TensorMismatch
+        | DTypeMismatch of TensorMismatch
+
+    let private classifyParam
+        (lookup: Map<string, 'Source>)
+        (getShape: 'Source -> int list)
+        (getDType: 'Source -> DType)
+        (name: string)
+        (tensor: Tensor)
+        : ParamMatch =
+        match Map.tryFind name lookup with
+        | None -> MissingParam name
+        | Some src ->
+            let srcShape = getShape src
+            let srcDType = getDType src
+
+            if tensor.Shape <> srcShape then
+                ShapeMismatch {
+                    Name = name
+                    Expected = formatShape tensor.Shape
+                    Got = formatShape srcShape
+                }
+            elif tensor.DType <> srcDType then
+                DTypeMismatch {
+                    Name = name
+                    Expected = string tensor.DType
+                    Got = string srcDType
+                }
+            else
+                Matched(name, tensor, Unchecked.defaultof<_>)
+
+    let private buildReport (matches: ParamMatch list) (unexpected: string list) : LoadReport = {
+        Loaded =
+            matches
+            |> List.choose (fun m ->
+                match m with
+                | Matched(n, _, _) -> Some n
+                | _ -> None)
+        Missing =
+            matches
+            |> List.choose (fun m ->
+                match m with
+                | MissingParam n -> Some n
+                | _ -> None)
+        Unexpected = unexpected
+        ShapeMismatches =
+            matches
+            |> List.choose (fun m ->
+                match m with
+                | ShapeMismatch mm -> Some mm
+                | _ -> None)
+        DTypeMismatches =
+            matches
+            |> List.choose (fun m ->
+                match m with
+                | DTypeMismatch mm -> Some mm
+                | _ -> None)
+    }
+
+    let private enforceStrict (report: LoadReport) (mode: LoadMode) : Result<LoadReport, ToroError> =
+        match mode with
+        | Strict when
+            report.Missing <> []
+            || report.Unexpected <> []
+            || report.ShapeMismatches <> []
+            || report.DTypeMismatches <> []
+            ->
+            let parts = [
+                if report.Missing <> [] then
+                    $"missing keys: %A{report.Missing}"
+                if report.Unexpected <> [] then
+                    $"unexpected keys: %A{report.Unexpected}"
+                if report.ShapeMismatches <> [] then
+                    let names = report.ShapeMismatches |> List.map _.Name
+                    $"shape mismatches: %A{names}"
+                if report.DTypeMismatches <> [] then
+                    let names = report.DTypeMismatches |> List.map _.Name
+                    $"dtype mismatches: %A{names}"
+            ]
+
+            Error(Msg(parts |> String.concat "; "))
+        | _ -> Ok report
+
     /// Return all named tensors in the model via reflection.
     let namedParams (model: 'T) : (string * Tensor) list = collect "" (box model)
 
@@ -128,34 +214,32 @@ module Model =
                 | None -> tensors
 
             let modelNames = namedParams model
-            let mutable loaded = []
-            let mutable missing = []
-            let mutable shapeMismatches = []
-            let mutable dtypeMismatches = []
 
-            for name, tensor in modelNames do
-                match lookup |> Map.tryFind name with
-                | Some src ->
-                    if tensor.Shape <> src.Shape then
-                        shapeMismatches <-
-                            {
+            let matches =
+                modelNames
+                |> List.map (fun (name, tensor) ->
+                    match Map.tryFind name lookup with
+                    | None -> MissingParam name
+                    | Some src ->
+                        if tensor.Shape <> src.Shape then
+                            ShapeMismatch {
                                 Name = name
                                 Expected = formatShape tensor.Shape
                                 Got = formatShape src.Shape
                             }
-                            :: shapeMismatches
-                    elif tensor.DType <> src.DType then
-                        dtypeMismatches <-
-                            {
+                        elif tensor.DType <> src.DType then
+                            DTypeMismatch {
                                 Name = name
                                 Expected = string tensor.DType
                                 Got = string src.DType
                             }
-                            :: dtypeMismatches
-                    else
-                        do! tensor.copyInPlace src
-                        loaded <- name :: loaded
-                | None -> missing <- name :: missing
+                        else
+                            Matched(name, tensor, src))
+
+            for m in matches do
+                match m with
+                | Matched(_, target, src) -> do! target.copyInPlace src
+                | _ -> ()
 
             let modelNameSet = modelNames |> List.map fst |> Set.ofList
 
@@ -165,108 +249,47 @@ module Model =
                 |> List.map fst
                 |> List.filter (fun k -> not (Set.contains k modelNameSet))
 
-            let report = {
-                Loaded = List.rev loaded
-                Missing = List.rev missing
-                Unexpected = unexpected
-                ShapeMismatches = List.rev shapeMismatches
-                DTypeMismatches = List.rev dtypeMismatches
-            }
-
-            match mode with
-            | Strict when
-                report.Missing <> []
-                || report.Unexpected <> []
-                || report.ShapeMismatches <> []
-                || report.DTypeMismatches <> []
-                ->
-                let parts = [
-                    if report.Missing <> [] then
-                        $"missing keys: %A{report.Missing}"
-                    if report.Unexpected <> [] then
-                        $"unexpected keys: %A{report.Unexpected}"
-                    if report.ShapeMismatches <> [] then
-                        let names = report.ShapeMismatches |> List.map _.Name
-                        $"shape mismatches: %A{names}"
-                    if report.DTypeMismatches <> [] then
-                        let names = report.DTypeMismatches |> List.map _.Name
-                        $"dtype mismatches: %A{names}"
-                ]
-
-                return! Error(Msg(parts |> String.concat "; "))
-            | _ -> return report
+            let report = buildReport matches unexpected
+            return! enforceStrict report mode
         }
 
     /// Load tensors from a .safetensors file into the model in place.
-    /// Only the tensors required by the model are loaded into memory.
+    /// Shape and dtype are validated from the header before any tensor data is read.
+    /// Only the tensors that match both shape and dtype are loaded into memory.
     let loadInto (model: 'T) (filePath: string) (mode: LoadMode) : Result<LoadReport, ToroError> =
         result {
             let modelNames = namedParams model
             let neededNames = modelNames |> List.map fst |> Set.ofList
-            let! allMeta, tensors = SafeTensors.loadSelected filePath neededNames
+
+            let! allMeta = SafeTensors.loadMeta filePath
             let allFileKeys = allMeta |> Map.toList |> List.map fst
 
             let unexpected =
                 allFileKeys
                 |> List.filter (fun k -> not (Set.contains k neededNames))
 
-            let mutable loaded = []
-            let mutable missing = []
-            let mutable shapeMismatches = []
-            let mutable dtypeMismatches = []
+            let matches =
+                modelNames
+                |> List.map (fun (name, tensor) -> classifyParam allMeta (_.Shape) (_.DType) name tensor)
 
-            for name, tensor in modelNames do
-                match tensors |> Map.tryFind name with
-                | Some src ->
-                    if tensor.Shape <> src.Shape then
-                        shapeMismatches <-
-                            {
-                                Name = name
-                                Expected = formatShape tensor.Shape
-                                Got = formatShape src.Shape
-                            }
-                            :: shapeMismatches
-                    elif tensor.DType <> src.DType then
-                        dtypeMismatches <-
-                            {
-                                Name = name
-                                Expected = string tensor.DType
-                                Got = string src.DType
-                            }
-                            :: dtypeMismatches
-                    else
-                        do! tensor.copyInPlace src
-                        loaded <- name :: loaded
-                | None -> missing <- name :: missing
+            let namesToLoad =
+                matches
+                |> List.choose (fun m ->
+                    match m with
+                    | Matched(n, _, _) -> Some n
+                    | _ -> None)
+                |> Set.ofList
 
-            let report = {
-                Loaded = List.rev loaded
-                Missing = List.rev missing
-                Unexpected = unexpected
-                ShapeMismatches = List.rev shapeMismatches
-                DTypeMismatches = List.rev dtypeMismatches
-            }
+            let! _, tensors = SafeTensors.loadSelected filePath namesToLoad
 
-            match mode with
-            | Strict when
-                report.Missing <> []
-                || report.Unexpected <> []
-                || report.ShapeMismatches <> []
-                || report.DTypeMismatches <> []
-                ->
-                let parts = [
-                    if report.Missing <> [] then
-                        $"missing keys: %A{report.Missing}"
-                    if report.Unexpected <> [] then
-                        $"unexpected keys: %A{report.Unexpected}"
-                    if report.ShapeMismatches <> [] then
-                        let names = report.ShapeMismatches |> List.map _.Name
-                        $"shape mismatches: %A{names}"
-                    if report.DTypeMismatches <> [] then
-                        let names = report.DTypeMismatches |> List.map _.Name
-                        $"dtype mismatches: %A{names}"
-                ]
+            for m in matches do
+                match m with
+                | Matched(name, target, _) ->
+                    match Map.tryFind name tensors with
+                    | Some src -> do! target.copyInPlace src
+                    | None -> ()
+                | _ -> ()
 
-                return! Error(Msg(parts |> String.concat "; "))
-            | _ -> return report
+            let report = buildReport matches unexpected
+            return! enforceStrict report mode
         }
