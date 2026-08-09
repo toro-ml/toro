@@ -1,5 +1,6 @@
 namespace Toro.NN
 
+open System.IO
 open Toro
 
 /// Common optimizer interface.
@@ -8,6 +9,10 @@ type IOptimizer =
     abstract learningRate: unit -> float
     abstract setLearningRate: float -> unit
     abstract zeroGrad: unit -> unit
+    /// Save optimizer state to a directory.
+    abstract saveState: dirPath: string -> Result<unit, ToroError>
+    /// Load optimizer state from a directory.
+    abstract loadState: dirPath: string -> Result<unit, ToroError>
 
 type SGD = {
     Vars: Tensor list
@@ -31,9 +36,11 @@ type SGD = {
             for v in this.Vars do
                 v.zeroGrad ()
 
+        member _.saveState(_dirPath) = Ok()
+        member _.loadState(_dirPath) = Ok()
+
 module SGD =
-    let create (lr: float) (vars: Tensor list) : IOptimizer =
-        { Vars = vars; LearningRate = lr }
+    let create (lr: float) (vars: Tensor list) : IOptimizer = { Vars = vars; LearningRate = lr }
 
 type ParamsAdamW = {
     Lr: float
@@ -95,6 +102,43 @@ type AdamW = {
         member this.zeroGrad() =
             for param, _, _ in this.Vars do
                 param.zeroGrad ()
+
+        member this.saveState(dirPath) =
+            result {
+                do! ToroError.wrap (fun () -> Directory.CreateDirectory dirPath |> ignore)
+
+                let stepTensor =
+                    Tensor.ofList ([ int64 this.StepCount ], Cpu)
+                    |> Result.defaultWith (fun _ -> failwith "unreachable")
+
+                do! stepTensor.save (Path.Combine(dirPath, "step.toro"))
+
+                for i, (_, m, v) in this.Vars |> List.indexed do
+                    do! m.save (Path.Combine(dirPath, $"m.{i}.toro"))
+                    do! v.save (Path.Combine(dirPath, $"v.{i}.toro"))
+            }
+
+        member this.loadState(dirPath) =
+            result {
+                let stepPath = Path.Combine(dirPath, "step.toro")
+
+                if File.Exists stepPath then
+                    let! stepTensor = Tensor.load stepPath
+                    let! stepVal = stepTensor.toInt64Scalar ()
+                    this.StepCount <- int stepVal
+
+                for i, (_, m, v) in this.Vars |> List.indexed do
+                    let mPath = Path.Combine(dirPath, $"m.{i}.toro")
+                    let vPath = Path.Combine(dirPath, $"v.{i}.toro")
+
+                    if File.Exists mPath then
+                        let! loaded = Tensor.load mPath
+                        do! m.copyInPlace loaded
+
+                    if File.Exists vPath then
+                        let! loaded = Tensor.load vPath
+                        do! v.copyInPlace loaded
+            }
 
 module AdamW =
     let create (config: ParamsAdamW) (vars: Tensor list) : Result<IOptimizer, ToroError> =

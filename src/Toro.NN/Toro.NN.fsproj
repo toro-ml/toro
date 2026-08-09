@@ -41,6 +41,7 @@
     <Compile Include="Optim.fs" />
     <Compile Include="Scheduler.fs" />
     <Compile Include="Clip.fs" />
+    <Compile Include="Checkpoint.fs" />
   </ItemGroup>
 
   <ItemGroup>

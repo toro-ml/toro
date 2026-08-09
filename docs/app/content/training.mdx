@@ -208,8 +208,10 @@ Toro.noGrad (fun () ->
 
 ## Checkpointing
 
-Save and restore model parameters with `Model.save` and `Model.loadInto`.
-Each parameter is stored as a separate file under the given directory:
+### Full checkpoint (model + optimizer + epoch)
+
+`Checkpoint.save` and `Checkpoint.load` persist the complete training state:
+model parameters, optimizer internal state (e.g. AdamW momentum), and the epoch number.
 
 ```fsharp
 for epoch in 1..epochs do
@@ -220,13 +222,28 @@ for epoch in 1..epochs do
     do! opt.step ()
 
     if epoch % 50 = 0 then
-        do! Model.save model $"checkpoints/epoch{epoch}"
+        do! Checkpoint.save model opt epoch $"checkpoints/epoch{epoch}"
 ```
 
-Load a checkpoint into an existing model:
+Resume training from a checkpoint:
 
 ```fsharp
-do! Model.loadInto model "checkpoints/epoch200"
+let! resumedEpoch = Checkpoint.load model opt "checkpoints/epoch200"
+printfn "Resumed from epoch %d" resumedEpoch
+
+for epoch in (resumedEpoch + 1)..epochs do
+    // training continues with restored optimizer state
+```
+
+`Checkpoint.load` also restores the learning rate stored at save time.
+
+### Model-only save/load
+
+For saving model weights without optimizer state, use `Model.save` and `Model.loadInto`:
+
+```fsharp
+do! Model.save model "weights/best"
+do! Model.loadInto model "weights/best"
 ```
 
 `Model.loadInto` matches parameters by name and copies values into the model tensors.
