@@ -1,0 +1,93 @@
+---
+title: Hub
+description: SafeTensors file support and Hugging Face Hub client for loading pre-trained models.
+---
+
+Toro.Hub provides SafeTensors file I/O and a Hugging Face Hub client for downloading pre-trained model weights.
+Open the namespace to get started:
+
+```fsharp
+open Toro
+open Toro.Hub
+```
+
+## SafeTensors
+
+Read and write the [SafeTensors](https://huggingface.co/docs/safetensors/) binary format, the standard for storing model weights securely.
+
+### Save
+
+```fsharp
+result {
+    let tensors = Map [ "weight", weightTensor; "bias", biasTensor ]
+    do! SafeTensors.save tensors "model.safetensors"
+}
+```
+
+### Load
+
+```fsharp
+result {
+    let! loaded = SafeTensors.load "model.safetensors"
+    // loaded: Map<string, Tensor>
+}
+```
+
+Supported data types: `F16`, `BF16`, `F32`, `F64`, `I32`, `I64`, `U8`, `Bool`.
+
+## Hugging Face Hub
+
+Download model files from the Hugging Face Hub with automatic caching to `~/.cache/toro/hub/`.
+
+### Download a file
+
+```fsharp
+let! path =
+    Hub.download "openai-community/gpt2" "model.safetensors"
+    |> Async.RunSynchronously
+// path: local file path in the cache directory
+```
+
+### Download and load weights
+
+```fsharp
+let! weights =
+    Hub.loadSafeTensors "openai-community/gpt2" "model.safetensors"
+    |> Async.RunSynchronously
+// weights: Map<string, Tensor>
+```
+
+### Authentication
+
+For gated models, set the `HF_TOKEN` environment variable:
+
+```bash
+export HF_TOKEN=hf_xxxxxxxxxxxxxxxxxxxxx
+```
+
+The client adds a `Bearer` token automatically when `HF_TOKEN` is set.
+
+## Loading Weights into a Model
+
+Use `Model.loadFromDict` (from Toro.NN) to copy downloaded weights into a model:
+
+```fsharp
+open Toro.NN
+
+result {
+    let! weights =
+        Hub.loadSafeTensors "openai-community/gpt2" "model.safetensors"
+        |> Async.RunSynchronously
+
+    do! Model.loadFromDict model weights None
+}
+```
+
+Pass a name mapping function when the parameter names in the file do not match the model:
+
+```fsharp
+let nameMap (name: string) =
+    name.Replace("transformer.", "")
+
+do! Model.loadFromDict model weights (Some nameMap)
+```

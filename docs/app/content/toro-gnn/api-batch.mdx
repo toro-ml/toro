@@ -1,14 +1,49 @@
 ---
 title: "Batch"
-description: "Batching multiple graphs into a single disconnected graph."
+description: "Graph batching utilities."
 namespace: "Toro.GNN"
 ---
 
-Combine multiple graphs into a single disconnected graph (PyG-style batching).
+Batching multiple graphs into a single disconnected graph (PyG-style).
 
-## Module functions
-
-| Name | Description |
+| Function | Description |
 | --- | --- |
-| `Batch.batch graphs` | Combine a list of graphs into one batched graph. Node features are concatenated, edge indices are offset, and a batch vector is created. |
-| `Batch.numGraphs g` | Return the number of graphs in a batched graph. |
+| `batch graphs` | Combine a list of graphs into one batched graph.
+ Node features are concatenated along dim 0.
+ Edge indices are offset by cumulative node counts.
+ A batch vector [N_total] maps each node to its source graph index. |
+| `numGraphs g` | Return the number of graphs in a batched graph. |
+
+## batch
+
+```fsharp
+batch graphs
+```
+
+Combine a list of graphs into one batched graph.
+ Node features are concatenated along dim 0.
+ Edge indices are offset by cumulative node counts.
+ A batch vector [N_total] maps each node to its source graph index.
+
+**Parameters**
+
+- `graphs` : `GraphData list`
+
+**Returns** `Result<GraphData, ToroError>`
+
+---
+
+## numGraphs
+
+```fsharp
+numGraphs g
+```
+
+Return the number of graphs in a batched graph.
+
+**Parameters**
+
+- `g` : `GraphData`
+
+**Returns** `int`
+

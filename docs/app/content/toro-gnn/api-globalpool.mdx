@@ -4,19 +4,64 @@ description: "Global graph pooling operations."
 namespace: "Toro.GNN"
 ---
 
-Aggregate node features into a single graph-level representation.
+Global graph pooling operations.
+ Aggregate node features into a single graph-level representation.
 
-## Module functions
-
-| Name | Description |
+| Function | Description |
 | --- | --- |
-| `GlobalPool.globalMeanPool x batch numGraphs` | Mean of node features per graph. |
-| `GlobalPool.globalSumPool x batch numGraphs` | Sum of node features per graph. |
-| `GlobalPool.globalMaxPool x batch numGraphs` | Element-wise max of node features per graph. |
+| `globalMaxPool x batch numGraphs` | Max of node features per graph. |
+| `globalMeanPool x batch numGraphs` | Mean of node features per graph. batch: [N] maps nodes to graph index. |
+| `globalSumPool x batch numGraphs` | Sum of node features per graph. |
 
-All functions take:
-- `x`: node feature matrix `[N, F]`
-- `batch`: batch vector `[N]` mapping each node to its graph index
-- `numGraphs`: total number of graphs in the batch
+## globalMaxPool
 
-Returns `[numGraphs, F]`.
+```fsharp
+globalMaxPool x batch numGraphs
+```
+
+Max of node features per graph.
+
+**Parameters**
+
+- `x` : `Tensor`
+- `batch` : `Tensor`
+- `numGraphs` : `int`
+
+**Returns** `Result<Tensor, ToroError>`
+
+---
+
+## globalMeanPool
+
+```fsharp
+globalMeanPool x batch numGraphs
+```
+
+Mean of node features per graph. batch: [N] maps nodes to graph index.
+
+**Parameters**
+
+- `x` : `Tensor`
+- `batch` : `Tensor`
+- `numGraphs` : `int`
+
+**Returns** `Result<Tensor, ToroError>`
+
+---
+
+## globalSumPool
+
+```fsharp
+globalSumPool x batch numGraphs
+```
+
+Sum of node features per graph.
+
+**Parameters**
+
+- `x` : `Tensor`
+- `batch` : `Tensor`
+- `numGraphs` : `int`
+
+**Returns** `Result<Tensor, ToroError>`
+

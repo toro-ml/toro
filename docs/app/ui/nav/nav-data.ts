@@ -78,6 +78,9 @@ export const navSections: readonly NavSection[] = [
       { to: "/tensor", label: "Tensor" },
       { to: "/nn", label: "Neural Networks" },
       { to: "/gnn", label: "Graph Neural Networks" },
+      { to: "/vision", label: "Vision" },
+      { to: "/text", label: "Text Processing" },
+      { to: "/hub", label: "Hub" },
       { to: "/training", label: "Training" },
     ],
   },
@@ -150,9 +153,31 @@ export const navSections: readonly NavSection[] = [
               { to: "/api-gcnconv", label: "GCNConv" },
               { to: "/api-gatconv", label: "GATConv" },
               { to: "/api-sageconv", label: "SAGEConv" },
+              { to: "/api-ginconv", label: "GINConv" },
             ],
           },
+          { to: "/api-graphnorm", label: "GraphNorm" },
           { to: "/api-globalpool", label: "GlobalPool" },
+        ],
+      },
+      {
+        title: "Toro.Hub",
+        entries: [
+          { to: "/api-safetensors", label: "SafeTensors" },
+          { to: "/api-hub", label: "Hub" },
+        ],
+      },
+      {
+        title: "Toro.Vision",
+        entries: [
+          { to: "/api-transform", label: "Transform" },
+        ],
+      },
+      {
+        title: "Toro.Text",
+        entries: [
+          { to: "/api-tokenizer", label: "Tokenizer" },
+          { to: "/api-preprocessing", label: "Preprocessing" },
         ],
       },
     ],

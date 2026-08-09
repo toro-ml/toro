@@ -4,41 +4,42 @@ description: "Gradient clipping utilities."
 namespace: "Toro.NN"
 ---
 
-Gradient clipping utilities. Call after `loss.backward()` and before `opt.step()`.
+Gradient clipping utilities.
 
 | Function | Description |
 | --- | --- |
-| `Clip.gradNorm maxNorm vars` | Clip by global L2 norm; return total norm before clipping |
-| `Clip.gradValue value vars` | Clip each gradient element to [-value, +value] |
+| `gradNorm maxNorm vars` | Clip gradients by global L2 norm. Return the total norm before clipping. |
+| `gradValue value vars` | Clip each gradient element to [-value, +value]. |
 
 ## gradNorm
 
 ```fsharp
-Clip.gradNorm maxNorm vars
+gradNorm maxNorm vars
 ```
 
-Clip gradients by global L2 norm. If the total norm exceeds `maxNorm`, all gradients are scaled down proportionally.
+Clip gradients by global L2 norm. Return the total norm before clipping.
 
 **Parameters**
 
-- `maxNorm` : `float` — maximum allowed L2 norm
-- `vars` : `Tensor list` — parameters with gradients
+- `maxNorm` : `float`
+- `vars` : `Tensor list`
 
-**Returns** ``Result<float, ToroError>`` — total norm before clipping
+**Returns** `Result<float, ToroError>`
 
 ---
 
 ## gradValue
 
 ```fsharp
-Clip.gradValue value vars
+gradValue value vars
 ```
 
-Clip each gradient element to the range `[-value, +value]`.
+Clip each gradient element to [-value, +value].
 
 **Parameters**
 
-- `value` : `float` — clipping bound
-- `vars` : `Tensor list` — parameters with gradients
+- `value` : `float`
+- `vars` : `Tensor list`
 
-**Returns** ``Result<unit, ToroError>``
+**Returns** `Result<unit, ToroError>`
+

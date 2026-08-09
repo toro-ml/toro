@@ -74,6 +74,33 @@ result {
 }
 ```
 
+### GINConv
+
+Graph Isomorphism Network (Xu et al., 2019). Uses a 2-layer MLP with a learnable epsilon:
+
+```fsharp
+result {
+    let! conv = GINConv.init 16 64 32 true F32 Cpu
+    // inChannels=16, hiddenChannels=64, outChannels=32, trainEps=true
+    let! out = conv.forward (x, edgeIndex)  // [N, 32]
+}
+```
+
+## Normalization
+
+### GraphNorm
+
+Graph Normalization (Cai et al., 2021). Normalizes node features per graph with a learnable shift:
+
+```fsharp
+result {
+    let! norm = GraphNorm.init 32 F32 Cpu
+    let! normalized = norm.forward (out, Some batchVec)
+}
+```
+
+When `batch` is `None`, all nodes are treated as belonging to a single graph.
+
 ## Graph Batching
 
 Combine multiple graphs into a single disconnected graph for batched processing:

@@ -1,0 +1,44 @@
+---
+title: "SafeTensors"
+description: "Read and write the SafeTensors binary format."
+namespace: "Toro.Hub"
+---
+
+Read and write the SafeTensors binary format.
+
+| Function | Description |
+| --- | --- |
+| `load filePath` | Load all tensors from a .safetensors file. |
+| `save tensors filePath` | Save tensors to a .safetensors file. |
+
+## load
+
+```fsharp
+load filePath
+```
+
+Load all tensors from a .safetensors file.
+
+**Parameters**
+
+- `filePath` : `string`
+
+**Returns** `Result<Map<string, Tensor>, ToroError>`
+
+---
+
+## save
+
+```fsharp
+save tensors filePath
+```
+
+Save tensors to a .safetensors file.
+
+**Parameters**
+
+- `tensors` : `Map<string, Tensor>`
+- `filePath` : `string`
+
+**Returns** `Result<unit, ToroError>`
+

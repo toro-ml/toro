@@ -1,0 +1,25 @@
+---
+title: "GraphNorm"
+description: "Graph normalization layer."
+namespace: "Toro.GNN"
+---
+
+Normalize node features per graph.
+ x: [N, F], batch: [N] option (None treats all nodes as one graph).
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `Alpha` |  |
+| `Beta` |  |
+| `Eps` |  |
+| `Gamma` |  |
+
+## Instance members
+
+| Name | Description |
+| --- | --- |
+| `this.forward (x, batch)` | Normalize node features per graph.
+ x: [N, F], batch: [N] option (None treats all nodes as one graph). |
+

@@ -1,0 +1,98 @@
+---
+title: Text Processing
+description: Tokenization and preprocessing utilities for text data.
+---
+
+Toro.Text provides tokenization and preprocessing utilities for preparing text data.
+Open the namespace to get started:
+
+```fsharp
+open Toro
+open Toro.Text
+```
+
+## Tokenizer
+
+All tokenizers implement `ITokenizer`:
+
+```fsharp
+type ITokenizer =
+    abstract encode: string -> int list
+    abstract decode: int list -> string
+    abstract vocabSize: int
+```
+
+### CharTokenizer
+
+A character-level tokenizer that maps each unique character to an integer:
+
+```fsharp
+let corpus = "hello world"
+let tokenizer = CharTokenizer.fromCorpus corpus
+
+let tokens = (tokenizer :> ITokenizer).encode "hello"
+let text = (tokenizer :> ITokenizer).decode tokens
+// text = "hello"
+```
+
+The vocabulary is built from the unique characters in the corpus, sorted alphabetically.
+
+## Preprocessing
+
+The `Preprocessing` module provides utilities for padding, batching, and masking token sequences.
+
+### padOrTruncate
+
+Pad short sequences with a pad token or truncate long sequences to a fixed length:
+
+```fsharp
+let padded = Preprocessing.padOrTruncate 5 0 [ 1; 2; 3 ]
+// padded = [ 1; 2; 3; 0; 0 ]
+
+let truncated = Preprocessing.padOrTruncate 3 0 [ 1; 2; 3; 4; 5 ]
+// truncated = [ 1; 2; 3 ]
+```
+
+### batchToTensor
+
+Convert a batch of token lists to a padded 2-D tensor:
+
+```fsharp
+result {
+    let batch = [ [ 1; 2; 3 ]; [ 4; 5 ] ]
+    let! t = Preprocessing.batchToTensor 4 0 batch I64 Cpu
+    // t: [2, 4] = [[1, 2, 3, 0], [4, 5, 0, 0]]
+}
+```
+
+### attentionMask
+
+Generate a binary attention mask: 1 where the token differs from the pad ID, 0 at pad positions:
+
+```fsharp
+result {
+    let! tokens = Tensor.ofArray ([| 1L; 2L; 0L; 0L |], Cpu)
+    let mask = Preprocessing.attentionMask tokens 0
+    // mask: [4] = [1, 1, 0, 0]
+}
+```
+
+## End-to-End Example
+
+```fsharp
+open Toro
+open Toro.Text
+
+let corpus = "the quick brown fox jumps over the lazy dog"
+let tokenizer = CharTokenizer.fromCorpus corpus
+let tok = tokenizer :> ITokenizer
+
+let sentences = [ "the fox"; "a dog" ]
+let encoded = sentences |> List.map tok.encode
+
+result {
+    let! batch = Preprocessing.batchToTensor 8 0 encoded I64 Cpu
+    let mask = Preprocessing.attentionMask batch 0
+    // batch: [2, 8], mask: [2, 8]
+}
+```

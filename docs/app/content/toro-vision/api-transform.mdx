@@ -1,0 +1,97 @@
+---
+title: "Transform"
+description: "Image transforms for preprocessing and data augmentation."
+namespace: "Toro.Vision"
+showTitle: false
+---
+
+# ITransform
+
+Image transform that maps a tensor to a tensor.
+
+## Instance members
+
+| Name | Description |
+| --- | --- |
+| `this.apply arg1` |  |
+
+---
+
+# Compose
+
+Compose multiple transforms into a single pipeline.
+
+| Function | Description |
+| --- | --- |
+| `apply transforms x` | Apply transforms sequentially, short-circuiting on the first error. |
+
+## apply
+
+```fsharp
+apply transforms x
+```
+
+Apply transforms sequentially, short-circuiting on the first error.
+
+**Parameters**
+
+- `transforms` : `ITransform list`
+- `x` : `Tensor`
+
+**Returns** `Result<Tensor, ToroError>`
+
+---
+
+# Normalize
+
+Channel-wise normalization: $(x - \mu) / \sigma$.
+ Input: $[C, H, W]$ or $[B, C, H, W]$.
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `Mean` |  |
+| `Std` |  |
+
+---
+
+# Resize
+
+Resize to the target spatial size using bilinear interpolation.
+ Input: $[C, H, W]$ or $[B, C, H, W]$.
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `Height` |  |
+| `Width` |  |
+
+---
+
+# RandomHorizontalFlip
+
+Randomly flip the image horizontally with probability p.
+ Input: $[C, H, W]$ or $[B, C, H, W]$.
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `P` |  |
+
+---
+
+# RandomCrop
+
+Randomly crop the image to the given size.
+ Input: $[C, H, W]$ or $[B, C, H, W]$.
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `Height` |  |
+| `Width` |  |
+

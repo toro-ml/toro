@@ -279,6 +279,177 @@ const filePages: FilePage[] = [
       { html: "toro-nn-adamw.html", heading: "AdamW" },
     ],
   },
+  {
+    subdir: "toro-nn",
+    namespace: "Toro.NN",
+    slug: "api-scheduler",
+    title: "Scheduler",
+    description: "Learning rate schedulers.",
+    sources: [
+      { html: "toro-nn-steplr.html", heading: "StepLR" },
+      { html: "toro-nn-exponentiallr.html", heading: "ExponentialLR" },
+      { html: "toro-nn-cosineannealinglr.html", heading: "CosineAnnealingLR" },
+      { html: "toro-nn-linearwarmup.html", heading: "LinearWarmup" },
+    ],
+  },
+  {
+    subdir: "toro-nn",
+    namespace: "Toro.NN",
+    slug: "api-clip",
+    title: "Clip",
+    description: "Gradient clipping utilities.",
+    sources: [{ html: "toro-nn-clip.html", heading: "Clip" }],
+  },
+  {
+    subdir: "toro-nn",
+    namespace: "Toro.NN",
+    slug: "api-metrics",
+    title: "Metrics",
+    description: "Evaluation metrics (accuracy, precision, recall, F1).",
+    sources: [{ html: "toro-nn-metrics.html", heading: "Metrics" }],
+  },
+
+  // ── Toro.Hub ──
+  {
+    subdir: "toro-hub",
+    namespace: "Toro.Hub",
+    slug: "api-safetensors",
+    title: "SafeTensors",
+    description: "Read and write the SafeTensors binary format.",
+    sources: [{ html: "toro-hub-safetensors.html", heading: "SafeTensors" }],
+  },
+  {
+    subdir: "toro-hub",
+    namespace: "Toro.Hub",
+    slug: "api-hub",
+    title: "Hub",
+    description: "Download files from the Hugging Face Hub.",
+    sources: [{ html: "toro-hub-hub.html", heading: "Hub" }],
+  },
+
+  // ── Toro.GNN ──
+  {
+    subdir: "toro-gnn",
+    namespace: "Toro.GNN",
+    slug: "api-graphdata",
+    title: "GraphData",
+    description: "Graph data representation in COO format.",
+    sources: [{ html: "toro-gnn-graphdata.html", heading: "GraphData" }],
+  },
+  {
+    subdir: "toro-gnn",
+    namespace: "Toro.GNN",
+    slug: "api-batch",
+    title: "Batch",
+    description: "Graph batching utilities.",
+    sources: [{ html: "toro-gnn-batch.html", heading: "Batch" }],
+  },
+  {
+    subdir: "toro-gnn",
+    namespace: "Toro.GNN",
+    slug: "api-graphutils",
+    title: "GraphUtils",
+    description: "Graph utility functions.",
+    sources: [{ html: "toro-gnn-graphutils.html", heading: "GraphUtils" }],
+  },
+  {
+    subdir: "toro-gnn",
+    namespace: "Toro.GNN",
+    slug: "api-messagepassing",
+    title: "MessagePassing",
+    description: "Message passing operations for GNNs.",
+    sources: [
+      { html: "toro-gnn-messagepassing.html", heading: "MessagePassing" },
+    ],
+  },
+  {
+    subdir: "toro-gnn",
+    namespace: "Toro.GNN",
+    slug: "api-gcnconv",
+    title: "GCNConv",
+    description: "Graph Convolutional Network layer.",
+    sources: [{ html: "toro-gnn-gcnconv.html", heading: "GCNConv" }],
+  },
+  {
+    subdir: "toro-gnn",
+    namespace: "Toro.GNN",
+    slug: "api-gatconv",
+    title: "GATConv",
+    description: "Graph Attention Network layer.",
+    sources: [{ html: "toro-gnn-gatconv.html", heading: "GATConv" }],
+  },
+  {
+    subdir: "toro-gnn",
+    namespace: "Toro.GNN",
+    slug: "api-sageconv",
+    title: "SAGEConv",
+    description: "GraphSAGE layer.",
+    sources: [{ html: "toro-gnn-sageconv.html", heading: "SAGEConv" }],
+  },
+  {
+    subdir: "toro-gnn",
+    namespace: "Toro.GNN",
+    slug: "api-ginconv",
+    title: "GINConv",
+    description: "Graph Isomorphism Network layer.",
+    sources: [{ html: "toro-gnn-ginconv.html", heading: "GINConv" }],
+  },
+  {
+    subdir: "toro-gnn",
+    namespace: "Toro.GNN",
+    slug: "api-graphnorm",
+    title: "GraphNorm",
+    description: "Graph normalization layer.",
+    sources: [{ html: "toro-gnn-graphnorm.html", heading: "GraphNorm" }],
+  },
+  {
+    subdir: "toro-gnn",
+    namespace: "Toro.GNN",
+    slug: "api-globalpool",
+    title: "GlobalPool",
+    description: "Global graph pooling operations.",
+    sources: [{ html: "toro-gnn-globalpool.html", heading: "GlobalPool" }],
+  },
+
+  // ── Toro.Vision ──
+  {
+    subdir: "toro-vision",
+    namespace: "Toro.Vision",
+    slug: "api-transform",
+    title: "Transform",
+    description: "Image transforms for preprocessing and data augmentation.",
+    sources: [
+      { html: "toro-vision-itransform.html", heading: "ITransform" },
+      { html: "toro-vision-compose.html", heading: "Compose" },
+      { html: "toro-vision-normalize.html", heading: "Normalize" },
+      { html: "toro-vision-resize.html", heading: "Resize" },
+      { html: "toro-vision-randomhorizontalflip.html", heading: "RandomHorizontalFlip" },
+      { html: "toro-vision-randomcrop.html", heading: "RandomCrop" },
+    ],
+  },
+
+  // ── Toro.Text ──
+  {
+    subdir: "toro-text",
+    namespace: "Toro.Text",
+    slug: "api-tokenizer",
+    title: "Tokenizer",
+    description: "Tokenizer interfaces and character-level tokenizer.",
+    sources: [
+      { html: "toro-text-itokenizer.html", heading: "ITokenizer" },
+      { html: "toro-text-chartokenizer.html", heading: "CharTokenizer" },
+    ],
+  },
+  {
+    subdir: "toro-text",
+    namespace: "Toro.Text",
+    slug: "api-preprocessing",
+    title: "Preprocessing",
+    description: "Text preprocessing utilities for batching and masking.",
+    sources: [
+      { html: "toro-text-preprocessing.html", heading: "Preprocessing" },
+    ],
+  },
 ];
 
 // ── HTML helpers ──────────────────────────────────────────────────────

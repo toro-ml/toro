@@ -1,24 +1,53 @@
 ---
 title: "MessagePassing"
-description: "Shared message-passing utilities for graph convolution layers."
+description: "Message passing operations for GNNs."
 namespace: "Toro.GNN"
 ---
 
-Shared utilities used by all graph convolution layers.
+Shared message-passing utilities used by all graph convolution layers.
 
-## Aggregation
-
-Discriminated union for aggregation strategies:
-
-| Case | Description |
+| Function | Description |
 | --- | --- |
-| `Add` | Sum messages at each target node. |
-| `Mean` | Mean of messages at each target node. |
-| `Max` | Element-wise maximum of messages at each target node. |
+| `aggregate aggr msg targetIdx numNodes features` | Scatter messages [E, F] to target nodes [N, F] using the given aggregation. |
+| `edgeSoftmax scores targetIdx numNodes` | Edge-wise softmax: softmax of scores grouped by target node index.
+ scores: [E] or [E, H], targetIdx: [E], numNodes: N.
+ Returns normalized attention coefficients with the same shape as scores. |
 
-## Module functions
+## aggregate
 
-| Name | Description |
-| --- | --- |
-| `MessagePassing.aggregate aggr msg targetIdx numNodes features` | Scatter messages `[E, F]` to target nodes `[N, F]` using the given aggregation. |
-| `MessagePassing.edgeSoftmax scores targetIdx numNodes` | Edge-wise softmax: normalize scores grouped by target node. Supports both `[E]` and `[E, H]` shapes. |
+```fsharp
+aggregate aggr msg targetIdx numNodes features
+```
+
+Scatter messages [E, F] to target nodes [N, F] using the given aggregation.
+
+**Parameters**
+
+- `aggr` : `Aggregation`
+- `msg` : `Tensor`
+- `targetIdx` : `Tensor`
+- `numNodes` : `int`
+- `features` : `int`
+
+**Returns** `Result<Tensor, ToroError>`
+
+---
+
+## edgeSoftmax
+
+```fsharp
+edgeSoftmax scores targetIdx numNodes
+```
+
+Edge-wise softmax: softmax of scores grouped by target node index.
+ scores: [E] or [E, H], targetIdx: [E], numNodes: N.
+ Returns normalized attention coefficients with the same shape as scores.
+
+**Parameters**
+
+- `scores` : `Tensor`
+- `targetIdx` : `Tensor`
+- `numNodes` : `int`
+
+**Returns** `Result<Tensor, ToroError>`
+

@@ -1,30 +1,23 @@
 ---
 title: "SAGEConv"
-description: "GraphSAGE convolution layer."
+description: "GraphSAGE layer."
 namespace: "Toro.GNN"
 ---
 
-GraphSAGE convolution layer (Hamilton et al., 2017). Mean-aggregator variant.
-
-$$\mathbf{x}_i' = \mathbf{W}_1 \mathbf{x}_i + \mathbf{W}_2 \cdot \text{mean}_{j \in \mathcal{N}(i)} \mathbf{x}_j$$
+GraphSAGE convolution layer (Hamilton et al., 2017).
+ $\mathbf{x}_i' = \mathbf{W}_1 \mathbf{x}_i + \mathbf{W}_2 \cdot \text{mean}_{j \in \mathcal{N}(i)} \mathbf{x}_j$
 
 ## Record fields
 
 | Name | Description |
 | --- | --- |
-| `WeightSelf` | Self-transform weight `[outChannels, inChannels]`. |
-| `WeightNeighbor` | Neighbor-transform weight `[outChannels, inChannels]`. |
-| `Bias` | Optional bias vector `[outChannels]`. |
+| `Bias` |  |
+| `WeightNeighbor` |  |
+| `WeightSelf` |  |
 
 ## Instance members
 
 | Name | Description |
 | --- | --- |
-| `this.forward (x, edgeIndex)` | Apply GraphSAGE convolution. |
+| `this.forward (x, edgeIndex)` |  |
 
-## Module functions
-
-| Name | Description |
-| --- | --- |
-| `SAGEConv.init inChannels outChannels dtype device` | Create a SAGEConv layer with bias. |
-| `SAGEConv.initNoBias inChannels outChannels dtype device` | Create a SAGEConv layer without bias. |

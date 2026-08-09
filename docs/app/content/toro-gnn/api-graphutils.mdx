@@ -4,11 +4,42 @@ description: "Graph utility functions."
 namespace: "Toro.GNN"
 ---
 
-Utility functions for graph manipulation.
-
-## Module functions
-
-| Name | Description |
+| Function | Description |
 | --- | --- |
-| `GraphUtils.addSelfLoops edgeIndex numNodes` | Add self-loops to the edge index. Returns a new edge index with `numNodes` additional edges. |
-| `GraphUtils.degree index numNodes dtype device` | Compute node degree from a target index vector. |
+| `addSelfLoops edgeIndex numNodes` | Add self-loops to edge index. Returns (newEdgeIndex, numNodes). |
+| `degree index numNodes dtype device` | Compute node degree from an index vector (one row of edge_index). |
+
+## addSelfLoops
+
+```fsharp
+addSelfLoops edgeIndex numNodes
+```
+
+Add self-loops to edge index. Returns (newEdgeIndex, numNodes).
+
+**Parameters**
+
+- `edgeIndex` : `Tensor`
+- `numNodes` : `int`
+
+**Returns** `Result<Tensor, ToroError>`
+
+---
+
+## degree
+
+```fsharp
+degree index numNodes dtype device
+```
+
+Compute node degree from an index vector (one row of edge_index).
+
+**Parameters**
+
+- `index` : `Tensor`
+- `numNodes` : `int`
+- `dtype` : `DType`
+- `device` : `Device`
+
+**Returns** `Result<Tensor, ToroError>`
+

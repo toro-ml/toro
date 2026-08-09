@@ -1,0 +1,67 @@
+---
+title: "Preprocessing"
+description: "Text preprocessing utilities for batching and masking."
+namespace: "Toro.Text"
+---
+
+Text preprocessing utilities for batching and masking.
+
+| Function | Description |
+| --- | --- |
+| `attentionMask tokens padId` | Generate an attention mask: 1 where token differs from padId, 0 at pad positions. |
+| `batchToTensor maxLen padId batch dtype device` | Convert a batch of token lists to a tensor, padding each to maxLen. |
+| `padOrTruncate maxLen padId tokens` | Pad or truncate a token list to the specified length. |
+
+## attentionMask
+
+```fsharp
+attentionMask tokens padId
+```
+
+Generate an attention mask: 1 where token differs from padId, 0 at pad positions.
+
+**Parameters**
+
+- `tokens` : `Tensor`
+- `padId` : `int`
+
+**Returns** `Tensor`
+
+---
+
+## batchToTensor
+
+```fsharp
+batchToTensor maxLen padId batch dtype device
+```
+
+Convert a batch of token lists to a tensor, padding each to maxLen.
+
+**Parameters**
+
+- `maxLen` : `int`
+- `padId` : `int`
+- `batch` : `int list list`
+- `dtype` : `DType`
+- `device` : `Device`
+
+**Returns** `Result<Tensor, ToroError>`
+
+---
+
+## padOrTruncate
+
+```fsharp
+padOrTruncate maxLen padId tokens
+```
+
+Pad or truncate a token list to the specified length.
+
+**Parameters**
+
+- `maxLen` : `int`
+- `padId` : `int`
+- `tokens` : `int list`
+
+**Returns** `int list`
+
