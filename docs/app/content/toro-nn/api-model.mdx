@@ -8,10 +8,31 @@ Reflection-based parameter discovery, serialization, and deserialization for F# 
 
 | Function | Description |
 | --- | --- |
+| `loadFromDict model tensors nameMap` | Load tensors from a dictionary into the model, matching by parameter name.
+ When nameMap is Some, dictionary keys are translated before matching. |
 | `loadInto model dirPath` | Load tensors from the given directory into the model in place. |
 | `namedParams model` | Return all named tensors in the model via reflection. |
 | `save model dirPath` | Save all model tensors to the given directory. |
 | `trainableVars model` | Return all tensors that require gradients. |
+
+## loadFromDict
+
+```fsharp
+loadFromDict model tensors nameMap
+```
+
+Load tensors from a dictionary into the model, matching by parameter name.
+ When nameMap is Some, dictionary keys are translated before matching.
+
+**Parameters**
+
+- `model` : `'T`
+- `tensors` : `Map<string, Tensor>`
+- `nameMap` : `Map<string, string> option`
+
+**Returns** `Result<unit, ToroError>`
+
+---
 
 ## loadInto
 
@@ -26,7 +47,7 @@ Load tensors from the given directory into the model in place.
 - `model` : `'T`
 - `dirPath` : `string`
 
-**Returns** ``Result<unit, ToroError>``
+**Returns** `Result<unit, ToroError>`
 
 ---
 
@@ -59,7 +80,7 @@ Save all model tensors to the given directory.
 - `model` : `'T`
 - `dirPath` : `string`
 
-**Returns** ``Result<unit, ToroError>``
+**Returns** `Result<unit, ToroError>`
 
 ---
 

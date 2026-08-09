@@ -88,3 +88,28 @@ module Model =
                     let! loaded = Tensor.load filePath
                     do! tensor.copyInPlace loaded
         }
+
+    /// Load tensors from a dictionary into the model, matching by parameter name.
+    /// When nameMap is Some, dictionary keys are translated before matching.
+    let loadFromDict
+        (model: 'T)
+        (tensors: Map<string, Tensor>)
+        (nameMap: Map<string, string> option)
+        : Result<unit, ToroError> =
+        result {
+            let lookup =
+                match nameMap with
+                | Some mapping ->
+                    tensors
+                    |> Map.toSeq
+                    |> Seq.map (fun (k, v) ->
+                        let mapped = mapping |> Map.tryFind k |> Option.defaultValue k
+                        mapped, v)
+                    |> Map.ofSeq
+                | None -> tensors
+
+            for name, tensor in namedParams model do
+                match lookup |> Map.tryFind name with
+                | Some src -> do! tensor.copyInPlace src
+                | None -> ()
+        }

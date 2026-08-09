@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageId>Toro.Hub</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>ryushiaok</Authors>
+    <Description>SafeTensors reader/writer and Hugging Face Hub client for Toro</Description>
+    <PackageTags>fsharp;dotnet;ml;torchsharp;safetensors;huggingface</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/toro-ml/toro</RepositoryUrl>
+    <RepositoryBranch>main</RepositoryBranch>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://toro-ml.github.io/toro</PackageProjectUrl>
+    <FsDocsLicenseLink>https://github.com/toro-ml/toro/blob/main/LICENSE</FsDocsLicenseLink>
+    <FsDocsReleaseNotesLink>https://github.com/toro-ml/toro/releases</FsDocsReleaseNotesLink>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="SafeTensors.fs" />
+    <Compile Include="Hub.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Toro/Toro.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FsHttp" Version="15.*" />
+  </ItemGroup>
+
+</Project>

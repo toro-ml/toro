@@ -23,6 +23,7 @@
     <Compile Include="SchedulerTests.fs" />
     <Compile Include="ClipTests.fs" />
     <Compile Include="CheckpointTests.fs" />
+    <Compile Include="SafeTensorsTests.fs" />
     <Compile Include="GraphTests.fs" />
   </ItemGroup>
 
@@ -30,6 +31,7 @@
     <ProjectReference Include="../../src/Toro/Toro.fsproj" />
     <ProjectReference Include="../../src/Toro.NN/Toro.NN.fsproj" />
     <ProjectReference Include="../../src/Toro.GNN/Toro.GNN.fsproj" />
+    <ProjectReference Include="../../src/Toro.Hub/Toro.Hub.fsproj" />
   </ItemGroup>
 
   <ItemGroup>

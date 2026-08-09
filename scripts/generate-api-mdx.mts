@@ -6,12 +6,49 @@ const root = join(import.meta.dirname, "..");
 const refDir = join(root, ".fsdocs-out", "reference");
 const outDir = join(root, "docs", "app", "content");
 
+type Source = {
+  html: string;
+  heading: string;
+};
+
+type FilePage = {
+  subdir: string;
+  namespace: string;
+  slug: string;
+  title: string;
+  description: string;
+  sources: Source[];
+};
+
+type Parameter = {
+  name: string;
+  type: string;
+};
+
+type Member = {
+  name: string;
+  signature: string;
+  summary: string;
+  params: Parameter[];
+  returns: string;
+};
+
+type MemberSection = {
+  section: string;
+  members: Member[];
+};
+
+type SourceSection = {
+  title: string;
+  members: Member[];
+};
+
 // ── File-based page definitions ──────────────────────────────────────
 // Each entry corresponds to a single .fs file in the fsproj.
 // `sources` lists the FSDocs HTML files produced by that file.
 // Multi-source pages are merged into a single MDX with per-type h2 headings.
 
-const filePages = [
+const filePages: FilePage[] = [
   // ── Toro ── (fsproj compile order)
   {
     subdir: "toro",
@@ -246,7 +283,7 @@ const filePages = [
 
 // ── HTML helpers ──────────────────────────────────────────────────────
 
-function decodeEntities(text) {
+function decodeEntities(text: string): string {
   return text
     .replace(/&#32;/g, " ")
     .replace(/&#39;/g, "'")
@@ -256,11 +293,11 @@ function decodeEntities(text) {
     .replace(/&quot;/g, '"');
 }
 
-function stripTags(html) {
+function stripTags(html: string): string {
   return decodeEntities(html.replace(/<[^>]+>/g, "")).trim();
 }
 
-function stripTagsKeepCode(html) {
+function stripTagsKeepCode(html: string): string {
   return decodeEntities(
     html
       .replace(/<(?:code|c)>([\s\S]*?)<\/(?:code|c)>/g, "`$1`")
@@ -268,16 +305,16 @@ function stripTagsKeepCode(html) {
   ).trim();
 }
 
-function escapeMdx(text) {
+function escapeMdx(text: string): string {
   return text.replace(/(\w+)<([^>]+)>/g, "`$1<$2>`");
 }
 
-function extractMembers(html) {
-  const members = [];
+function extractMembers(html: string): Member[] {
+  const members: Member[] = [];
   const tableRegex =
     /<tr>\s*<td class="fsdocs-member-usage">([\s\S]*?)<\/td>\s*<td class="fsdocs-member-xmldoc">([\s\S]*?)<\/td>\s*<\/tr>/g;
 
-  let match;
+  let match: RegExpExecArray | null;
   while ((match = tableRegex.exec(html)) !== null) {
     const usageHtml = match[1];
     const docHtml = match[2];
@@ -295,10 +332,10 @@ function extractMembers(html) {
     );
     const summary = summaryMatch ? stripTagsKeepCode(summaryMatch[1]) : "";
 
-    const params = [];
+    const params: Parameter[] = [];
     const paramRegex =
       /<dt class="fsdocs-param">\s*<span class="fsdocs-param-name">\s*([\s\S]*?)\s*<\/span>\s*:\s*<code>([\s\S]*?)<\/code>\s*<\/dt>/g;
-    let paramMatch;
+    let paramMatch: RegExpExecArray | null;
     while ((paramMatch = paramRegex.exec(docHtml)) !== null) {
       params.push({
         name: stripTags(paramMatch[1]),
@@ -318,12 +355,12 @@ function extractMembers(html) {
   return members;
 }
 
-function extractTypeMembers(html) {
-  const types = [];
+function extractTypeMembers(html: string): MemberSection[] {
+  const types: MemberSection[] = [];
   const sectionRegex =
     /<h3>\s*(Union cases|Record fields|Instance members|Static members|Constructors)\s*<\/h3>\s*<table[\s\S]*?<tbody>([\s\S]*?)<\/tbody>/g;
 
-  let match;
+  let match: RegExpExecArray | null;
   while ((match = sectionRegex.exec(html)) !== null) {
     const sectionName = match[1];
     const tbody = match[2];
@@ -337,7 +374,7 @@ function extractTypeMembers(html) {
   return types;
 }
 
-function extractModuleSummary(html) {
+function extractModuleSummary(html: string): string {
   const match = html.match(
     /<div class="fsdocs-summary-contents">\s*<p class="fsdocs-summary">([\s\S]*?)<\/p>/,
   );
@@ -346,18 +383,18 @@ function extractModuleSummary(html) {
 
 // ── MDX generation ───────────────────────────────────────────────────
 
-function h(level) {
+function h(level: number): string {
   return "#".repeat(level);
 }
 
-function generateSourceContent(html, sourceLevel) {
+function generateSourceContent(html: string, sourceLevel: number): string {
   const summary = extractModuleSummary(html);
 
-  const sections = [];
+  const sections: SourceSection[] = [];
   const sectionRegex =
     /<h3>\s*(Functions and values|Types|Modules)\s*<\/h3>\s*<table[\s\S]*?<tbody>([\s\S]*?)<\/tbody>/g;
 
-  let match;
+  let match: RegExpExecArray | null;
   while ((match = sectionRegex.exec(html)) !== null) {
     const sectionName = match[1];
     const tbody = match[2];
@@ -426,13 +463,13 @@ function generateSourceContent(html, sourceLevel) {
       if (m.params.length > 0) {
         mdx += "**Parameters**\n\n";
         for (const p of m.params) {
-          mdx += `- \`${escapeMdx(p.name)}\` : \`${escapeMdx(p.type)}\`\n`;
+          mdx += `- \`${p.name}\` : \`${p.type}\`\n`;
         }
         mdx += "\n";
       }
 
       if (m.returns) {
-        mdx += `**Returns** \`${escapeMdx(m.returns)}\`\n\n`;
+        mdx += `**Returns** \`${m.returns}\`\n\n`;
       }
     }
   }
@@ -440,7 +477,7 @@ function generateSourceContent(html, sourceLevel) {
   return mdx;
 }
 
-function generateFileMdx(filePage) {
+function generateFileMdx(filePage: FilePage): string {
   const ns = filePage.namespace
     ? `\nnamespace: "${filePage.namespace}"`
     : "";
@@ -471,10 +508,9 @@ function generateFileMdx(filePage) {
 
 // ── Main ─────────────────────────────────────────────────────────────
 
-function main() {
-  let files;
+function main(): void {
   try {
-    files = readdirSync(refDir);
+    readdirSync(refDir);
   } catch {
     console.error(`Reference directory not found: ${refDir}`);
     console.error("Run 'dotnet fsdocs build' first.");
@@ -498,9 +534,10 @@ function main() {
         ? `${filePage.subdir}/${filePage.slug}.mdx`
         : `${filePage.slug}.mdx`;
       console.log(`  ${label}`);
-    } catch (e) {
+    } catch (e: unknown) {
       const htmlList = filePage.sources.map((s) => s.html).join(", ");
-      console.error(`Error processing ${htmlList}: ${e.message}`);
+      const message = e instanceof Error ? e.message : String(e);
+      console.error(`Error processing ${htmlList}: ${message}`);
     }
   }
 }

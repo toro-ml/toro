@@ -1,6 +1,6 @@
 ---
 title: Training
-description: Loss functions, SGD and AdamW optimizers, training and evaluation loops, learning rate scheduling, and checkpointing.
+description: Loss functions, SGD and AdamW optimizers, training and evaluation loops, learning rate scheduling, checkpointing, and pre-trained model loading.
 ---
 
 This page covers loss functions, optimizers, and the training loop.
@@ -248,3 +248,66 @@ do! Model.loadInto model "weights/best"
 
 `Model.loadInto` matches parameters by name and copies values into the model tensors.
 Parameters not found on disk are left unchanged.
+
+## Pre-trained Models (Toro.Hub)
+
+The `Toro.Hub` package provides SafeTensors file support and a Hugging Face Hub client
+for loading pre-trained model weights.
+
+### SafeTensors
+
+Read and write the [SafeTensors](https://huggingface.co/docs/safetensors/) binary format:
+
+```fsharp
+open Toro.Hub
+
+// Save tensors to a .safetensors file
+let tensors = Map [ "weight", weightTensor; "bias", biasTensor ]
+do! SafeTensors.save tensors "model.safetensors"
+
+// Load tensors from a .safetensors file
+let! loaded = SafeTensors.load "model.safetensors"
+```
+
+`SafeTensors.load` returns `Result<Map<string, Tensor>, ToroError>`.
+The map keys are the tensor names stored in the file.
+
+### Hugging Face Hub
+
+Download model files from the Hugging Face Hub:
+
+```fsharp
+open Toro.Hub
+
+// Download a single file (cached to ~/.cache/toro/hub/)
+let! path = Hub.download "openai-community/gpt2" "model.safetensors" |> Async.RunSynchronously
+
+// Download and load in one step
+let! weights =
+    Hub.loadSafeTensors "openai-community/gpt2" "model.safetensors"
+    |> Async.RunSynchronously
+```
+
+For gated models, set the `HF_TOKEN` environment variable.
+Downloaded files are cached locally and reused on subsequent calls.
+
+### Loading weights into a model
+
+Use `Model.loadFromDict` to copy tensors from a dictionary into a model's parameters:
+
+```fsharp
+let! weights = SafeTensors.load "model.safetensors"
+do! Model.loadFromDict model weights None
+```
+
+When Hugging Face parameter names differ from Toro parameter names,
+pass a name mapping:
+
+```fsharp
+let nameMap = Map [
+    "transformer.h.0.attn.c_attn.weight", "layers.0.attention.queryWeight"
+]
+do! Model.loadFromDict model weights (Some nameMap)
+```
+
+Parameters not found in the dictionary are left unchanged.
