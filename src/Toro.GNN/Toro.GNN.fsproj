@@ -25,7 +25,9 @@
     <Compile Include="Conv/GCNConv.fs" />
     <Compile Include="Conv/GATConv.fs" />
     <Compile Include="Conv/SAGEConv.fs" />
+    <Compile Include="Conv/GINConv.fs" />
     <Compile Include="Pool/GlobalPool.fs" />
+    <Compile Include="Norm/GraphNorm.fs" />
   </ItemGroup>
 
   <ItemGroup>

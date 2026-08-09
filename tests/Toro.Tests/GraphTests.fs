@@ -256,3 +256,187 @@ let ``SAGEConv output has gradients`` () =
     loss.backward () |> unwrap
     conv.WeightSelf.RequiresGrad |> should equal true
     conv.WeightNeighbor.RequiresGrad |> should equal true
+
+// --- Batch tests ---
+
+[<Fact>]
+let ``Batch combines two graphs`` () =
+    let x1 = Tensor.randn ([ 3; 4 ], F32, Cpu) |> unwrap
+    let ei1 = mkEdgeIndex (array2D [| [| 0L; 1L |]; [| 1L; 2L |] |])
+    let g1 = GraphData.create x1 ei1
+
+    let x2 = Tensor.randn ([ 2; 4 ], F32, Cpu) |> unwrap
+    let ei2 = mkEdgeIndex (array2D [| [| 0L |]; [| 1L |] |])
+    let g2 = GraphData.create x2 ei2
+
+    let batched = Batch.batch [ g1; g2 ] |> unwrap
+    GraphData.numNodes batched |> should equal 5
+    GraphData.numEdges batched |> should equal 3
+    Batch.numGraphs batched |> should equal 2
+
+    let bv = batched.Batch |> Option.get
+    bv.Shape |> should equal [ 5 ]
+    // First 3 nodes belong to graph 0, next 2 to graph 1
+    bv[0] |> scalarF32 |> should (equalWithin 1e-5) 0.0f
+    bv[2] |> scalarF32 |> should (equalWithin 1e-5) 0.0f
+    bv[3] |> scalarF32 |> should (equalWithin 1e-5) 1.0f
+    bv[4] |> scalarF32 |> should (equalWithin 1e-5) 1.0f
+
+// --- GlobalPool tests ---
+
+[<Fact>]
+let ``globalMeanPool computes per-graph mean`` () =
+    let x =
+        Tensor.ofArray (array2D [| [| 2.0f; 4.0f |]; [| 4.0f; 6.0f |]; [| 1.0f; 3.0f |] |], Cpu)
+        |> unwrap
+
+    let batch =
+        Tensor.ofTorchTensor (TorchSharp.torch.tensor ([| 0L; 0L; 1L |]: int64 array))
+        |> unwrap
+
+    let out = GlobalPool.globalMeanPool x batch 2 |> unwrap
+    out.Shape |> should equal [ 2; 2 ]
+    // Graph 0: mean([2,4],[4,6]) = [3,5]
+    out.at [ I 0; I 0 ]
+    |> scalarF32
+    |> should (equalWithin 1e-5) 3.0f
+
+    out.at [ I 0; I 1 ]
+    |> scalarF32
+    |> should (equalWithin 1e-5) 5.0f
+    // Graph 1: [1,3]
+    out.at [ I 1; I 0 ]
+    |> scalarF32
+    |> should (equalWithin 1e-5) 1.0f
+
+    out.at [ I 1; I 1 ]
+    |> scalarF32
+    |> should (equalWithin 1e-5) 3.0f
+
+[<Fact>]
+let ``globalSumPool computes per-graph sum`` () =
+    let x =
+        Tensor.ofArray (array2D [| [| 1.0f; 2.0f |]; [| 3.0f; 4.0f |]; [| 5.0f; 6.0f |] |], Cpu)
+        |> unwrap
+
+    let batch =
+        Tensor.ofTorchTensor (TorchSharp.torch.tensor ([| 0L; 0L; 1L |]: int64 array))
+        |> unwrap
+
+    let out = GlobalPool.globalSumPool x batch 2 |> unwrap
+    out.Shape |> should equal [ 2; 2 ]
+    // Graph 0: sum([1,2],[3,4]) = [4,6]
+    out.at [ I 0; I 0 ]
+    |> scalarF32
+    |> should (equalWithin 1e-5) 4.0f
+
+    out.at [ I 0; I 1 ]
+    |> scalarF32
+    |> should (equalWithin 1e-5) 6.0f
+    // Graph 1: [5,6]
+    out.at [ I 1; I 0 ]
+    |> scalarF32
+    |> should (equalWithin 1e-5) 5.0f
+
+    out.at [ I 1; I 1 ]
+    |> scalarF32
+    |> should (equalWithin 1e-5) 6.0f
+
+[<Fact>]
+let ``globalMaxPool computes per-graph max`` () =
+    let x =
+        Tensor.ofArray (array2D [| [| 1.0f; 4.0f |]; [| 3.0f; 2.0f |]; [| 5.0f; 6.0f |] |], Cpu)
+        |> unwrap
+
+    let batch =
+        Tensor.ofTorchTensor (TorchSharp.torch.tensor ([| 0L; 0L; 1L |]: int64 array))
+        |> unwrap
+
+    let out = GlobalPool.globalMaxPool x batch 2 |> unwrap
+    out.Shape |> should equal [ 2; 2 ]
+    // Graph 0: max([1,4],[3,2]) = [3,4]
+    out.at [ I 0; I 0 ]
+    |> scalarF32
+    |> should (equalWithin 1e-5) 3.0f
+
+    out.at [ I 0; I 1 ]
+    |> scalarF32
+    |> should (equalWithin 1e-5) 4.0f
+    // Graph 1: [5,6]
+    out.at [ I 1; I 0 ]
+    |> scalarF32
+    |> should (equalWithin 1e-5) 5.0f
+
+    out.at [ I 1; I 1 ]
+    |> scalarF32
+    |> should (equalWithin 1e-5) 6.0f
+
+// --- GINConv tests ---
+
+[<Fact>]
+let ``GINConv forward produces correct shape`` () =
+    let conv = GINConv.init 4 16 8 false F32 Cpu |> unwrap
+
+    let x = Tensor.randn ([ 3; 4 ], F32, Cpu) |> unwrap
+
+    let edgeIndex =
+        mkEdgeIndex (array2D [| [| 0L; 1L; 1L; 2L |]; [| 1L; 0L; 2L; 1L |] |])
+
+    let out = conv.forward (x, edgeIndex) |> unwrap
+    out.Shape |> should equal [ 3; 8 ]
+
+[<Fact>]
+let ``GINConv with trainable eps has gradient`` () =
+    let conv = GINConv.init 4 16 8 true F32 Cpu |> unwrap
+
+    let x = Tensor.randn ([ 3; 4 ], F32, Cpu) |> unwrap
+
+    let edgeIndex =
+        mkEdgeIndex (array2D [| [| 0L; 1L; 1L; 2L |]; [| 1L; 0L; 2L; 1L |] |])
+
+    let out = conv.forward (x, edgeIndex) |> unwrap
+    let loss = out.sumAll () |> unwrap
+    loss.backward () |> unwrap
+    conv.Eps.RequiresGrad |> should equal true
+    conv.Linear1.Weight.RequiresGrad |> should equal true
+
+[<Fact>]
+let ``GINConv non-trainable eps has no gradient`` () =
+    let conv = GINConv.init 4 16 8 false F32 Cpu |> unwrap
+    conv.Eps.RequiresGrad |> should equal false
+
+// --- GraphNorm tests ---
+
+[<Fact>]
+let ``GraphNorm forward produces correct shape`` () =
+    let norm = GraphNorm.init 4 F32 Cpu |> unwrap
+    let x = Tensor.randn ([ 5; 4 ], F32, Cpu) |> unwrap
+
+    let batch =
+        Tensor.ofTorchTensor (TorchSharp.torch.tensor ([| 0L; 0L; 0L; 1L; 1L |]: int64 array))
+        |> unwrap
+
+    let out = norm.forward (x, Some batch) |> unwrap
+    out.Shape |> should equal [ 5; 4 ]
+
+[<Fact>]
+let ``GraphNorm without batch treats all nodes as one graph`` () =
+    let norm = GraphNorm.init 4 F32 Cpu |> unwrap
+    let x = Tensor.randn ([ 5; 4 ], F32, Cpu) |> unwrap
+    let out = norm.forward (x, None) |> unwrap
+    out.Shape |> should equal [ 5; 4 ]
+
+[<Fact>]
+let ``GraphNorm per-graph mean is near zero`` () =
+    let norm = GraphNorm.init 4 F32 Cpu |> unwrap
+    let x = Tensor.randn ([ 6; 4 ], F32, Cpu) |> unwrap
+
+    let batch =
+        Tensor.ofTorchTensor (TorchSharp.torch.tensor ([| 0L; 0L; 0L; 1L; 1L; 1L |]: int64 array))
+        |> unwrap
+
+    let out = norm.forward (x, Some batch) |> unwrap
+    // Per-graph mean should be near 0 after normalization (with default alpha=1, gamma=1, beta=0)
+    let graphMean = GlobalPool.globalMeanPool out batch 2 |> unwrap
+    let meanAbs = graphMean.Inner.abs().sum().item<float32> ()
+    meanAbs |> should be (lessThan 0.1f)
