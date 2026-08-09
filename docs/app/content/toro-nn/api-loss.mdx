@@ -10,11 +10,11 @@ Loss functions. Each takes (input, target) and returns a scalar loss tensor.
 | --- | --- |
 | `binaryCrossEntropyWithLogit inp target` | $\text{BCE} = \max(x,0) - x \cdot y + \ln(1 + e^{-\lvert x \rvert})$ |
 | `crossEntropy inp target` | $H(p,q) = -(1/n)\sum \log\text{softmax}(x)_{y_i}$ |
-| `klDiv inp target` | $\text{KL}(p \| q)$ — log-probs input, probs target |
-| `l1 inp target` | $\text{L1} = (1/n)\sum\lvert x_i - y_i \rvert$ |
+| `klDiv inp target` | $\text{KL}(p \\| q) = (1/n)\sum p_i (\log p_i - q_i)$. Expects log-probabilities as input and probabilities as target. |
+| `l1 inp target` | $\text{L1} = (1/n)\sum\|x_i - y_i\|$ |
 | `mse inp target` | $\text{MSE} = (1/n)\sum(x_i - y_i)^2$ |
 | `nll inp target` | $\text{NLL} = -(1/n)\sum x_{i,y_i}$ |
-| `smoothL1 beta inp target` | Smooth L1 (Huber) loss with transition at beta |
+| `smoothL1 beta inp target` | $\text{SmoothL1} = (1/n)\sum z_i$ where $z_i = 0.5 x_i^2/\beta$ if $\|x_i\| < \beta$, else $\|x_i\| - 0.5\beta$ |
 
 ## binaryCrossEntropyWithLogit
 
@@ -50,23 +50,6 @@ $H(p,q) = -(1/n)\sum \log\text{softmax}(x)_{y_i}$
 
 ---
 
-## mse
-
-```fsharp
-mse inp target
-```
-
-$\text{MSE} = (1/n)\sum(x_i - y_i)^2$
-
-**Parameters**
-
-- `inp` : `Tensor`
-- `target` : `Tensor`
-
-**Returns** ``Result<Tensor, ToroError>``
-
----
-
 ## klDiv
 
 ```fsharp
@@ -77,8 +60,8 @@ $\text{KL}(p \| q) = (1/n)\sum p_i (\log p_i - q_i)$. Expects log-probabilities 
 
 **Parameters**
 
-- `inp` : `Tensor` — log-probabilities
-- `target` : `Tensor` — probabilities
+- `inp` : `Tensor`
+- `target` : `Tensor`
 
 **Returns** ``Result<Tensor, ToroError>``
 
@@ -91,6 +74,23 @@ l1 inp target
 ```
 
 $\text{L1} = (1/n)\sum|x_i - y_i|$
+
+**Parameters**
+
+- `inp` : `Tensor`
+- `target` : `Tensor`
+
+**Returns** ``Result<Tensor, ToroError>``
+
+---
+
+## mse
+
+```fsharp
+mse inp target
+```
+
+$\text{MSE} = (1/n)\sum(x_i - y_i)^2$
 
 **Parameters**
 
@@ -124,11 +124,11 @@ $\text{NLL} = -(1/n)\sum x_{i,y_i}$
 smoothL1 beta inp target
 ```
 
-$\text{SmoothL1} = (1/n)\sum z_i$ where $z_i = 0.5 x_i^2/\beta$ if $|x_i| < \beta$, else $|x_i| - 0.5\beta$.
+$\text{SmoothL1} = (1/n)\sum z_i$ where $z_i = 0.5 x_i^2/\beta$ if $|x_i| < \beta$, else $|x_i| - 0.5\beta$
 
 **Parameters**
 
-- `beta` : `float` — transition point between L2 and L1
+- `beta` : `float`
 - `inp` : `Tensor`
 - `target` : `Tensor`
 
