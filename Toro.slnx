@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/Toro/Toro.fsproj" />
     <Project Path="src/Toro.NN/Toro.NN.fsproj" />
+    <Project Path="src/Toro.GNN/Toro.GNN.fsproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Toro.Tests/Toro.Tests.fsproj" />
@@ -15,5 +16,6 @@
     <Project Path="examples/LinearRegression/LinearRegression.fsproj" />
     <Project Path="examples/CharRnn/CharRnn.fsproj" />
     <Project Path="examples/TextClassifier/TextClassifier.fsproj" />
+    <Project Path="examples/SimpleGcn/SimpleGcn.fsproj" />
   </Folder>
 </Solution>

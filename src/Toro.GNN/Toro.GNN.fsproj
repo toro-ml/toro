@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageId>Toro.GNN</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>ryushiaok</Authors>
+    <Description>Graph Neural Network layers for Toro</Description>
+    <PackageTags>fsharp;dotnet;ml;torchsharp;gnn;graph-neural-network</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/toro-ml/toro</RepositoryUrl>
+    <RepositoryBranch>main</RepositoryBranch>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://toro-ml.github.io/toro</PackageProjectUrl>
+    <FsDocsLicenseLink>https://github.com/toro-ml/toro/blob/main/LICENSE</FsDocsLicenseLink>
+    <FsDocsReleaseNotesLink>https://github.com/toro-ml/toro/releases</FsDocsReleaseNotesLink>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Data/GraphData.fs" />
+    <Compile Include="Data/Batch.fs" />
+    <Compile Include="Utils/GraphUtils.fs" />
+    <Compile Include="Conv/GCNConv.fs" />
+    <Compile Include="Pool/GlobalPool.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Toro/Toro.fsproj" />
+    <ProjectReference Include="../Toro.NN/Toro.NN.fsproj" />
+  </ItemGroup>
+
+</Project>

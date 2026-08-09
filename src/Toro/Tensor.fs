@@ -398,6 +398,14 @@ type Tensor internal (inner: torch.Tensor) =
     member _.narrow(dim: int, start: int64, length: int64) =
         ToroError.wrap (fun () -> Tensor(inner.narrow (int64 dim, start, length)))
 
+    /// Scatter-add src into self along dim using index.
+    member _.scatterAdd(dim: int, index: Tensor, src: Tensor) =
+        ToroError.wrap (fun () -> Tensor(inner.scatter_add (int64 dim, index.Inner, src.Inner)))
+
+    /// Add src into self along dim at positions given by index.
+    member _.indexAdd(dim: int, index: Tensor, src: Tensor) =
+        ToroError.wrap (fun () -> Tensor(inner.index_add (int64 dim, index.Inner, src.Inner, toScalar 1.0)))
+
     /// Split into chunks along a dimension.
     member _.chunk(chunks: int, dim: int) =
         ToroError.wrap (fun () ->

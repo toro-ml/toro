@@ -19,11 +19,13 @@
     <Compile Include="VarTests.fs" />
     <Compile Include="LossTests.fs" />
     <Compile Include="OptimTests.fs" />
+    <Compile Include="GraphTests.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="../../src/Toro/Toro.fsproj" />
     <ProjectReference Include="../../src/Toro.NN/Toro.NN.fsproj" />
+    <ProjectReference Include="../../src/Toro.GNN/Toro.GNN.fsproj" />
   </ItemGroup>
 
   <ItemGroup>
