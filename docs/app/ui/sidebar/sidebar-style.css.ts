@@ -3,10 +3,10 @@ import { borderWidth, breakpoint, color, space } from "~/ui/tokens";
 
 export const nav = style({
   position: "sticky",
-  top: "var(--header-height)",
-  height: "calc(100dvh - var(--header-height))",
+  top: 0,
+  height: "100dvh",
   boxSizing: "border-box",
-  padding: `${space[6]} ${space[4]} ${space[9]} ${space[5]}`,
+  padding: `calc(var(--header-height) + ${space[6]}) ${space[4]} ${space[9]} ${space[5]}`,
   overflowY: "auto",
   overscrollBehavior: "contain",
   borderRight: `${borderWidth.default} solid ${color.border}`,

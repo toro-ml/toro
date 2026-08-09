@@ -5,7 +5,6 @@ export const docsGrid = style({
   display: "grid",
   gridTemplateColumns: "1fr",
   minHeight: "100vh",
-  paddingTop: "var(--header-height)",
   "@media": {
     [breakpoint.sidebar]: {
       gridTemplateColumns: `${layout.sidebarWidth} minmax(0, 1fr)`,
@@ -18,6 +17,7 @@ export const docsMain = style({
   gridTemplateColumns: "minmax(0, 1fr)",
   minWidth: 0,
   alignItems: "start",
+  paddingTop: "var(--header-height)",
   "@media": {
     [breakpoint.toc]: {
       gridTemplateColumns: `minmax(0, 1fr) ${layout.tocWidth}`,
