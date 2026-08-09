@@ -40,6 +40,11 @@ globalStyle(`:root[data-direction]`, {
   scrollBehavior: "auto",
 });
 
+globalStyle("html", {
+  backgroundColor: grayDark.gray2,
+  colorScheme: "dark",
+});
+
 globalStyle("body", {
   margin: 0,
 });
