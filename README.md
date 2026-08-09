@@ -3,7 +3,7 @@
 [![NuGet](https://img.shields.io/nuget/v/Toro.svg)](https://www.nuget.org/packages/Toro)
 [![NuGet](https://img.shields.io/nuget/v/Toro.NN.svg)](https://www.nuget.org/packages/Toro.NN)
 
-A lightweight ML framework for F#, powered by [TorchSharp](https://github.com/dotnet/TorchSharp).
+PyTorch semantics, idiomatic F#. Powered by  [TorchSharp](https://github.com/dotnet/TorchSharp).
 
 Define models with F# records and computation expressions.
 Chain fallible operations with the `result { }` CE.
