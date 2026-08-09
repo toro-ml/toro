@@ -90,8 +90,8 @@ module Model =
     let private formatShape (shape: int list) =
         sprintf "[%s]" (shape |> List.map string |> String.concat ", ")
 
-    type private ParamMatch =
-        | Matched of name: string * target: Tensor * source: Tensor
+    type private ParamMatch<'Source> =
+        | Matched of name: string * target: Tensor * source: 'Source
         | MissingParam of name: string
         | ShapeMismatch of TensorMismatch
         | DTypeMismatch of TensorMismatch
@@ -102,7 +102,7 @@ module Model =
         (getDType: 'Source -> DType)
         (name: string)
         (tensor: Tensor)
-        : ParamMatch =
+        : ParamMatch<'Source> =
         match Map.tryFind name lookup with
         | None -> MissingParam name
         | Some src ->
@@ -122,32 +122,28 @@ module Model =
                     Got = string srcDType
                 }
             else
-                Matched(name, tensor, Unchecked.defaultof<_>)
+                Matched(name, tensor, src)
 
-    let private buildReport (matches: ParamMatch list) (unexpected: string list) : LoadReport = {
+    let private buildReport (matches: ParamMatch<'Source> list) (unexpected: string list) : LoadReport = {
         Loaded =
             matches
-            |> List.choose (fun m ->
-                match m with
+            |> List.choose (function
                 | Matched(n, _, _) -> Some n
                 | _ -> None)
         Missing =
             matches
-            |> List.choose (fun m ->
-                match m with
+            |> List.choose (function
                 | MissingParam n -> Some n
                 | _ -> None)
         Unexpected = unexpected
         ShapeMismatches =
             matches
-            |> List.choose (fun m ->
-                match m with
+            |> List.choose (function
                 | ShapeMismatch mm -> Some mm
                 | _ -> None)
         DTypeMismatches =
             matches
-            |> List.choose (fun m ->
-                match m with
+            |> List.choose (function
                 | DTypeMismatch mm -> Some mm
                 | _ -> None)
     }
@@ -217,29 +213,7 @@ module Model =
 
             let matches =
                 modelNames
-                |> List.map (fun (name, tensor) ->
-                    match Map.tryFind name lookup with
-                    | None -> MissingParam name
-                    | Some src ->
-                        if tensor.Shape <> src.Shape then
-                            ShapeMismatch {
-                                Name = name
-                                Expected = formatShape tensor.Shape
-                                Got = formatShape src.Shape
-                            }
-                        elif tensor.DType <> src.DType then
-                            DTypeMismatch {
-                                Name = name
-                                Expected = string tensor.DType
-                                Got = string src.DType
-                            }
-                        else
-                            Matched(name, tensor, src))
-
-            for m in matches do
-                match m with
-                | Matched(_, target, src) -> do! target.copyInPlace src
-                | _ -> ()
+                |> List.map (fun (name, tensor) -> classifyParam lookup (_.Shape) (_.DType) name tensor)
 
             let modelNameSet = modelNames |> List.map fst |> Set.ofList
 
@@ -250,7 +224,14 @@ module Model =
                 |> List.filter (fun k -> not (Set.contains k modelNameSet))
 
             let report = buildReport matches unexpected
-            return! enforceStrict report mode
+            do! enforceStrict report mode |> Result.map ignore
+
+            for m in matches do
+                match m with
+                | Matched(_, target, src) -> do! target.copyInPlace src
+                | _ -> ()
+
+            return report
         }
 
     /// Load tensors from a .safetensors file into the model in place.
@@ -272,10 +253,12 @@ module Model =
                 modelNames
                 |> List.map (fun (name, tensor) -> classifyParam allMeta (_.Shape) (_.DType) name tensor)
 
+            let report = buildReport matches unexpected
+            do! enforceStrict report mode |> Result.map ignore
+
             let namesToLoad =
                 matches
-                |> List.choose (fun m ->
-                    match m with
+                |> List.choose (function
                     | Matched(n, _, _) -> Some n
                     | _ -> None)
                 |> Set.ofList
@@ -290,6 +273,5 @@ module Model =
                     | None -> ()
                 | _ -> ()
 
-            let report = buildReport matches unexpected
-            return! enforceStrict report mode
+            return report
         }

@@ -75,8 +75,8 @@ module SafeTensors =
                 return!
                     Error(Msg $"SafeTensors: tensor '%s{prop.Name}' has invalid offsets: start=%d{startOff} > end=%d{endOff}")
 
-            let nelements = shape |> List.fold (fun acc d -> acc * d) 1
-            let expectedBytes = int64 nelements * int64 (dtypeByteSize dtype)
+            let nelements = shape |> List.fold (fun acc d -> int64 d * acc) 1L
+            let expectedBytes = nelements * int64 (dtypeByteSize dtype)
             let actualBytes = endOff - startOff
 
             if actualBytes <> expectedBytes then
@@ -96,7 +96,8 @@ module SafeTensors =
                 }
         }
 
-    let private validateOffsetContinuity (entries: (string * TensorMeta) list) : Result<unit, ToroError> =
+    /// Returns the last tensor's EndOffset (= expected data section size).
+    let private validateOffsetContinuity (entries: (string * TensorMeta) list) : Result<int64, ToroError> =
         let sorted = entries |> List.sortBy (fun (_, m) -> m.StartOffset)
 
         sorted
@@ -113,7 +114,6 @@ module SafeTensors =
                     else
                         Ok m.EndOffset)
             (Ok 0L)
-        |> Result.map ignore
 
     /// Parse the SafeTensors header from an open stream.
     /// Returns (headerSize, tensorMetadata).
@@ -160,7 +160,17 @@ module SafeTensors =
                     (Ok [])
                 |> Result.map List.rev
 
-            do! validateOffsetContinuity entries
+            let! lastEndOffset = validateOffsetContinuity entries
+
+            if stream.CanSeek then
+                let expectedFileSize = 8L + headerSize + lastEndOffset
+
+                if stream.Length <> expectedFileSize then
+                    return!
+                        Error(
+                            Msg
+                                $"SafeTensors: file size mismatch: expected %d{expectedFileSize} bytes, got %d{stream.Length} bytes"
+                        )
 
             let meta = entries |> Map.ofList
             return headerSize, meta
