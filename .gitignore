@@ -499,3 +499,6 @@ docs/node_modules/
 docs/build/
 docs/.react-router/
 docs/app/content/api-*.mdx
+
+# Example outputs
+*.safetensors

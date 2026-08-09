@@ -25,5 +25,6 @@
     <Project Path="examples/CharRnn/CharRnn.fsproj" />
     <Project Path="examples/TextClassifier/TextClassifier.fsproj" />
     <Project Path="examples/SimpleGcn/SimpleGcn.fsproj" />
+    <Project Path="examples/HubSentiment/HubSentiment.fsproj" />
   </Folder>
 </Solution>
