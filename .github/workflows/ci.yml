@@ -45,7 +45,7 @@ jobs:
           cache: pnpm
           cache-dependency-path: docs/pnpm-lock.yaml
       - name: Generate API MDX
-        run: node scripts/generate-api-mdx.mjs
+        run: node scripts/generate-api-mdx.mts
       - name: Docs build
         working-directory: docs
         run: |
