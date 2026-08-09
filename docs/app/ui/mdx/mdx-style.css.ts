@@ -149,9 +149,3 @@ globalStyle(`${article} hr`, {
   borderTop: `${borderWidth.default} solid ${color.border}`,
   margin: `${space[7]} 0`,
 });
-
-export const namespaceBadge = style({
-  fontSize: fontSize.sm,
-  color: color.textMuted,
-  marginBottom: space[2],
-});

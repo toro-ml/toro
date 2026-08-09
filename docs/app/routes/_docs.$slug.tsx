@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useLocation } from "react-router";
 import { getDoc } from "~/content/mdx.server";
 import { MdxContent } from "~/ui/mdx/mdx-components";
-import { article, namespaceBadge } from "~/ui/mdx/mdx-style.css";
+import { article } from "~/ui/mdx/mdx-style.css";
 import { adjacentNavItems } from "~/ui/nav";
 import { PageNav } from "~/ui/page-nav";
 import { TableOfContents } from "~/ui/toc";
@@ -37,11 +37,6 @@ export default function DocPage({
   return (
     <>
       <article className={article}>
-        {meta.namespace && (
-          <div className={namespaceBadge}>
-            <code>{meta.namespace}</code>
-          </div>
-        )}
         {meta.showTitle && <h1 id="top">{meta.title}</h1>}
         <MdxContent code={code} />
         <PageNav previous={previous} next={next} />
