@@ -126,7 +126,10 @@ export const navSections: readonly NavSection[] = [
             ],
           },
           { to: "/api-loss", label: "Loss" },
+          { to: "/api-metrics", label: "Metrics" },
           { to: "/api-optim", label: "Optim" },
+          { to: "/api-scheduler", label: "Scheduler" },
+          { to: "/api-clip", label: "Clip" },
         ],
       },
       {

@@ -40,3 +40,33 @@ module Loss =
 
             return! loss.meanAll ()
         }
+
+    /// $\text{L1} = (1/n)\sum|x_i - y_i|$
+    let l1 (inp: Tensor) (target: Tensor) : Result<Tensor, ToroError> =
+        result {
+            let! diff = inp.sub target
+            let! absDiff = diff.abs ()
+            return! absDiff.meanAll ()
+        }
+
+    /// $\text{SmoothL1} = (1/n)\sum z_i$ where $z_i = 0.5 x_i^2/\beta$ if $|x_i| < \beta$, else $|x_i| - 0.5\beta$
+    let smoothL1 (beta: float) (inp: Tensor) (target: Tensor) : Result<Tensor, ToroError> =
+        result {
+            let! diff = inp.sub target
+            let! absDiff = diff.abs ()
+            let! sq = diff.mul diff
+            let! sqTerm = sq.mulScalar (0.5 / beta)
+            let! linTerm = absDiff.addScalar (-0.5 * beta)
+            let mask = absDiff.ltScalar beta
+            let! loss = Tensor.where (mask, sqTerm, linTerm)
+            return! loss.meanAll ()
+        }
+
+    /// $\text{KL}(p \| q) = (1/n)\sum p_i (\log p_i - q_i)$. Expects log-probabilities as input and probabilities as target.
+    let klDiv (inp: Tensor) (target: Tensor) : Result<Tensor, ToroError> =
+        result {
+            let! logTarget = target.log ()
+            let! diff = logTarget -~ inp
+            let! weighted = target.mul diff
+            return! weighted.meanAll ()
+        }

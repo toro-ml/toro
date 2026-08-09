@@ -1,0 +1,88 @@
+---
+title: "Scheduler"
+description: "Learning rate schedulers."
+namespace: "Toro.NN"
+---
+
+Learning rate schedulers. Each wraps an `IOptimizer` and adjusts the learning rate on `step()`.
+
+```fsharp
+type IScheduler =
+    abstract step: unit -> unit
+    abstract currentLr: unit -> float
+```
+
+| Scheduler | Factory | Description |
+| --- | --- | --- |
+| `StepLR` | `StepLR.create stepSize gamma opt` | Multiply LR by gamma every stepSize steps |
+| `ExponentialLR` | `ExponentialLR.create gamma opt` | Multiply LR by gamma each step |
+| `CosineAnnealingLR` | `CosineAnnealingLR.create tMax etaMin opt` | Cosine decay to etaMin, reset after tMax |
+| `LinearWarmup` | `LinearWarmup.create warmupSteps opt` | Linear ramp to base LR, then hold |
+
+## StepLR
+
+```fsharp
+StepLR.create stepSize gamma opt
+```
+
+Multiply the learning rate by `gamma` every `stepSize` steps.
+
+**Parameters**
+
+- `stepSize` : `int`
+- `gamma` : `float`
+- `opt` : `IOptimizer`
+
+**Returns** `IScheduler`
+
+---
+
+## ExponentialLR
+
+```fsharp
+ExponentialLR.create gamma opt
+```
+
+Multiply the learning rate by `gamma` at each step.
+
+**Parameters**
+
+- `gamma` : `float`
+- `opt` : `IOptimizer`
+
+**Returns** `IScheduler`
+
+---
+
+## CosineAnnealingLR
+
+```fsharp
+CosineAnnealingLR.create tMax etaMin opt
+```
+
+Cosine-annealing decay from the base LR to `etaMin` over `tMax` steps. Resets after each cycle.
+
+**Parameters**
+
+- `tMax` : `int` — period in steps
+- `etaMin` : `float` — minimum learning rate
+- `opt` : `IOptimizer`
+
+**Returns** `IScheduler`
+
+---
+
+## LinearWarmup
+
+```fsharp
+LinearWarmup.create warmupSteps opt
+```
+
+Linear warmup from 0 to the base LR over `warmupSteps` steps, then hold.
+
+**Parameters**
+
+- `warmupSteps` : `int`
+- `opt` : `IOptimizer`
+
+**Returns** `IScheduler`

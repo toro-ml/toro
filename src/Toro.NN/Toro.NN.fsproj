@@ -37,7 +37,10 @@
     <Compile Include="Block/KvCache.fs" />
     <Compile Include="Block/Attention.fs" />
     <Compile Include="Loss.fs" />
+    <Compile Include="Metrics.fs" />
     <Compile Include="Optim.fs" />
+    <Compile Include="Scheduler.fs" />
+    <Compile Include="Clip.fs" />
   </ItemGroup>
 
   <ItemGroup>

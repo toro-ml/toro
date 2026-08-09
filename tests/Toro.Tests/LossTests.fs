@@ -54,3 +54,48 @@ let ``Binary cross-entropy with logit returns scalar`` () =
     loss.Shape |> should equal List.empty<int>
     let v = loss.toFloat32Scalar () |> unwrap
     v |> should be (greaterThan 0.0f)
+
+[<Fact>]
+let ``L1 loss returns scalar`` () =
+    let inp = Tensor.randn ([ 4; 3 ], F32, Cpu) |> unwrap
+    let target = Tensor.randn ([ 4; 3 ], F32, Cpu) |> unwrap
+
+    let loss = Loss.l1 inp target |> unwrap
+    loss.Shape |> should equal List.empty<int>
+    let v = loss.toFloat32Scalar () |> unwrap
+    v |> should be (greaterThan 0.0f)
+
+[<Fact>]
+let ``L1 loss of identical tensors is zero`` () =
+    let t = Tensor.ones ([ 2; 3 ], F32, Cpu) |> unwrap
+
+    let loss = Loss.l1 t t |> unwrap
+    let v = loss.toFloat32Scalar () |> unwrap
+    v |> should be (lessThan 1e-6f)
+
+[<Fact>]
+let ``Smooth L1 loss returns scalar`` () =
+    let inp = Tensor.randn ([ 4; 3 ], F32, Cpu) |> unwrap
+    let target = Tensor.randn ([ 4; 3 ], F32, Cpu) |> unwrap
+
+    let loss = Loss.smoothL1 1.0 inp target |> unwrap
+    loss.Shape |> should equal List.empty<int>
+    let v = loss.toFloat32Scalar () |> unwrap
+    v |> should be (greaterThan 0.0f)
+
+[<Fact>]
+let ``Smooth L1 loss of identical tensors is zero`` () =
+    let t = Tensor.ones ([ 2; 3 ], F32, Cpu) |> unwrap
+
+    let loss = Loss.smoothL1 1.0 t t |> unwrap
+    let v = loss.toFloat32Scalar () |> unwrap
+    v |> should be (lessThan 1e-6f)
+
+[<Fact>]
+let ``KL divergence loss returns scalar`` () =
+    let logProbs = Tensor.randn ([ 4; 3 ], F32, Cpu) |> unwrap
+    let inp = logProbs.logSoftmax -1 |> unwrap
+    let target = logProbs.softmax -1 |> unwrap
+
+    let loss = Loss.klDiv inp target |> unwrap
+    loss.Shape |> should equal List.empty<int>

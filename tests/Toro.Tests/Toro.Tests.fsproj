@@ -18,7 +18,10 @@
     <Compile Include="AttentionTests.fs" />
     <Compile Include="VarTests.fs" />
     <Compile Include="LossTests.fs" />
+    <Compile Include="MetricsTests.fs" />
     <Compile Include="OptimTests.fs" />
+    <Compile Include="SchedulerTests.fs" />
+    <Compile Include="ClipTests.fs" />
     <Compile Include="GraphTests.fs" />
   </ItemGroup>
 

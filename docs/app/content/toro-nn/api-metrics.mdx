@@ -1,0 +1,102 @@
+---
+title: "Metrics"
+description: "Classification metrics."
+namespace: "Toro.NN"
+---
+
+Classification metrics computed on tensors.
+
+| Function | Description |
+| --- | --- |
+| `accuracy pred target` | Fraction of matching elements |
+| `accuracyFromLogits logits target` | Argmax over last dim, then compare to targets |
+| `precision numClasses pred target` | Per-class TP / (TP + FP) |
+| `recall numClasses pred target` | Per-class TP / (TP + FN) |
+| `f1 numClasses pred target` | Per-class F1 score |
+
+## accuracy
+
+```fsharp
+accuracy pred target
+```
+
+Fraction of matching elements between predictions and targets.
+Both tensors must have the same shape (class indices, not logits).
+
+**Parameters**
+
+- `pred` : `Tensor`
+- `target` : `Tensor`
+
+**Returns** ``Result<float, ToroError>``
+
+---
+
+## accuracyFromLogits
+
+```fsharp
+accuracyFromLogits logits target
+```
+
+Take argmax over the last dimension, then compare to target indices.
+
+**Parameters**
+
+- `logits` : `Tensor`
+- `target` : `Tensor`
+
+**Returns** ``Result<float, ToroError>``
+
+---
+
+## precision
+
+```fsharp
+precision numClasses pred target
+```
+
+Per-class precision: TP / (TP + FP). Returns NaN for classes with no predicted positives.
+
+**Parameters**
+
+- `numClasses` : `int`
+- `pred` : `Tensor`
+- `target` : `Tensor`
+
+**Returns** ``Result<float list, ToroError>``
+
+---
+
+## recall
+
+```fsharp
+recall numClasses pred target
+```
+
+Per-class recall: TP / (TP + FN). Returns NaN for classes with no actual positives.
+
+**Parameters**
+
+- `numClasses` : `int`
+- `pred` : `Tensor`
+- `target` : `Tensor`
+
+**Returns** ``Result<float list, ToroError>``
+
+---
+
+## f1
+
+```fsharp
+f1 numClasses pred target
+```
+
+Per-class F1 score: $2 \cdot \text{precision} \cdot \text{recall} / (\text{precision} + \text{recall})$.
+
+**Parameters**
+
+- `numClasses` : `int`
+- `pred` : `Tensor`
+- `target` : `Tensor`
+
+**Returns** ``Result<float list, ToroError>``
