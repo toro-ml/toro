@@ -35,12 +35,13 @@ let r = result {
     let model = sequential { l1; Relu; l2 }
 
     let! opt = AdamW.createWithLr 0.01 (Model.trainableVars model)
-    let opt = opt :> IOptimizer
 
     for epoch in 1..500 do
+        opt.zeroGrad ()
         let! pred = model.forward x
         let! loss = Loss.mse pred y
-        do! opt.backwardStep loss
+        do! loss.backward ()
+        do! opt.step ()
 
         if epoch % 100 = 0 then
             printfn "epoch %d  loss=%.6f" epoch (loss.item ())

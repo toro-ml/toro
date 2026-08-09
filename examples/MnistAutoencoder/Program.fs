@@ -76,7 +76,6 @@ let main _argv =
 
         let! model = createModel latentDim
         let! opt = AdamW.createWithLr lr (Model.trainableVars model)
-        let opt = opt :> IOptimizer
 
         printfn ""
         printfn "Autoencoder: 784 -> 256 -> %d -> 256 -> 784" latentDim
@@ -96,7 +95,9 @@ let main _argv =
                 let images = batch["data"]
                 let! x, recon = preprocessBatch images model
                 let! loss = Loss.mse recon x
-                do! opt.backwardStep loss
+                opt.zeroGrad ()
+                do! loss.backward ()
+                do! opt.step ()
 
                 let n = images.shape[0]
                 totalLoss <- totalLoss + float (loss.item ()) * float n

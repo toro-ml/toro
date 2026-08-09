@@ -2,11 +2,9 @@ namespace Toro.NN
 
 open Toro
 
-/// Common optimizer interface. Use <c>backwardStep</c> for the typical backward+step+zeroGrad cycle.
+/// Common optimizer interface.
 type IOptimizer =
     abstract step: unit -> Result<unit, ToroError>
-    /// Calls backward, step, and zeroGrad in sequence.
-    abstract backwardStep: Tensor -> Result<unit, ToroError>
     abstract learningRate: unit -> float
     abstract setLearningRate: float -> unit
     abstract zeroGrad: unit -> unit
@@ -25,15 +23,6 @@ type SGD = {
                     do! v.copyInPlace updated
             }
 
-        member this.backwardStep loss =
-            let opt = this :> IOptimizer
-            opt.zeroGrad ()
-
-            result {
-                do! loss.backward ()
-                do! opt.step ()
-            }
-
         member this.learningRate() = this.LearningRate
 
         member this.setLearningRate lr = this.LearningRate <- lr
@@ -43,7 +32,8 @@ type SGD = {
                 v.zeroGrad ()
 
 module SGD =
-    let create (lr: float) (vars: Tensor list) : SGD = { Vars = vars; LearningRate = lr }
+    let create (lr: float) (vars: Tensor list) : IOptimizer =
+        { Vars = vars; LearningRate = lr }
 
 type ParamsAdamW = {
     Lr: float
@@ -78,36 +68,23 @@ type AdamW = {
                 for param, m, v in this.Vars do
                     let! g = param.grad ()
 
-                    // m = beta1 * m + (1 - beta1) * g
                     let! mNew = m.mulScalar p.Beta1 +~ g.mulScalar (1.0 - p.Beta1)
                     do! m.copyInPlace mNew
 
-                    // v = beta2 * v + (1 - beta2) * g^2
                     let! vNew = v.mulScalar p.Beta2 +~ g.sqr () *~. (1.0 - p.Beta2)
                     do! v.copyInPlace vNew
 
-                    // bias correction
                     let mHatScale = 1.0 / (1.0 - pown p.Beta1 (int t))
                     let vHatScale = 1.0 / (1.0 - pown p.Beta2 (int t))
 
                     let! mHat = mNew *~. mHatScale
                     let! vHat = vNew *~. vHatScale
 
-                    // theta = theta * (1 - lr * wd) - lr * mHat / (sqrt(vHat) + eps)
                     let! updated =
                         param.mulScalar (1.0 - p.Lr * p.WeightDecay)
                         -~ (mHat /~ (vHat.sqrt () +~. p.Eps) *~. p.Lr)
 
                     do! param.copyInPlace updated
-            }
-
-        member this.backwardStep loss =
-            let opt = this :> IOptimizer
-            opt.zeroGrad ()
-
-            result {
-                do! loss.backward ()
-                do! opt.step ()
             }
 
         member this.learningRate() = this.Params.Lr
@@ -120,7 +97,7 @@ type AdamW = {
                 param.zeroGrad ()
 
 module AdamW =
-    let create (config: ParamsAdamW) (vars: Tensor list) : Result<AdamW, ToroError> =
+    let create (config: ParamsAdamW) (vars: Tensor list) : Result<IOptimizer, ToroError> =
         result {
             let! varTriples =
                 vars
@@ -146,7 +123,7 @@ module AdamW =
             }
         }
 
-    let createWithLr (lr: float) (vars: Tensor list) : Result<AdamW, ToroError> =
+    let createWithLr (lr: float) (vars: Tensor list) : Result<IOptimizer, ToroError> =
         create
             {
                 ParamsAdamW.defaultParams with

@@ -28,14 +28,15 @@ let main _argv =
             }
 
         let! opt = AdamW.createWithLr 0.01 (Model.trainableVars model)
-        let opt = opt :> IOptimizer
 
         printfn "Training XOR with AdamW..."
 
         for epoch in 1..500 do
+            opt.zeroGrad ()
             let! pred = model.forward x
             let! loss = Loss.mse pred y
-            do! opt.backwardStep loss
+            do! loss.backward ()
+            do! opt.step ()
 
             if epoch % 100 = 0 then
                 let! v = loss.toFloat32Scalar ()

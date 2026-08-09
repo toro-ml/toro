@@ -67,9 +67,7 @@ let main _argv =
 
         let! gan = createGan ()
         let! optG = AdamW.createWithLr lrG (Model.trainableVars gan.Gen)
-        let optG = optG :> IOptimizer
         let! optD = AdamW.createWithLr lrD (Model.trainableVars gan.Disc)
-        let optD = optD :> IOptimizer
 
         printfn ""
         printfn "Generator:     z(%d) -> 256 -> 512 -> 784 (tanh)" latentDim
@@ -106,14 +104,18 @@ let main _argv =
                 let! dLossFake = Loss.binaryCrossEntropyWithLogit fakeLogits zerosTarget
 
                 let! dLoss = (dLossReal + dLossFake) *~. 0.5
-                do! optD.backwardStep dLoss
+                optD.zeroGrad ()
+                do! dLoss.backward ()
+                do! optD.step ()
 
                 // --- Train Generator ---
                 let! fake = generate gan.Gen n
                 let! fakeLogits = gan.Disc.forward fake
                 let! gLoss = Loss.binaryCrossEntropyWithLogit fakeLogits onesTarget
 
-                do! optG.backwardStep gLoss
+                optG.zeroGrad ()
+                do! gLoss.backward ()
+                do! optG.step ()
 
                 dLossSum <- dLossSum + dLoss.item ()
                 gLossSum <- gLossSum + gLoss.item ()

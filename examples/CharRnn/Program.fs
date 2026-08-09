@@ -104,7 +104,6 @@ let main _argv =
 
         let! model = createModel ()
         let! opt = AdamW.createWithLr lr (Model.trainableVars model)
-        let opt = opt :> IOptimizer
 
         for epoch in 1..epochs do
             let mutable totalLoss = 0.0
@@ -118,9 +117,11 @@ let main _argv =
                 let! input = input.unsqueeze 0
                 let! target = Tensor.ofTorchTensor (torch.tensor (targetArr, dtype = torch.int64))
 
+                opt.zeroGrad ()
                 let! logits = forward model input
                 let! loss = Loss.crossEntropy logits target
-                do! opt.backwardStep loss
+                do! loss.backward ()
+                do! opt.step ()
 
                 totalLoss <- totalLoss + loss.item ()
 

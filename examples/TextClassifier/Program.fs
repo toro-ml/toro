@@ -124,12 +124,13 @@ let main _argv =
 
         let! model = createModel ()
         let! opt = AdamW.createWithLr 1e-3 (Model.trainableVars model)
-        let opt = opt :> IOptimizer
 
         for epoch in 1..100 do
+            opt.zeroGrad ()
             let! logits = forward model input
             let! loss = Loss.crossEntropy logits labels
-            do! opt.backwardStep loss
+            do! loss.backward ()
+            do! opt.step ()
 
             if epoch % 20 = 0 || epoch = 1 then
                 let! predicted = logits.argmax 1

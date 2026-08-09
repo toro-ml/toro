@@ -71,7 +71,6 @@ let main _argv =
 
         let! model = createModel ()
         let! opt = AdamW.createWithLr lr (Model.trainableVars model)
-        let opt = opt :> IOptimizer
 
         printfn ""
         printfn "Model: Conv2d(1->8, 5, s2) -> Conv2d(8->16, 5, s2) -> Linear(256->64) -> Linear(64->10)"
@@ -94,9 +93,11 @@ let main _argv =
 
                 let! x = Tensor.ofTorchTensor images
                 let! target = Tensor.ofTorchTensor labels
+                opt.zeroGrad ()
                 let! logits = model.forward x
                 let! loss = Loss.crossEntropy logits target
-                do! opt.backwardStep loss
+                do! loss.backward ()
+                do! opt.step ()
 
                 let lossVal = loss.item ()
                 let! predicted = logits.argmax 1

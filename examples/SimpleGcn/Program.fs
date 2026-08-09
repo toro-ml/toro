@@ -54,7 +54,6 @@ let main _argv =
 
         let! model = initModel ()
         let! opt = AdamW.createWithLr 0.01 (Model.trainableVars model)
-        let opt = opt :> IOptimizer
 
         printfn "Training 2-layer GCN on synthetic graph (8 nodes, 2 classes)..."
         printfn ""
@@ -81,8 +80,10 @@ let main _argv =
                     )
                 )
 
+            opt.zeroGrad ()
             let! loss = Loss.crossEntropy trainLogits trainLabels
-            do! opt.backwardStep loss
+            do! loss.backward ()
+            do! opt.step ()
 
             if epoch % 50 = 0 then
                 let! v = loss.toFloat32Scalar ()

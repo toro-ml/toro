@@ -32,8 +32,7 @@ Stochastic Gradient Descent:
 
 ```fsharp
 let vars = Model.trainableVars model
-let sgd = SGD.create 0.01 vars
-let opt = sgd :> IOptimizer
+let opt = SGD.create 0.01 vars
 ```
 
 ### AdamW
@@ -43,8 +42,7 @@ Adam with weight decay:
 ```fsharp
 result {
     let vars = Model.trainableVars model
-    let! adamw = AdamW.createWithLr 0.001 vars
-    let opt = adamw :> IOptimizer
+    let! opt = AdamW.createWithLr 0.001 vars
 }
 ```
 
@@ -68,14 +66,14 @@ All optimizers implement `IOptimizer`:
 ```fsharp
 type IOptimizer =
     abstract step: unit -> Result<unit, ToroError>
-    abstract backwardStep: Tensor -> Result<unit, ToroError>
     abstract learningRate: unit -> float
     abstract setLearningRate: float -> unit
     abstract zeroGrad: unit -> unit
 ```
 
-- `backwardStep` calls `backward()`, then `step()`, then `zeroGrad()` in one call.
-- Use `step` when you need to call `backward()` separately.
+- `zeroGrad` clears accumulated gradients. Call before each training step (or skip for gradient accumulation).
+- `step` updates parameters using the current gradients.
+- Call `loss.backward()` to compute gradients, then `opt.step()` to apply them.
 
 ## The Training Loop
 
@@ -85,9 +83,11 @@ A typical training loop:
 for epoch in 1..epochs do
     for batch in trainLoader do
         let x, y = batch
+        opt.zeroGrad ()
         let! pred = model.forward x
         let! loss = Loss.crossEntropy pred y
-        do! opt.backwardStep loss
+        do! loss.backward ()
+        do! opt.step ()
 
     if epoch % 10 = 0 then
         printfn "epoch %d" epoch
@@ -129,9 +129,11 @@ for epoch in 1..epochs do
         opt.setLearningRate lr
         printfn "lr -> %f" lr
 
+    opt.zeroGrad ()
     let! pred = model.forward x
     let! loss = Loss.mse pred y
-    do! opt.backwardStep loss
+    do! loss.backward ()
+    do! opt.step ()
 ```
 
 ## Checkpointing
@@ -141,9 +143,11 @@ Each parameter is stored as a separate file under the given directory:
 
 ```fsharp
 for epoch in 1..epochs do
+    opt.zeroGrad ()
     let! pred = model.forward x
     let! loss = Loss.crossEntropy pred y
-    do! opt.backwardStep loss
+    do! loss.backward ()
+    do! opt.step ()
 
     if epoch % 50 = 0 then
         do! Model.save model $"checkpoints/epoch{epoch}"

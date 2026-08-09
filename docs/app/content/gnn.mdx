@@ -123,8 +123,10 @@ result {
 
     let! opt = AdamW.createWithLr 0.01 (Model.trainableVars model)
     for _ in 1..200 do
+        opt.zeroGrad ()
         let! logits = forward model (x, edgeIndex)
         let! loss = Loss.crossEntropy logits labels
-        do! (opt :> IOptimizer).backwardStep loss
+        do! loss.backward ()
+        do! opt.step ()
 }
 ```
