@@ -309,6 +309,10 @@ function escapeMdx(text: string): string {
   return text.replace(/(\w+)<([^>]+)>/g, "`$1<$2>`");
 }
 
+function escapeTableCell(text: string): string {
+  return text.replace(/(?<!\\)\|/g, "\\|");
+}
+
 function extractMembers(html: string): Member[] {
   const members: Member[] = [];
   const tableRegex =
@@ -419,8 +423,8 @@ function generateSourceContent(html: string, sourceLevel: number): string {
     mdx += "| Name | Description |\n";
     mdx += "| --- | --- |\n";
     for (const m of section.members) {
-      const sig = escapeMdx(m.signature.replace(/\|/g, "\\|"));
-      const desc = escapeMdx(m.summary.replace(/\|/g, "\\|"));
+      const sig = escapeMdx(escapeTableCell(m.signature));
+      const desc = escapeMdx(escapeTableCell(m.summary));
       mdx += `| \`${sig}\` | ${desc} |\n`;
     }
     mdx += "\n";
@@ -435,8 +439,8 @@ function generateSourceContent(html: string, sourceLevel: number): string {
     mdx += "| --- | --- |\n";
 
     for (const m of section.members) {
-      const sig = escapeMdx(m.signature.replace(/\|/g, "\\|"));
-      const desc = escapeMdx(m.summary.replace(/\|/g, "\\|"));
+      const sig = escapeMdx(escapeTableCell(m.signature));
+      const desc = escapeMdx(escapeTableCell(m.summary));
       mdx += `| \`${sig}\` | ${desc} |\n`;
     }
 

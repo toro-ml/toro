@@ -10,7 +10,7 @@ Loss functions. Each takes (input, target) and returns a scalar loss tensor.
 | --- | --- |
 | `binaryCrossEntropyWithLogit inp target` | $\text{BCE} = \max(x,0) - x \cdot y + \ln(1 + e^{-\lvert x \rvert})$ |
 | `crossEntropy inp target` | $H(p,q) = -(1/n)\sum \log\text{softmax}(x)_{y_i}$ |
-| `klDiv inp target` | $\text{KL}(p \\| q) = (1/n)\sum p_i (\log p_i - q_i)$. Expects log-probabilities as input and probabilities as target. |
+| `klDiv inp target` | $\text{KL}(p \| q) = (1/n)\sum p_i (\log p_i - q_i)$. Expects log-probabilities as input and probabilities as target. |
 | `l1 inp target` | $\text{L1} = (1/n)\sum\|x_i - y_i\|$ |
 | `mse inp target` | $\text{MSE} = (1/n)\sum(x_i - y_i)^2$ |
 | `nll inp target` | $\text{NLL} = -(1/n)\sum x_{i,y_i}$ |
