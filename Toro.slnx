@@ -3,6 +3,8 @@
     <Project Path="src/Toro/Toro.fsproj" />
     <Project Path="src/Toro.NN/Toro.NN.fsproj" />
     <Project Path="src/Toro.GNN/Toro.GNN.fsproj" />
+    <Project Path="src/Toro.Vision/Toro.Vision.fsproj" />
+    <Project Path="src/Toro.Text/Toro.Text.fsproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Toro.Tests/Toro.Tests.fsproj" />

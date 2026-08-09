@@ -25,6 +25,8 @@
     <Compile Include="CheckpointTests.fs" />
     <Compile Include="SafeTensorsTests.fs" />
     <Compile Include="GraphTests.fs" />
+    <Compile Include="VisionTests.fs" />
+    <Compile Include="TextTests.fs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -32,6 +34,8 @@
     <ProjectReference Include="../../src/Toro.NN/Toro.NN.fsproj" />
     <ProjectReference Include="../../src/Toro.GNN/Toro.GNN.fsproj" />
     <ProjectReference Include="../../src/Toro.Hub/Toro.Hub.fsproj" />
+    <ProjectReference Include="../../src/Toro.Vision/Toro.Vision.fsproj" />
+    <ProjectReference Include="../../src/Toro.Text/Toro.Text.fsproj" />
   </ItemGroup>
 
   <ItemGroup>

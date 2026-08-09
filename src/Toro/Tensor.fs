@@ -8,35 +8,91 @@ module internal ScalarHelper =
 
 /// SRTP witness for Tensor.ofArray dispatch.
 [<System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)>]
-type TensorOfArray = TensorOfArray with
-    static member ($)(TensorOfArray, d: float32[]) = fun dev -> torch.tensor (d, device = dev)
-    static member ($)(TensorOfArray, d: float[]) = fun dev -> torch.tensor (d, device = dev)
-    static member ($)(TensorOfArray, d: int32[]) = fun dev -> torch.tensor (d, device = dev)
-    static member ($)(TensorOfArray, d: int64[]) = fun dev -> torch.tensor (d, device = dev)
-    static member ($)(TensorOfArray, d: float32[,]) = fun dev -> torch.tensor (d, device = dev)
-    static member ($)(TensorOfArray, d: float[,]) = fun dev -> torch.tensor (d, device = dev)
-    static member ($)(TensorOfArray, d: int32[,]) = fun dev -> torch.tensor (d, device = dev)
-    static member ($)(TensorOfArray, d: int64[,]) = fun dev -> torch.tensor (d, device = dev)
-    static member ($)(TensorOfArray, d: float32[,,]) = fun dev -> torch.tensor (d, device = dev)
-    static member ($)(TensorOfArray, d: float[,,]) = fun dev -> torch.tensor (d, device = dev)
-    static member ($)(TensorOfArray, d: int32[,,]) = fun dev -> torch.tensor (d, device = dev)
-    static member ($)(TensorOfArray, d: int64[,,]) = fun dev -> torch.tensor (d, device = dev)
-    static member ($)(TensorOfArray, d: float32[,,,]) = fun dev -> torch.tensor (d, device = dev)
-    static member ($)(TensorOfArray, d: float[,,,]) = fun dev -> torch.tensor (d, device = dev)
-    static member ($)(TensorOfArray, d: int32[,,,]) = fun dev -> torch.tensor (d, device = dev)
-    static member ($)(TensorOfArray, d: int64[,,,]) = fun dev -> torch.tensor (d, device = dev)
+type TensorOfArray = TensorOfArray
+    with
+
+        static member ($)(TensorOfArray, d: float32[]) =
+            fun dev -> torch.tensor (d, device = dev)
+
+        static member ($)(TensorOfArray, d: float[]) =
+            fun dev -> torch.tensor (d, device = dev)
+
+        static member ($)(TensorOfArray, d: int32[]) =
+            fun dev -> torch.tensor (d, device = dev)
+
+        static member ($)(TensorOfArray, d: int64[]) =
+            fun dev -> torch.tensor (d, device = dev)
+
+        static member ($)(TensorOfArray, d: float32[,]) =
+            fun dev -> torch.tensor (d, device = dev)
+
+        static member ($)(TensorOfArray, d: float[,]) =
+            fun dev -> torch.tensor (d, device = dev)
+
+        static member ($)(TensorOfArray, d: int32[,]) =
+            fun dev -> torch.tensor (d, device = dev)
+
+        static member ($)(TensorOfArray, d: int64[,]) =
+            fun dev -> torch.tensor (d, device = dev)
+
+        static member ($)(TensorOfArray, d: float32[,,]) =
+            fun dev -> torch.tensor (d, device = dev)
+
+        static member ($)(TensorOfArray, d: float[,,]) =
+            fun dev -> torch.tensor (d, device = dev)
+
+        static member ($)(TensorOfArray, d: int32[,,]) =
+            fun dev -> torch.tensor (d, device = dev)
+
+        static member ($)(TensorOfArray, d: int64[,,]) =
+            fun dev -> torch.tensor (d, device = dev)
+
+        static member ($)(TensorOfArray, d: float32[,,,]) =
+            fun dev -> torch.tensor (d, device = dev)
+
+        static member ($)(TensorOfArray, d: float[,,,]) =
+            fun dev -> torch.tensor (d, device = dev)
+
+        static member ($)(TensorOfArray, d: int32[,,,]) =
+            fun dev -> torch.tensor (d, device = dev)
+
+        static member ($)(TensorOfArray, d: int64[,,,]) =
+            fun dev -> torch.tensor (d, device = dev)
 
 /// SRTP witness for Tensor.ofList dispatch.
 [<System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)>]
-type TensorOfList = TensorOfList with
-    static member ($)(TensorOfList, d: float32 list) = fun dev -> torch.tensor (List.toArray d, device = dev)
-    static member ($)(TensorOfList, d: float list) = fun dev -> torch.tensor (List.toArray d, device = dev)
-    static member ($)(TensorOfList, d: int32 list) = fun dev -> torch.tensor (List.toArray d, device = dev)
-    static member ($)(TensorOfList, d: int64 list) = fun dev -> torch.tensor (List.toArray d, device = dev)
-    static member ($)(TensorOfList, d: float32 list list) = fun dev -> torch.tensor (array2D d, device = dev)
-    static member ($)(TensorOfList, d: float list list) = fun dev -> torch.tensor (array2D d, device = dev)
-    static member ($)(TensorOfList, d: int32 list list) = fun dev -> torch.tensor (array2D d, device = dev)
-    static member ($)(TensorOfList, d: int64 list list) = fun dev -> torch.tensor (array2D d, device = dev)
+type TensorOfList = TensorOfList
+    with
+
+        static member ($)(TensorOfList, d: float32 list) =
+            fun dev -> torch.tensor (List.toArray d, device = dev)
+
+        static member ($)(TensorOfList, d: float list) =
+            fun dev -> torch.tensor (List.toArray d, device = dev)
+
+        static member ($)(TensorOfList, d: int32 list) =
+            fun dev -> torch.tensor (List.toArray d, device = dev)
+
+        static member ($)(TensorOfList, d: int64 list) =
+            fun dev -> torch.tensor (List.toArray d, device = dev)
+
+        static member ($)(TensorOfList, d: float32 list list) =
+            fun dev -> torch.tensor (array2D d, device = dev)
+
+        static member ($)(TensorOfList, d: float list list) =
+            fun dev -> torch.tensor (array2D d, device = dev)
+
+        static member ($)(TensorOfList, d: int32 list list) =
+            fun dev -> torch.tensor (array2D d, device = dev)
+
+        static member ($)(TensorOfList, d: int64 list list) =
+            fun dev -> torch.tensor (array2D d, device = dev)
+
+/// Interpolation mode for resize operations.
+type InterpolateMode =
+    | Nearest
+    | Bilinear
+    | Bicubic
 
 /// Wrapper around TorchSharp tensor. Most methods return Result&lt;'T, ToroError&gt;;
 /// arithmetic operators throw on failure for ergonomic use in expressions.
@@ -240,6 +296,10 @@ type Tensor internal (inner: torch.Tensor) =
     /// Reorder dimensions.
     member _.permute(dims: int list) =
         ToroError.wrap (fun () -> Tensor(inner.permute (dims |> List.map int64 |> List.toArray)))
+
+    /// Reverse elements along the given dimensions.
+    member _.flip(dims: int list) =
+        ToroError.wrap (fun () -> Tensor(inner.flip (dims |> List.map int64 |> List.toArray)))
 
     /// Broadcast to the given shape.
     member _.expand(shape: int list) =
@@ -571,6 +631,19 @@ type Tensor internal (inner: torch.Tensor) =
             let p = int64 (defaultArg padding 0)
 
             Tensor(torch.nn.functional.avg_pool2d (inner, int64 kernelSize, stride = s, padding = p)))
+
+    /// Resize a 4-D tensor $[B, C, H, W]$ to the target spatial size.
+    member _.interpolate(size: int list, mode: InterpolateMode) =
+        ToroError.wrap (fun () ->
+            let sz = size |> List.map int64 |> List.toArray
+
+            let m =
+                match mode with
+                | Nearest -> torch.InterpolationMode.Nearest
+                | Bilinear -> torch.InterpolationMode.Bilinear
+                | Bicubic -> torch.InterpolationMode.Bicubic
+
+            Tensor(torch.nn.functional.interpolate (inner, sz, mode = m)))
 
     // --- Attention ---
 
