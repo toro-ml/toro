@@ -1,3 +1,4 @@
+import { useEffect, useState, type ReactNode } from "react";
 import { NavLink } from "react-router";
 import { classNames } from "~/ui/class-names";
 import {
@@ -43,10 +44,6 @@ function indentFor(variant: NavVariant, level: NavLevel) {
   return level === "root" ? s.linkIndent.none : linkIndent[variant][level];
 }
 
-function openWhenActive(variant: NavVariant, active: boolean) {
-  return variant === "sidebar" && active ? true : undefined;
-}
-
 const NavList = ({
   items,
   variant,
@@ -77,6 +74,50 @@ const NavList = ({
   </ul>
 );
 
+const NavDetails = ({
+  active,
+  children,
+  className,
+  summary,
+  summaryClassName,
+  variant,
+}: {
+  active: boolean;
+  children: ReactNode;
+  className?: string;
+  summary: ReactNode;
+  summaryClassName: string;
+  variant: NavVariant;
+}) => {
+  const [open, setOpen] = useState(active);
+
+  useEffect(() => {
+    if (active) {
+      setOpen(true);
+    }
+  }, [active]);
+
+  if (variant === "drawer") {
+    return (
+      <details className={className}>
+        <summary className={summaryClassName}>{summary}</summary>
+        {children}
+      </details>
+    );
+  }
+
+  return (
+    <details
+      className={className}
+      open={open}
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+    >
+      <summary className={summaryClassName}>{summary}</summary>
+      {children}
+    </details>
+  );
+};
+
 const GroupEntries = ({
   entries,
   pathname,
@@ -96,18 +137,20 @@ const GroupEntries = ({
     }
 
     const { subgroup } = chunk;
+    const active = hasActiveNavItem(subgroup.items, pathname);
     return (
       <div key={`sub-${subgroup.title}`}>
-        <details
-          open={openWhenActive(
-            variant,
-            hasActiveNavItem(subgroup.items, pathname),
-          )}
+        <NavDetails
+          active={active}
+          summaryClassName={s.subgroupSummary[variant]}
+          summary={
+            <>
+              {subgroup.title}
+              <ChevronIcon className={s.chevron[variant]} />
+            </>
+          }
+          variant={variant}
         >
-          <summary className={s.subgroupSummary[variant]}>
-            {subgroup.title}
-            <ChevronIcon className={s.chevron[variant]} />
-          </summary>
           <div className={s.groupItems[variant]}>
             <NavList
               items={subgroup.items}
@@ -115,7 +158,7 @@ const GroupEntries = ({
               level="subgroup"
             />
           </div>
-        </details>
+        </NavDetails>
       </div>
     );
   });
@@ -139,15 +182,19 @@ export const NavTree = ({
         {section.groups?.map((group) => {
           const active = hasActiveNavEntry(group.entries, pathname);
           return (
-            <details
+            <NavDetails
               key={group.title}
+              active={active}
               className={s.group[variant]}
-              open={openWhenActive(variant, active)}
+              summaryClassName={s.groupSummary[variant]}
+              summary={
+                <>
+                  {group.title}
+                  <ChevronIcon className={s.chevron[variant]} />
+                </>
+              }
+              variant={variant}
             >
-              <summary className={s.groupSummary[variant]}>
-                {group.title}
-                <ChevronIcon className={s.chevron[variant]} />
-              </summary>
               <div className={s.groupItems[variant]}>
                 <GroupEntries
                   entries={group.entries}
@@ -155,7 +202,7 @@ export const NavTree = ({
                   variant={variant}
                 />
               </div>
-            </details>
+            </NavDetails>
           );
         })}
       </div>
