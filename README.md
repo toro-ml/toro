@@ -69,6 +69,8 @@ let r = result {
 | [MnistGan](examples/MnistGan) | GAN image generation |
 | [CharRnn](examples/CharRnn) | Character-level text generation with LSTM |
 | [TextClassifier](examples/TextClassifier) | Transformer-based text classification |
+| [SimpleGcn](examples/SimpleGcn) | GNN node classification with GCNConv |
+| [HubSentiment](examples/HubSentiment) | Load DistilBERT from Hugging Face Hub |
 
 ## Development
 
