@@ -1,0 +1,22 @@
+---
+title: "GlobalPool"
+description: "Global graph pooling operations."
+namespace: "Toro.GNN"
+---
+
+Aggregate node features into a single graph-level representation.
+
+## Module functions
+
+| Name | Description |
+| --- | --- |
+| `GlobalPool.globalMeanPool x batch numGraphs` | Mean of node features per graph. |
+| `GlobalPool.globalSumPool x batch numGraphs` | Sum of node features per graph. |
+| `GlobalPool.globalMaxPool x batch numGraphs` | Element-wise max of node features per graph. |
+
+All functions take:
+- `x`: node feature matrix `[N, F]`
+- `batch`: batch vector `[N]` mapping each node to its graph index
+- `numGraphs`: total number of graphs in the batch
+
+Returns `[numGraphs, F]`.

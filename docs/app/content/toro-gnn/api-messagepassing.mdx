@@ -1,0 +1,24 @@
+---
+title: "MessagePassing"
+description: "Shared message-passing utilities for graph convolution layers."
+namespace: "Toro.GNN"
+---
+
+Shared utilities used by all graph convolution layers.
+
+## Aggregation
+
+Discriminated union for aggregation strategies:
+
+| Case | Description |
+| --- | --- |
+| `Add` | Sum messages at each target node. |
+| `Mean` | Mean of messages at each target node. |
+| `Max` | Element-wise maximum of messages at each target node. |
+
+## Module functions
+
+| Name | Description |
+| --- | --- |
+| `MessagePassing.aggregate aggr msg targetIdx numNodes features` | Scatter messages `[E, F]` to target nodes `[N, F]` using the given aggregation. |
+| `MessagePassing.edgeSoftmax scores targetIdx numNodes` | Edge-wise softmax: normalize scores grouped by target node. Supports both `[E]` and `[E, H]` shapes. |

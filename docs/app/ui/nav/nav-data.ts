@@ -77,6 +77,7 @@ export const navSections: readonly NavSection[] = [
       { to: "/concepts", label: "Design" },
       { to: "/tensor", label: "Tensor" },
       { to: "/nn", label: "Neural Networks" },
+      { to: "/gnn", label: "Graph Neural Networks" },
       { to: "/training", label: "Training" },
     ],
   },
@@ -126,6 +127,29 @@ export const navSections: readonly NavSection[] = [
           },
           { to: "/api-loss", label: "Loss" },
           { to: "/api-optim", label: "Optim" },
+        ],
+      },
+      {
+        title: "Toro.GNN",
+        entries: [
+          {
+            title: "Data",
+            items: [
+              { to: "/api-graphdata", label: "GraphData" },
+              { to: "/api-batch", label: "Batch" },
+            ],
+          },
+          { to: "/api-graphutils", label: "GraphUtils" },
+          { to: "/api-messagepassing", label: "MessagePassing" },
+          {
+            title: "Conv",
+            items: [
+              { to: "/api-gcnconv", label: "GCNConv" },
+              { to: "/api-gatconv", label: "GATConv" },
+              { to: "/api-sageconv", label: "SAGEConv" },
+            ],
+          },
+          { to: "/api-globalpool", label: "GlobalPool" },
         ],
       },
     ],

@@ -27,8 +27,8 @@ open Toro
 open Toro.NN
 
 let r = result {
-    let! x = Tensor.ofFloat32Array2D ([| [| 0f; 0f |]; [| 0f; 1f |]; [| 1f; 0f |]; [| 1f; 1f |] |], Cpu)
-    let! y = Tensor.ofFloat32Array2D ([| [| 0f |]; [| 1f |]; [| 1f |]; [| 0f |] |], Cpu)
+    let! x = Tensor.ofList ([ [ 0f; 0f ]; [ 0f; 1f ]; [ 1f; 0f ]; [ 1f; 1f ] ], Cpu)
+    let! y = Tensor.ofList ([ [ 0f ]; [ 1f ]; [ 1f ]; [ 0f ] ], Cpu)
 
     let! l1 = Linear.init 2 16 F32 Cpu
     let! l2 = Linear.init 16 1 F32 Cpu

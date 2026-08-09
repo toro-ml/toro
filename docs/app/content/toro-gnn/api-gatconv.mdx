@@ -1,0 +1,35 @@
+---
+title: "GATConv"
+description: "Graph Attention Network layer with multi-head attention."
+namespace: "Toro.GNN"
+---
+
+Graph Attention Network layer (Velickovic et al., 2018).
+
+$$\alpha_{ij} = \frac{\exp\bigl(\text{LeakyReLU}\bigl(\mathbf{a}^\top [\mathbf{W}\mathbf{x}_i \| \mathbf{W}\mathbf{x}_j]\bigr)\bigr)}{\sum_{k \in \mathcal{N}(i)} \exp\bigl(\text{LeakyReLU}\bigl(\mathbf{a}^\top [\mathbf{W}\mathbf{x}_i \| \mathbf{W}\mathbf{x}_k]\bigr)\bigr)}$$
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `Weight` | Linear weight `[heads * outChannels, inChannels]`. |
+| `AttSrc` | Source attention vector `[1, heads, outChannels]`. |
+| `AttTgt` | Target attention vector `[1, heads, outChannels]`. |
+| `Bias` | Optional bias. |
+| `Heads` | Number of attention heads. |
+| `OutChannels` | Output channels per head. |
+| `NegativeSlope` | LeakyReLU negative slope. |
+| `Concat` | If true, concatenate heads (output: `heads * outChannels`). If false, average over heads (output: `outChannels`). |
+
+## Instance members
+
+| Name | Description |
+| --- | --- |
+| `this.forward (x, edgeIndex)` | Apply GAT convolution with attention. |
+
+## Module functions
+
+| Name | Description |
+| --- | --- |
+| `GATConv.init inChannels outChannels heads concat negativeSlope dtype device` | Create a GATConv layer with full configuration. |
+| `GATConv.initDefault inChannels outChannels dtype device` | Create a single-head GATConv (heads=1, concat=true, slope=0.2). |

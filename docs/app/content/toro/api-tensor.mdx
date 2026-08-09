@@ -64,6 +64,7 @@ Wrapper around TorchSharp tensor. Most methods return `Result<'T, ToroError>`;
 | `this.groupNorm (numGroups, ?weight, ?bias, ?eps)` | Apply group normalization. |
 | `this.gt other` | Elementwise greater-than. |
 | `this.gtScalar s` | Elementwise greater-than a scalar. |
+| `this.indexAdd (dim, index, src)` | Add src into self along dim at positions given by index. |
 | `this.indexSelect (dim, index)` | Select slices along a dimension by index. |
 | `this.item ()` | Extract as float64 (throw on error). |
 | `this.itemF32 ()` | Extract as float32 (throw on error). |
@@ -101,6 +102,7 @@ Wrapper around TorchSharp tensor. Most methods return `Result<'T, ToroError>`;
 | `this.reshape shape` | Reshape to the given shape. |
 | `this.save path` | Save to a file. |
 | `this.scaledDotProductAttention (key, value, ?attnMask, ?dropoutP, ?isCausal)` | $\text{Attention}(Q,K,V) = \text{softmax}(QK^\top / \sqrt{d_k})\,V$ |
+| `this.scatterAdd (dim, index, src)` | Scatter-add src into self along dim using index. |
 | `this.sigmoid ()` | $\sigma(x) = 1 / (1+e^{-x})$ |
 | `this.silu ()` | $\text{SiLU}(x) = x \cdot \sigma(x)$ |
 | `this.softmax dim` | $\text{softmax}(x_i) = e^{x_i} / \sum_j e^{x_j}$ |
@@ -154,8 +156,8 @@ Wrapper around TorchSharp tensor. Most methods return `Result<'T, ToroError>`;
 | `Tensor.causalMask (seqLen, dtype, device)` | Create a causal attention mask. |
 | `Tensor.full (shape, value, dtype, device)` | Create a tensor filled with a scalar value. |
 | `Tensor.load path` | Load a tensor from a file. |
-| `Tensor.ofFloat32Array (data, device)` | Create a 1-D tensor from a float32 array. |
-| `Tensor.ofFloat32Array2D (data, device)` | Create a 2-D tensor from a jagged float32 array. |
+| `Tensor.ofArray (data, device)` | Create a tensor from an F# array (1-D through 4-D). |
+| `Tensor.ofList (data, device)` | Create a tensor from an F# list (1-D or 2-D). |
 | `Tensor.ofTorchTensor t` | Wrap a raw TorchSharp tensor. |
 | `Tensor.ones (shape, dtype, device)` | Create a tensor of ones with the given shape. |
 | `Tensor.rand (shape, dtype, device)` | Create a tensor with uniform random values in [0, 1). |

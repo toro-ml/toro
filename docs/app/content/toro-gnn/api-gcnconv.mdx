@@ -1,0 +1,29 @@
+---
+title: "GCNConv"
+description: "Graph Convolutional Network layer."
+namespace: "Toro.GNN"
+---
+
+Graph Convolutional Network layer (Kipf & Welling, 2017).
+
+$$\mathbf{x}_i' = \sum_{j \in \mathcal{N}(i) \cup \{i\}} \frac{1}{\sqrt{\deg(i)} \cdot \sqrt{\deg(j)}} \left( \mathbf{W}^\top \mathbf{x}_j \right) + \mathbf{b}$$
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `Weight` | Weight matrix `[outChannels, inChannels]`. |
+| `Bias` | Optional bias vector `[outChannels]`. |
+
+## Instance members
+
+| Name | Description |
+| --- | --- |
+| `this.forward (x, edgeIndex)` | Apply GCN convolution. Self-loops are added automatically. |
+
+## Module functions
+
+| Name | Description |
+| --- | --- |
+| `GCNConv.init inChannels outChannels dtype device` | Create a GCNConv layer with bias. |
+| `GCNConv.initNoBias inChannels outChannels dtype device` | Create a GCNConv layer without bias. |

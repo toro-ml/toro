@@ -37,21 +37,12 @@ open Toro
 open Toro.NN
 
 let r = result {
-    let! x =
-        Tensor.ofFloat32Array2D (
-            [| [| 0f; 0f |]; [| 0f; 1f |]; [| 1f; 0f |]; [| 1f; 1f |] |],
-            Cpu
-        )
-
-    let! y =
-        Tensor.ofFloat32Array2D (
-            [| [| 0f |]; [| 1f |]; [| 1f |]; [| 0f |] |],
-            Cpu
-        )
+    let! x = Tensor.ofList ([ [ 0f; 0f ]; [ 0f; 1f ]; [ 1f; 0f ]; [ 1f; 1f ] ], Cpu)
+    let! y = Tensor.ofList ([ [ 0f ]; [ 1f ]; [ 1f ]; [ 0f ] ], Cpu)
 ```
 
-`Tensor.ofFloat32Array2D` creates a 2D tensor from an F# array.
-The function returns `Result<Tensor, ToroError>`.
+`Tensor.ofList` creates a tensor from an F# list. For arrays, use `Tensor.ofArray`.
+Both return `Result<Tensor, ToroError>`.
 Use `let!` to unwrap the result inside `result { }`.
 
 ## Step 4: Build the Model

@@ -1,0 +1,25 @@
+---
+title: "GraphData"
+description: "Graph representation in COO format."
+namespace: "Toro.GNN"
+---
+
+Graph in COO format for GNN layers.
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `X` | Node feature matrix `[N, F]`. |
+| `EdgeIndex` | Edge index in COO format `[2, E]`. Row 0 = source, row 1 = target. |
+| `EdgeAttr` | Optional edge features `[E, D]`. |
+| `Batch` | Optional batch vector `[N]` mapping each node to its graph index. |
+
+## Module functions
+
+| Name | Description |
+| --- | --- |
+| `GraphData.create x edgeIndex` | Create a graph with node features and edge index. |
+| `GraphData.createWithEdgeAttr x edgeIndex edgeAttr` | Create a graph with edge attributes. |
+| `GraphData.numNodes g` | Return the number of nodes. |
+| `GraphData.numEdges g` | Return the number of edges. |

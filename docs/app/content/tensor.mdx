@@ -38,12 +38,14 @@ result {
 }
 ```
 
-Create tensors from F# arrays:
+Create tensors from F# arrays with `ofArray`, or from F# lists with `ofList`:
 
 ```fsharp
 result {
-    let! t = Tensor.ofFloat32Array ([| 1f; 2f; 3f |], Cpu)
-    let! t2 = Tensor.ofFloat32Array2D ([| [| 1f; 2f |]; [| 3f; 4f |] |], Cpu)
+    let! t = Tensor.ofArray ([| 1f; 2f; 3f |], Cpu)
+    let! t2 = Tensor.ofArray (array2D [| [| 1f; 2f |]; [| 3f; 4f |] |], Cpu)
+    let! t3 = Tensor.ofList ([ 1.0f; 2.0f; 3.0f ], Cpu)
+    let! t4 = Tensor.ofList ([ [ 0L; 1L ]; [ 1L; 0L ] ], Cpu)
 }
 ```
 
