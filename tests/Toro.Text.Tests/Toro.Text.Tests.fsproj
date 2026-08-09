@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <Compile Include="../Toro.Tests/TestHelper.fs" Link="TestHelper.fs" />
+    <Compile Include="TextTests.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Toro/Toro.fsproj" />
+    <ProjectReference Include="../../src/Toro.Text/Toro.Text.fsproj" />
+  </ItemGroup>
+
+</Project>

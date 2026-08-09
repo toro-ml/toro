@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <Compile Include="../Toro.Tests/TestHelper.fs" Link="TestHelper.fs" />
+    <Compile Include="LayerTests.fs" />
+    <Compile Include="PoolingTests.fs" />
+    <Compile Include="RNNTests.fs" />
+    <Compile Include="AttentionTests.fs" />
+    <Compile Include="VarTests.fs" />
+    <Compile Include="LossTests.fs" />
+    <Compile Include="MetricsTests.fs" />
+    <Compile Include="OptimTests.fs" />
+    <Compile Include="SchedulerTests.fs" />
+    <Compile Include="ClipTests.fs" />
+    <Compile Include="CheckpointTests.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Toro/Toro.fsproj" />
+    <ProjectReference Include="../../src/Toro.NN/Toro.NN.fsproj" />
+  </ItemGroup>
+
+</Project>

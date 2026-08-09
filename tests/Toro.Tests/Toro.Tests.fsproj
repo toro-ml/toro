@@ -1,51 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <OutputType>Exe</OutputType>
-    <IsPackable>false</IsPackable>
-    <IsTestProject>true</IsTestProject>
-  </PropertyGroup>
-
   <ItemGroup>
     <Compile Include="TestHelper.fs" />
     <Compile Include="TensorTests.fs" />
     <Compile Include="AutogradTests.fs" />
     <Compile Include="TensorOpTests.fs" />
-    <Compile Include="LayerTests.fs" />
-    <Compile Include="PoolingTests.fs" />
-    <Compile Include="RNNTests.fs" />
-    <Compile Include="AttentionTests.fs" />
-    <Compile Include="VarTests.fs" />
-    <Compile Include="LossTests.fs" />
-    <Compile Include="MetricsTests.fs" />
-    <Compile Include="OptimTests.fs" />
-    <Compile Include="SchedulerTests.fs" />
-    <Compile Include="ClipTests.fs" />
-    <Compile Include="CheckpointTests.fs" />
-    <Compile Include="SafeTensorsTests.fs" />
-    <Compile Include="GraphTests.fs" />
-    <Compile Include="VisionTests.fs" />
-    <Compile Include="TextTests.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="../../src/Toro/Toro.fsproj" />
-    <ProjectReference Include="../../src/Toro.NN/Toro.NN.fsproj" />
-    <ProjectReference Include="../../src/Toro.GNN/Toro.GNN.fsproj" />
-    <ProjectReference Include="../../src/Toro.Hub/Toro.Hub.fsproj" />
-    <ProjectReference Include="../../src/Toro.Vision/Toro.Vision.fsproj" />
-    <ProjectReference Include="../../src/Toro.Text/Toro.Text.fsproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="FsUnit.xUnit" Version="7.1.1" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
-    <PackageReference Include="TorchSharp-cpu" Version="0.107.0" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
   </ItemGroup>
 
 </Project>
