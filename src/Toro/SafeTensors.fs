@@ -1,11 +1,10 @@
-namespace Toro.Hub
+namespace Toro
 
 open System
 open System.IO
 open System.Text
 open System.Text.Json
 open TorchSharp
-open Toro
 
 /// Read and write the SafeTensors binary format.
 module SafeTensors =

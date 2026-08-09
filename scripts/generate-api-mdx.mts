@@ -309,15 +309,16 @@ const filePages: FilePage[] = [
     sources: [{ html: "toro-nn-metrics.html", heading: "Metrics" }],
   },
 
-  // ── Toro.Hub ──
   {
-    subdir: "toro-hub",
-    namespace: "Toro.Hub",
+    subdir: "toro",
+    namespace: "Toro",
     slug: "api-safetensors",
     title: "SafeTensors",
     description: "Read and write the SafeTensors binary format.",
-    sources: [{ html: "toro-hub-safetensors.html", heading: "SafeTensors" }],
+    sources: [{ html: "toro-safetensors.html", heading: "SafeTensors" }],
   },
+
+  // ── Toro.Hub ──
   {
     subdir: "toro-hub",
     namespace: "Toro.Hub",

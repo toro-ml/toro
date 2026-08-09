@@ -96,6 +96,7 @@ export const navSections: readonly NavSection[] = [
           { to: "/api-shape", label: "Shape" },
           { to: "/api-tensor", label: "Tensor" },
           { to: "/api-tensorop", label: "TensorOp" },
+          { to: "/api-safetensors", label: "SafeTensors" },
         ],
       },
       {
@@ -163,7 +164,6 @@ export const navSections: readonly NavSection[] = [
       {
         title: "Toro.Hub",
         entries: [
-          { to: "/api-safetensors", label: "SafeTensors" },
           { to: "/api-hub", label: "Hub" },
         ],
       },

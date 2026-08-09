@@ -27,6 +27,7 @@
     <Compile Include="Shape.fs" />
     <Compile Include="Tensor.fs" />
     <Compile Include="TensorOp.fs" />
+    <Compile Include="SafeTensors.fs" />
   </ItemGroup>
 
   <ItemGroup>

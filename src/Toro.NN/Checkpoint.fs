@@ -14,8 +14,8 @@ module Checkpoint =
     let save (model: 'T) (opt: IOptimizer) (epoch: int) (dirPath: string) : Result<unit, ToroError> =
         result {
             do! ToroError.wrap (fun () -> Directory.CreateDirectory dirPath |> ignore)
-            do! Model.save model (Path.Combine(dirPath, "model"))
-            do! opt.saveState (Path.Combine(dirPath, "optimizer"))
+            do! Model.save model (Path.Combine(dirPath, "model.safetensors"))
+            do! opt.saveState dirPath
 
             let meta = {
                 Epoch = epoch
@@ -34,8 +34,8 @@ module Checkpoint =
     /// Return the restored epoch number.
     let load (model: 'T) (opt: IOptimizer) (dirPath: string) : Result<int, ToroError> =
         result {
-            do! Model.loadInto model (Path.Combine(dirPath, "model"))
-            do! opt.loadState (Path.Combine(dirPath, "optimizer"))
+            let! _report = Model.loadInto model (Path.Combine(dirPath, "model.safetensors")) Strict
+            do! opt.loadState dirPath
 
             let metaPath = Path.Combine(dirPath, "meta.json")
 

@@ -111,33 +111,36 @@ type AdamW = {
                     Tensor.ofList ([ int64 this.StepCount ], Cpu)
                     |> Result.defaultWith (fun _ -> failwith "unreachable")
 
-                do! stepTensor.save (Path.Combine(dirPath, "step.toro"))
+                let mutable tensors = Map [ "step", stepTensor ]
 
                 for i, (_, m, v) in this.Vars |> List.indexed do
-                    do! m.save (Path.Combine(dirPath, $"m.{i}.toro"))
-                    do! v.save (Path.Combine(dirPath, $"v.{i}.toro"))
+                    tensors <- tensors |> Map.add $"m.{i}" m
+                    tensors <- tensors |> Map.add $"v.{i}" v
+
+                do! SafeTensors.save tensors (Path.Combine(dirPath, "optimizer.safetensors"))
             }
 
         member this.loadState(dirPath) =
             result {
-                let stepPath = Path.Combine(dirPath, "step.toro")
+                let path = Path.Combine(dirPath, "optimizer.safetensors")
 
-                if File.Exists stepPath then
-                    let! stepTensor = Tensor.load stepPath
-                    let! stepVal = stepTensor.toInt64Scalar ()
-                    this.StepCount <- int stepVal
+                if File.Exists path then
+                    let! tensors = SafeTensors.load path
 
-                for i, (_, m, v) in this.Vars |> List.indexed do
-                    let mPath = Path.Combine(dirPath, $"m.{i}.toro")
-                    let vPath = Path.Combine(dirPath, $"v.{i}.toro")
+                    match tensors |> Map.tryFind "step" with
+                    | Some stepTensor ->
+                        let! stepVal = stepTensor.toInt64Scalar ()
+                        this.StepCount <- int stepVal
+                    | None -> ()
 
-                    if File.Exists mPath then
-                        let! loaded = Tensor.load mPath
-                        do! m.copyInPlace loaded
+                    for i, (_, m, v) in this.Vars |> List.indexed do
+                        match tensors |> Map.tryFind $"m.{i}" with
+                        | Some loaded -> do! m.copyInPlace loaded
+                        | None -> ()
 
-                    if File.Exists vPath then
-                        let! loaded = Tensor.load vPath
-                        do! v.copyInPlace loaded
+                        match tensors |> Map.tryFind $"v.{i}" with
+                        | Some loaded -> do! v.copyInPlace loaded
+                        | None -> ()
             }
 
 module AdamW =

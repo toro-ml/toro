@@ -322,8 +322,8 @@ let main argv =
 
         let! model = createModel ()
         let nameMap = buildNameMap ()
-        do! Model.loadFromDict model weights (Some nameMap)
-        printfn "Model loaded"
+        let! report = Model.loadFromDict model weights (Some nameMap) Lenient
+        printfn "Model loaded (%d params, %d skipped)" report.Loaded.Length report.Missing.Length
         printfn ""
 
         for text in testTexts do

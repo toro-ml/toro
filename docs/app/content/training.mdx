@@ -72,6 +72,8 @@ type IOptimizer =
     abstract learningRate: unit -> float
     abstract setLearningRate: float -> unit
     abstract zeroGrad: unit -> unit
+    abstract saveState: dirPath: string -> Result<unit, ToroError>
+    abstract loadState: dirPath: string -> Result<unit, ToroError>
 ```
 
 - `zeroGrad` clears accumulated gradients. Call before each training step (or skip for gradient accumulation).
@@ -242,12 +244,12 @@ for epoch in (resumedEpoch + 1)..epochs do
 For saving model weights without optimizer state, use `Model.save` and `Model.loadInto`:
 
 ```fsharp
-do! Model.save model "weights/best"
-do! Model.loadInto model "weights/best"
+do! Model.save model "weights/best.safetensors"
+let! report = Model.loadInto model "weights/best.safetensors" Strict
 ```
 
-`Model.loadInto` matches parameters by name and copies values into the model tensors.
-Parameters not found on disk are left unchanged.
+`Model.loadInto` matches parameters by name, copies values into the model tensors, and returns a `LoadReport`.
+Use `Strict` to error on missing or unexpected keys, or `Lenient` to allow partial loading.
 
 ## Pre-trained Models (Toro.Hub)
 
@@ -259,7 +261,7 @@ for loading pre-trained model weights.
 Read and write the [SafeTensors](https://huggingface.co/docs/safetensors/) binary format:
 
 ```fsharp
-open Toro.Hub
+open Toro
 
 // Save tensors to a .safetensors file
 let tensors = Map [ "weight", weightTensor; "bias", biasTensor ]
@@ -297,7 +299,7 @@ Use `Model.loadFromDict` to copy tensors from a dictionary into a model's parame
 
 ```fsharp
 let! weights = SafeTensors.load "model.safetensors"
-do! Model.loadFromDict model weights None
+let! report = Model.loadFromDict model weights None Strict
 ```
 
 When Hugging Face parameter names differ from Toro parameter names,
@@ -307,7 +309,9 @@ pass a name mapping:
 let nameMap = Map [
     "transformer.h.0.attn.c_attn.weight", "layers.0.attention.queryWeight"
 ]
-do! Model.loadFromDict model weights (Some nameMap)
+let! report = Model.loadFromDict model weights (Some nameMap) Lenient
+printfn "Loaded %d params, %d missing" report.Loaded.Length report.Missing.Length
 ```
 
-Parameters not found in the dictionary are left unchanged.
+`loadFromDict` returns a `LoadReport` listing `Loaded`, `Missing`, and `Unexpected` keys.
+Use `Strict` to error on any mismatch, or `Lenient` to allow partial loading.

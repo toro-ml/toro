@@ -102,7 +102,7 @@ let ``Checkpoint creates expected directory structure`` () =
         File.Exists(Path.Combine(dir, "meta.json"))
         |> should equal true
 
-        Directory.Exists(Path.Combine(dir, "model"))
+        File.Exists(Path.Combine(dir, "model.safetensors"))
         |> should equal true)
 
 [<Fact>]

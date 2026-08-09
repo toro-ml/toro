@@ -5,7 +5,6 @@ open Xunit
 open FsUnit.Xunit
 open Toro
 open Toro.NN
-open Toro.Hub
 open TestHelper
 
 let private withTempDir f =
@@ -109,7 +108,11 @@ let ``Model.loadFromDict without nameMap`` () =
         |> Map.ofList
 
     let linear2 = Linear.init 4 2 F32 Cpu |> unwrap
-    Model.loadFromDict linear2 dict None |> unwrap
+    let report = Model.loadFromDict linear2 dict None Strict |> unwrap
+
+    report.Loaded.Length |> should equal 2
+    report.Missing |> should be Empty
+    report.Unexpected |> should be Empty
 
     let w1 = Model.namedParams linear |> List.head |> snd |> tensorSum
     let w2 = Model.namedParams linear2 |> List.head |> snd |> tensorSum
@@ -132,17 +135,49 @@ let ``Model.loadFromDict with nameMap`` () =
 
     let linear2 = Linear.init 4 2 F32 Cpu |> unwrap
 
-    Model.loadFromDict linear2 renamedDict (Some nameMap)
-    |> unwrap
+    let report =
+        Model.loadFromDict linear2 renamedDict (Some nameMap) Strict
+        |> unwrap
+
+    report.Loaded.Length |> should equal 2
 
     let w1 = Model.namedParams linear |> List.head |> snd |> tensorSum
     let w2 = Model.namedParams linear2 |> List.head |> snd |> tensorSum
     w2 |> should (equalWithin 1e-5f) w1
 
 [<Fact>]
-let ``Model.loadFromDict ignores missing keys`` () =
+let ``Model.loadFromDict Lenient reports missing keys`` () =
     let linear = Linear.init 4 2 F32 Cpu |> unwrap
     let before = Model.namedParams linear |> List.head |> snd |> tensorSum
-    Model.loadFromDict linear Map.empty None |> unwrap
+    let report = Model.loadFromDict linear Map.empty None Lenient |> unwrap
     let after = Model.namedParams linear |> List.head |> snd |> tensorSum
     after |> should (equalWithin 1e-5f) before
+    report.Loaded |> should be Empty
+    report.Missing.Length |> should equal 2
+    report.Missing |> should contain "Weight"
+    report.Missing |> should contain "Bias"
+
+[<Fact>]
+let ``Model.loadFromDict Strict fails on missing keys`` () =
+    let linear = Linear.init 4 2 F32 Cpu |> unwrap
+
+    match Model.loadFromDict linear Map.empty None Strict with
+    | Error _ -> ()
+    | Ok _ -> failwith "Expected Error for missing keys in Strict mode"
+
+[<Fact>]
+let ``Model.loadFromDict Strict fails on unexpected keys`` () =
+    let linear = Linear.init 4 2 F32 Cpu |> unwrap
+    let original = Model.namedParams linear
+
+    let dict =
+        original
+        |> List.map (fun (name, t) -> name, t)
+        |> Map.ofList
+        |> Map.add "Extra" (Tensor.randn ([ 2 ], F32, Cpu) |> unwrap)
+
+    let linear2 = Linear.init 4 2 F32 Cpu |> unwrap
+
+    match Model.loadFromDict linear2 dict None Strict with
+    | Error _ -> ()
+    | Ok _ -> failwith "Expected Error for unexpected keys in Strict mode"

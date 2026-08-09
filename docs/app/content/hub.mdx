@@ -3,17 +3,19 @@ title: Hub
 description: SafeTensors file support and Hugging Face Hub client for loading pre-trained models.
 ---
 
-Toro.Hub provides SafeTensors file I/O and a Hugging Face Hub client for downloading pre-trained model weights.
-Open the namespace to get started:
+Toro.Hub provides a Hugging Face Hub client for downloading pre-trained model weights.
+SafeTensors I/O is in the core `Toro` package.
 
 ```fsharp
 open Toro
+open Toro.NN
 open Toro.Hub
 ```
 
 ## SafeTensors
 
 Read and write the [SafeTensors](https://huggingface.co/docs/safetensors/) binary format, the standard for storing model weights securely.
+The `SafeTensors` module is in the `Toro` namespace (core package).
 
 ### Save
 
@@ -72,22 +74,25 @@ The client adds a `Bearer` token automatically when `HF_TOKEN` is set.
 Use `Model.loadFromDict` (from Toro.NN) to copy downloaded weights into a model:
 
 ```fsharp
-open Toro.NN
-
 result {
     let! weights =
         Hub.loadSafeTensors "openai-community/gpt2" "model.safetensors"
         |> Async.RunSynchronously
 
-    do! Model.loadFromDict model weights None
+    let! report = Model.loadFromDict model weights None Strict
 }
 ```
 
-Pass a name mapping function when the parameter names in the file do not match the model:
+Pass a name map when the parameter names in the file do not match the model:
 
 ```fsharp
-let nameMap (name: string) =
-    name.Replace("transformer.", "")
-
-do! Model.loadFromDict model weights (Some nameMap)
+let nameMap = Map [
+    "transformer.wte.weight", "Embedding.Embeddings"
+    // ...
+]
+let! report = Model.loadFromDict model weights (Some nameMap) Lenient
+printfn "Loaded %d params, %d missing" report.Loaded.Length report.Missing.Length
 ```
+
+`loadFromDict` returns a `LoadReport` listing `Loaded`, `Missing`, and `Unexpected` keys.
+Use `Strict` to error on any mismatch, or `Lenient` to allow partial loading.

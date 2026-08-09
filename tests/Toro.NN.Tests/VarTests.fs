@@ -58,16 +58,23 @@ let ``Model save and loadInto round-trips`` () =
         System.IO.Path.Combine(System.IO.Path.GetTempPath(), System.Guid.NewGuid().ToString())
 
     try
+        System.IO.Directory.CreateDirectory dir |> ignore
+        let path = System.IO.Path.Combine(dir, "model.safetensors")
+
         let linear = Linear.init 3 2 F32 Cpu |> unwrap
 
         let wSum =
             (linear.Weight.sumAll () |> unwrap).toFloat32Scalar ()
             |> unwrap
 
-        Model.save linear dir |> unwrap
+        Model.save linear path |> unwrap
 
         let linear2 = Linear.init 3 2 F32 Cpu |> unwrap
-        Model.loadInto linear2 dir |> unwrap
+        let report = Model.loadInto linear2 path Strict |> unwrap
+
+        report.Loaded.Length |> should equal 2
+        report.Missing |> should be Empty
+        report.Unexpected |> should be Empty
 
         let wSum2 =
             (linear2.Weight.sumAll () |> unwrap).toFloat32Scalar ()

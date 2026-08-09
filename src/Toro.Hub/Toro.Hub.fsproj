@@ -6,7 +6,7 @@
     <PackageId>Toro.Hub</PackageId>
     <Version>0.1.0</Version>
     <Authors>ryushiaok</Authors>
-    <Description>SafeTensors reader/writer and Hugging Face Hub client for Toro</Description>
+    <Description>Hugging Face Hub client for Toro</Description>
     <PackageTags>fsharp;dotnet;ml;torchsharp;safetensors;huggingface</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/toro-ml/toro</RepositoryUrl>
@@ -18,7 +18,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="SafeTensors.fs" />
     <Compile Include="Hub.fs" />
   </ItemGroup>
 

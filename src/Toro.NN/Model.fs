@@ -5,6 +5,18 @@ open System.Reflection
 open Microsoft.FSharp.Reflection
 open Toro
 
+/// Report produced after loading tensors into a model.
+type LoadReport = {
+    Loaded: string list
+    Missing: string list
+    Unexpected: string list
+}
+
+/// Controls whether missing or unexpected keys cause an error.
+type LoadMode =
+    | Strict
+    | Lenient
+
 /// Reflection-based parameter discovery, serialization, and deserialization for F# record models.
 module Model =
 
@@ -55,6 +67,17 @@ module Model =
         |> Seq.collect (fun (i, item) -> collect (makePath prefix (string i)) item)
         |> Seq.toList
 
+    let private validateUniqueNames (ps: (string * Tensor) list) : Result<unit, ToroError> =
+        let duplicates =
+            ps
+            |> List.countBy fst
+            |> List.filter (fun (_, c) -> c > 1)
+            |> List.map fst
+
+        match duplicates with
+        | [] -> Ok()
+        | dupes -> Error(Msg $"Duplicate parameter names: %A{dupes}")
+
     /// Return all named tensors in the model via reflection.
     let namedParams (model: 'T) : (string * Tensor) list = collect "" (box model)
 
@@ -63,30 +86,13 @@ module Model =
         namedParams model
         |> List.choose (fun (_, t) -> if t.RequiresGrad then Some t else None)
 
-    /// Save all model tensors to the given directory.
-    let save (model: 'T) (dirPath: string) : Result<unit, ToroError> =
+    /// Save all model tensors to a .safetensors file.
+    let save (model: 'T) (filePath: string) : Result<unit, ToroError> =
         result {
-            do! ToroError.wrap (fun () -> Directory.CreateDirectory dirPath |> ignore)
-
-            for name, tensor in namedParams model do
-                let filePath = Path.Combine(dirPath, name + ".toro")
-                let dir = Path.GetDirectoryName filePath
-
-                if not (Directory.Exists dir) then
-                    Directory.CreateDirectory dir |> ignore
-
-                do! tensor.save filePath
-        }
-
-    /// Load tensors from the given directory into the model in place.
-    let loadInto (model: 'T) (dirPath: string) : Result<unit, ToroError> =
-        result {
-            for name, tensor in namedParams model do
-                let filePath = Path.Combine(dirPath, name + ".toro")
-
-                if File.Exists filePath then
-                    let! loaded = Tensor.load filePath
-                    do! tensor.copyInPlace loaded
+            let ps = namedParams model
+            do! validateUniqueNames ps
+            let tensors = ps |> Map.ofList
+            do! SafeTensors.save tensors filePath
         }
 
     /// Load tensors from a dictionary into the model, matching by parameter name.
@@ -95,7 +101,8 @@ module Model =
         (model: 'T)
         (tensors: Map<string, Tensor>)
         (nameMap: Map<string, string> option)
-        : Result<unit, ToroError> =
+        (mode: LoadMode)
+        : Result<LoadReport, ToroError> =
         result {
             let lookup =
                 match nameMap with
@@ -108,8 +115,47 @@ module Model =
                     |> Map.ofSeq
                 | None -> tensors
 
-            for name, tensor in namedParams model do
+            let modelNames = namedParams model
+            let mutable loaded = []
+            let mutable missing = []
+
+            for name, tensor in modelNames do
                 match lookup |> Map.tryFind name with
-                | Some src -> do! tensor.copyInPlace src
-                | None -> ()
+                | Some src ->
+                    do! tensor.copyInPlace src
+                    loaded <- name :: loaded
+                | None -> missing <- name :: missing
+
+            let modelNameSet = modelNames |> List.map fst |> Set.ofList
+
+            let unexpected =
+                lookup
+                |> Map.toList
+                |> List.map fst
+                |> List.filter (fun k -> not (Set.contains k modelNameSet))
+
+            let report = {
+                Loaded = List.rev loaded
+                Missing = List.rev missing
+                Unexpected = unexpected
+            }
+
+            match mode with
+            | Strict when report.Missing <> [] || report.Unexpected <> [] ->
+                let parts = [
+                    if report.Missing <> [] then
+                        $"missing keys: %A{report.Missing}"
+                    if report.Unexpected <> [] then
+                        $"unexpected keys: %A{report.Unexpected}"
+                ]
+
+                return! Error(Msg(parts |> String.concat "; "))
+            | _ -> return report
+        }
+
+    /// Load tensors from a .safetensors file into the model in place.
+    let loadInto (model: 'T) (filePath: string) (mode: LoadMode) : Result<LoadReport, ToroError> =
+        result {
+            let! tensors = SafeTensors.load filePath
+            return! loadFromDict model tensors None mode
         }

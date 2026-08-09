@@ -357,14 +357,15 @@ let namedVars = Model.namedParams myModel
 
 ## Model Persistence
 
-Save and load model parameters:
+Save and load model parameters as SafeTensors:
 
 ```fsharp
 result {
-    do! Model.save myModel "checkpoints/epoch10"
-    do! Model.loadInto myModel "checkpoints/epoch10"
+    do! Model.save myModel "checkpoints/epoch10.safetensors"
+    let! report = Model.loadInto myModel "checkpoints/epoch10.safetensors" Strict
 }
 ```
 
-`Model.save` writes each parameter as a separate file under the directory.
-`Model.loadInto` loads parameters from files and copies them into the model tensors.
+`Model.save` writes all parameters to a single `.safetensors` file.
+`Model.loadInto` loads parameters and returns a `LoadReport` with `Loaded`, `Missing`, and `Unexpected` keys.
+Use `Strict` to fail on mismatches, or `Lenient` to allow partial loading.
