@@ -94,7 +94,7 @@ let ``GraphData create sets fields`` () =
 let ``MessagePassing aggregate Add scatters correctly`` () =
     // 2 edges targeting nodes 0 and 1; 3 nodes total; 2 features
     let msg =
-        Tensor.ofFloat32Array2D ([| [| 1.0f; 2.0f |]; [| 3.0f; 4.0f |] |], Cpu)
+        Tensor.ofArray (array2D [| [| 1.0f; 2.0f |]; [| 3.0f; 4.0f |] |], Cpu)
         |> unwrap
 
     let targetIdx =
@@ -124,7 +124,7 @@ let ``MessagePassing aggregate Add scatters correctly`` () =
 let ``MessagePassing aggregate Mean divides by count`` () =
     // 3 edges: two target node 0, one targets node 1
     let msg =
-        Tensor.ofFloat32Array2D ([| [| 2.0f; 4.0f |]; [| 4.0f; 6.0f |]; [| 1.0f; 1.0f |] |], Cpu)
+        Tensor.ofArray (array2D [| [| 2.0f; 4.0f |]; [| 4.0f; 6.0f |]; [| 1.0f; 1.0f |] |], Cpu)
         |> unwrap
 
     let targetIdx =

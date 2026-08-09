@@ -155,7 +155,7 @@ let ``clone creates independent copy`` () =
 [<Fact>]
 let ``gather selects elements by index`` () =
     let t =
-        Tensor.ofFloat32Array ([| 1.0f; 2.0f; 3.0f; 4.0f; 5.0f; 6.0f |], Cpu)
+        Tensor.ofArray ([| 1.0f; 2.0f; 3.0f; 4.0f; 5.0f; 6.0f |], Cpu)
         |> unwrap
 
     let t = t.reshape [ 2; 3 ] |> unwrap
@@ -166,7 +166,7 @@ let ``gather selects elements by index`` () =
 [<Fact>]
 let ``indexSelect selects rows`` () =
     let t =
-        Tensor.ofFloat32Array ([| 10.0f; 20.0f; 30.0f; 40.0f; 50.0f; 60.0f |], Cpu)
+        Tensor.ofArray ([| 10.0f; 20.0f; 30.0f; 40.0f; 50.0f; 60.0f |], Cpu)
         |> unwrap
 
     let t = t.reshape [ 3; 2 ] |> unwrap
@@ -178,7 +178,7 @@ let ``indexSelect selects rows`` () =
 [<Fact>]
 let ``clamp constrains values`` () =
     let t =
-        Tensor.ofFloat32Array ([| -5.0f; 0.0f; 5.0f |], Cpu)
+        Tensor.ofArray ([| -5.0f; 0.0f; 5.0f |], Cpu)
         |> unwrap
 
     let c = t.clamp (-1.0, 1.0) |> unwrap
@@ -248,9 +248,9 @@ let ``toDType converts type`` () =
     t64.DType |> should equal F64
 
 [<Fact>]
-let ``ofFloat32Array creates 1D tensor`` () =
+let ``ofArray creates 1D tensor`` () =
     let t =
-        Tensor.ofFloat32Array ([| 1.0f; 2.0f; 3.0f |], Cpu)
+        Tensor.ofArray ([| 1.0f; 2.0f; 3.0f |], Cpu)
         |> unwrap
 
     t.Shape |> should equal [ 3 ]
@@ -353,7 +353,7 @@ let ``use! disposes tensor after scope`` () =
 [<Fact>]
 let ``oneHot encodes integer tensor`` () =
     let t =
-        Tensor.ofFloat32Array ([| 0.0f; 1.0f; 2.0f |], Cpu)
+        Tensor.ofArray ([| 0.0f; 1.0f; 2.0f |], Cpu)
         |> unwrap
 
     let t = t.toDType I64 |> unwrap
@@ -388,7 +388,7 @@ let ``narrow extracts slice along dimension`` () =
 [<Fact>]
 let ``leakyRelu applies negative slope`` () =
     let t =
-        Tensor.ofFloat32Array ([| -2.0f; -1.0f; 0.0f; 1.0f; 2.0f |], Cpu)
+        Tensor.ofArray ([| -2.0f; -1.0f; 0.0f; 1.0f; 2.0f |], Cpu)
         |> unwrap
 
     let y = t.leakyRelu 0.1 |> unwrap
@@ -398,7 +398,7 @@ let ``leakyRelu applies negative slope`` () =
 [<Fact>]
 let ``elu applies exponential linear unit`` () =
     let t =
-        Tensor.ofFloat32Array ([| -1.0f; 0.0f; 1.0f |], Cpu)
+        Tensor.ofArray ([| -1.0f; 0.0f; 1.0f |], Cpu)
         |> unwrap
 
     let y = t.elu 1.0 |> unwrap
@@ -446,7 +446,7 @@ let ``Item int selects along dim 0`` () =
 let ``Item Tensor selects rows by index`` () =
     let t = Tensor.arange (6.0, F32, Cpu) |> unwrap
     let t = t.reshape [ 3; 2 ] |> unwrap
-    let idx = Tensor.ofFloat32Array ([| 0.0f; 2.0f |], Cpu) |> unwrap
+    let idx = Tensor.ofArray ([| 0.0f; 2.0f |], Cpu) |> unwrap
     let idx = idx.toDType I64 |> unwrap
     let selected = t[idx]
     selected.Shape |> should equal [ 2; 2 ]
@@ -481,7 +481,7 @@ let ``at with TIdx selects correctly`` () =
 let ``at with Tensor TIdx performs advanced indexing`` () =
     let t = Tensor.arange (6.0, F32, Cpu) |> unwrap
     let t = t.reshape [ 3; 2 ] |> unwrap
-    let idx = Tensor.ofFloat32Array ([| 0.0f; 2.0f |], Cpu) |> unwrap
+    let idx = Tensor.ofArray ([| 0.0f; 2.0f |], Cpu) |> unwrap
     let idx = idx.toDType I64 |> unwrap
     let s = t.at [ T idx ]
     s.Shape |> should equal [ 2; 2 ]
@@ -496,7 +496,7 @@ let ``at with Ellipsis selects trailing dim`` () =
 [<Fact>]
 let ``argmax returns index of maximum along dim`` () =
     let t =
-        Tensor.ofFloat32Array ([| 1.0f; 3.0f; 2.0f; 5.0f; 4.0f; 0.0f |], Cpu)
+        Tensor.ofArray ([| 1.0f; 3.0f; 2.0f; 5.0f; 4.0f; 0.0f |], Cpu)
         |> unwrap
 
     let t = t.reshape [ 2; 3 ] |> unwrap
@@ -508,11 +508,11 @@ let ``argmax returns index of maximum along dim`` () =
 [<Fact>]
 let ``eq returns bool tensor`` () =
     let a =
-        Tensor.ofFloat32Array ([| 1.0f; 2.0f; 3.0f |], Cpu)
+        Tensor.ofArray ([| 1.0f; 2.0f; 3.0f |], Cpu)
         |> unwrap
 
     let b =
-        Tensor.ofFloat32Array ([| 1.0f; 0.0f; 3.0f |], Cpu)
+        Tensor.ofArray ([| 1.0f; 0.0f; 3.0f |], Cpu)
         |> unwrap
 
     let eq = a.eq b
@@ -528,7 +528,7 @@ let ``item returns scalar as float`` () =
 [<Fact>]
 let ``max returns values and indices`` () =
     let t =
-        Tensor.ofFloat32Array ([| 1.0f; 5.0f; 3.0f; 2.0f; 4.0f; 0.0f |], Cpu)
+        Tensor.ofArray ([| 1.0f; 5.0f; 3.0f; 2.0f; 4.0f; 0.0f |], Cpu)
         |> unwrap
 
     let t = t.reshape [ 2; 3 ] |> unwrap

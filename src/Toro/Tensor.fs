@@ -6,6 +6,38 @@ open TorchSharp
 module internal ScalarHelper =
     let toScalar (v: float) : Scalar = Scalar.op_Implicit v
 
+/// SRTP witness for Tensor.ofArray dispatch.
+[<System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)>]
+type TensorOfArray = TensorOfArray with
+    static member ($)(TensorOfArray, d: float32[]) = fun dev -> torch.tensor (d, device = dev)
+    static member ($)(TensorOfArray, d: float[]) = fun dev -> torch.tensor (d, device = dev)
+    static member ($)(TensorOfArray, d: int32[]) = fun dev -> torch.tensor (d, device = dev)
+    static member ($)(TensorOfArray, d: int64[]) = fun dev -> torch.tensor (d, device = dev)
+    static member ($)(TensorOfArray, d: float32[,]) = fun dev -> torch.tensor (d, device = dev)
+    static member ($)(TensorOfArray, d: float[,]) = fun dev -> torch.tensor (d, device = dev)
+    static member ($)(TensorOfArray, d: int32[,]) = fun dev -> torch.tensor (d, device = dev)
+    static member ($)(TensorOfArray, d: int64[,]) = fun dev -> torch.tensor (d, device = dev)
+    static member ($)(TensorOfArray, d: float32[,,]) = fun dev -> torch.tensor (d, device = dev)
+    static member ($)(TensorOfArray, d: float[,,]) = fun dev -> torch.tensor (d, device = dev)
+    static member ($)(TensorOfArray, d: int32[,,]) = fun dev -> torch.tensor (d, device = dev)
+    static member ($)(TensorOfArray, d: int64[,,]) = fun dev -> torch.tensor (d, device = dev)
+    static member ($)(TensorOfArray, d: float32[,,,]) = fun dev -> torch.tensor (d, device = dev)
+    static member ($)(TensorOfArray, d: float[,,,]) = fun dev -> torch.tensor (d, device = dev)
+    static member ($)(TensorOfArray, d: int32[,,,]) = fun dev -> torch.tensor (d, device = dev)
+    static member ($)(TensorOfArray, d: int64[,,,]) = fun dev -> torch.tensor (d, device = dev)
+
+/// SRTP witness for Tensor.ofList dispatch.
+[<System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)>]
+type TensorOfList = TensorOfList with
+    static member ($)(TensorOfList, d: float32 list) = fun dev -> torch.tensor (List.toArray d, device = dev)
+    static member ($)(TensorOfList, d: float list) = fun dev -> torch.tensor (List.toArray d, device = dev)
+    static member ($)(TensorOfList, d: int32 list) = fun dev -> torch.tensor (List.toArray d, device = dev)
+    static member ($)(TensorOfList, d: int64 list) = fun dev -> torch.tensor (List.toArray d, device = dev)
+    static member ($)(TensorOfList, d: float32 list list) = fun dev -> torch.tensor (array2D d, device = dev)
+    static member ($)(TensorOfList, d: float list list) = fun dev -> torch.tensor (array2D d, device = dev)
+    static member ($)(TensorOfList, d: int32 list list) = fun dev -> torch.tensor (array2D d, device = dev)
+    static member ($)(TensorOfList, d: int64 list list) = fun dev -> torch.tensor (array2D d, device = dev)
+
 /// Wrapper around TorchSharp tensor. Most methods return Result&lt;'T, ToroError&gt;;
 /// arithmetic operators throw on failure for ergonomic use in expressions.
 type Tensor internal (inner: torch.Tensor) =
@@ -94,24 +126,13 @@ type Tensor internal (inner: torch.Tensor) =
 
             Tensor t)
 
-    /// Create a 2-D tensor from a jagged float32 array.
-    static member ofFloat32Array2D(data: float32 array array, device: Device) =
-        ToroError.wrap (fun () ->
-            let rows = data.Length
-            let cols = data[0].Length
-            let flat = Array.concat data
+    /// Create a tensor from an F# array (1-D through 4-D).
+    static member inline ofArray(data, device: Device) =
+        Tensor.ofTorchTensor ((TensorOfArray $ data) (Device.toTorch device))
 
-            let t =
-                torch.tensor(flat, device = Device.toTorch device).reshape ([| int64 rows; int64 cols |])
-
-            Tensor t)
-
-    /// Create a 1-D tensor from a float32 array.
-    static member ofFloat32Array(data: float32 array, device: Device) =
-        ToroError.wrap (fun () ->
-            let t = torch.tensor (data, device = Device.toTorch device)
-
-            Tensor t)
+    /// Create a tensor from an F# list (1-D or 2-D).
+    static member inline ofList(data, device: Device) =
+        Tensor.ofTorchTensor ((TensorOfList $ data) (Device.toTorch device))
 
     /// Concatenate tensors along a dimension.
     static member cat(tensors: Tensor list, dim: int) =

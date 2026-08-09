@@ -5,8 +5,8 @@ open Toro.NN
 let main _argv =
     result {
         let! x =
-            Tensor.ofFloat32Array2D (
-                [|
+            Tensor.ofArray (
+                array2D [|
                     [| 0f; 0f |] //
                     [| 0f; 1f |]
                     [| 1f; 0f |]
@@ -15,16 +15,7 @@ let main _argv =
                 Cpu
             )
 
-        let! y =
-            Tensor.ofFloat32Array2D (
-                [|
-                    [| 0f |] //
-                    [| 1f |]
-                    [| 1f |]
-                    [| 0f |]
-                |],
-                Cpu
-            )
+        let! y = Tensor.ofArray (array2D [| [| 0f |]; [| 1f |]; [| 1f |]; [| 0f |] |], Cpu)
 
         let! l1 = Linear.init 2 16 F32 Cpu
         let! l2 = Linear.init 16 1 F32 Cpu
