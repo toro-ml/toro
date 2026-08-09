@@ -36,12 +36,9 @@ type GCNConv = {
             // Per-edge normalization coefficient
             let norm = degInvSqrt[src] * degInvSqrt[tgt]
 
-            // Gather, normalize, scatter
+            // Gather and normalize messages, then aggregate
             let msg = h[src] * norm.at [ A; N ]
-            let! targetIdx = tgt.unsqueeze 1
-            let! targetIdx = targetIdx.expand [ msg.Shape[0]; outChannels ]
-            let! out = Tensor.zeros ([ numNodes; outChannels ], h.DType, h.Device)
-            let! out = out.scatterAdd (0, targetIdx, msg)
+            let! out = MessagePassing.aggregate Add msg tgt numNodes outChannels
 
             match this.Bias with
             | None -> return out

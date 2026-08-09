@@ -21,7 +21,10 @@
     <Compile Include="Data/GraphData.fs" />
     <Compile Include="Data/Batch.fs" />
     <Compile Include="Utils/GraphUtils.fs" />
+    <Compile Include="Conv/MessagePassing.fs" />
     <Compile Include="Conv/GCNConv.fs" />
+    <Compile Include="Conv/GATConv.fs" />
+    <Compile Include="Conv/SAGEConv.fs" />
     <Compile Include="Pool/GlobalPool.fs" />
   </ItemGroup>
 
