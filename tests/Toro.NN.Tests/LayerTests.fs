@@ -82,24 +82,11 @@ let ``Sequential chains modules`` () =
     y.Shape |> should equal [ 4; 2 ]
 
 [<Fact>]
-let ``ModuleT ofModule delegates to IModule forward`` () =
-    let linear = Linear.init 4 2 F32 Cpu |> unwrap
-
-    let moduleT = ModuleT.ofModule (linear :> IModule)
-
-    let x = Tensor.randn ([ 1; 4 ], F32, Cpu) |> unwrap
-    let y = moduleT.forwardT x true |> unwrap
-    y.Shape |> should equal [ 1; 2 ]
-
-    let y2 = moduleT.forwardT x false |> unwrap
-    y2.Shape |> should equal [ 1; 2 ]
-
-[<Fact>]
 let ``Dropout train=false passes input through`` () =
     let drop = Dropout.create 0.5
     let x = Tensor.ones ([ 4; 8 ], F32, Cpu) |> unwrap
 
-    let y = drop.forwardT x false |> unwrap
+    let y = drop.forwardT false x |> unwrap
     let sum = (y.sumAll () |> unwrap).toFloat32Scalar () |> unwrap
     sum |> should equal 32.0f
 
@@ -108,7 +95,7 @@ let ``Dropout train=true produces zeros`` () =
     let drop = Dropout.create 0.5
     let x = Tensor.ones ([ 100; 100 ], F32, Cpu) |> unwrap
 
-    let y = drop.forwardT x true |> unwrap
+    let y = drop.forwardT true x |> unwrap
     let sum = (y.sumAll () |> unwrap).toFloat32Scalar () |> unwrap
 
     let sumSq =
@@ -123,16 +110,9 @@ let ``Dropout with dropP=0 passes input through even in train`` () =
     let drop = Dropout.create 0.0
     let x = Tensor.ones ([ 4; 8 ], F32, Cpu) |> unwrap
 
-    let y = drop.forwardT x true |> unwrap
+    let y = drop.forwardT true x |> unwrap
     let sum = (y.sumAll () |> unwrap).toFloat32Scalar () |> unwrap
     sum |> should equal 32.0f
-
-[<Fact>]
-let ``Dropout implements IModuleT`` () =
-    let drop = Dropout.create 0.3 :> IModuleT
-    let x = Tensor.randn ([ 2; 4 ], F32, Cpu) |> unwrap
-    let y = drop.forwardT x false |> unwrap
-    y.Shape |> should equal [ 2; 4 ]
 
 [<Fact>]
 let ``Func create wraps function as IModule`` () =
@@ -143,25 +123,6 @@ let ``Func create wraps function as IModule`` () =
     let y = m.forward x |> unwrap
     let sum = (y.sumAll () |> unwrap).toFloat32Scalar () |> unwrap
     sum |> should equal 0.0f
-
-[<Fact>]
-let ``FuncT passes train flag correctly`` () =
-    let f = FuncT.create (fun x train -> if train then x.mulScalar 2.0 else Ok x)
-
-    let m = f :> IModuleT
-    let x = Tensor.ones ([ 3 ], F32, Cpu) |> unwrap
-
-    let yTrain = m.forwardT x true |> unwrap
-
-    (yTrain.sumAll () |> unwrap).toFloat32Scalar ()
-    |> unwrap
-    |> should equal 6.0f
-
-    let yEval = m.forwardT x false |> unwrap
-
-    (yEval.sumAll () |> unwrap).toFloat32Scalar ()
-    |> unwrap
-    |> should equal 3.0f
 
 [<Fact>]
 let ``Identity returns input unchanged`` () =
@@ -250,7 +211,7 @@ let ``BatchNorm forward preserves shape in eval mode`` () =
     let bn = BatchNorm.initDefault 8 F32 Cpu |> unwrap
 
     let x = Tensor.randn ([ 2; 8; 4; 4 ], F32, Cpu) |> unwrap
-    let y = bn.forwardT x false |> unwrap
+    let y = bn.forwardT false x |> unwrap
     y.Shape |> should equal [ 2; 8; 4; 4 ]
 
 [<Fact>]
@@ -258,16 +219,8 @@ let ``BatchNorm forward preserves shape in train mode`` () =
     let bn = BatchNorm.initDefault 4 F32 Cpu |> unwrap
 
     let x = Tensor.randn ([ 4; 4; 3; 3 ], F32, Cpu) |> unwrap
-    let y = bn.forwardT x true |> unwrap
+    let y = bn.forwardT true x |> unwrap
     y.Shape |> should equal [ 4; 4; 3; 3 ]
-
-[<Fact>]
-let ``BatchNorm implements IModuleT`` () =
-    let bn = BatchNorm.initDefault 4 F32 Cpu |> unwrap :> IModuleT
-
-    let x = Tensor.randn ([ 2; 4; 3; 3 ], F32, Cpu) |> unwrap
-    let y = bn.forwardT x false |> unwrap
-    y.Shape |> should equal [ 2; 4; 3; 3 ]
 
 // --- GroupNorm tests ---
 
@@ -310,37 +263,50 @@ let ``Mish activation produces correct shape`` () =
     let y = act.forward x |> unwrap
     y.Shape |> should equal [ 3; 4 ]
 
-// --- SequentialT tests ---
+// --- pipeline CE tests ---
 
 [<Fact>]
-let ``SequentialT chains IModuleT layers`` () =
+let ``pipeline composes IModule layers`` () =
     let linear = Linear.init 10 5 F32 Cpu |> unwrap
 
-    let seq =
-        SequentialT.create [
-            ModuleT.ofModule (linear :> IModule)
-            ModuleT.ofModule (Relu :> IModule)
-            Dropout.create 0.0 :> IModuleT
-        ]
+    let f =
+        pipeline {
+            linear
+            Relu
+        }
 
     let x = Tensor.randn ([ 2; 10 ], F32, Cpu) |> unwrap
-    let y = seq.forwardT x true |> unwrap
+    let y = f x |> unwrap
     y.Shape |> should equal [ 2; 5 ]
 
 [<Fact>]
-let ``SequentialT ofModules wraps IModule list`` () =
+let ``pipeline composes functions and modules`` () =
     let linear = Linear.init 10 5 F32 Cpu |> unwrap
+    let drop = Dropout.create 0.0
 
-    let seq = SequentialT.ofModules [ linear :> IModule; Relu :> IModule ]
+    let f =
+        pipeline {
+            linear
+            fun (x: Tensor) -> x.relu ()
+            drop.forwardT false
+        }
 
     let x = Tensor.randn ([ 2; 10 ], F32, Cpu) |> unwrap
-    let y = seq.forwardT x false |> unwrap
+    let y = f x |> unwrap
     y.Shape |> should equal [ 2; 5 ]
 
 [<Fact>]
-let ``SequentialT implements IModuleT`` () =
-    let seq = SequentialT.create [ ModuleT.ofModule (Relu :> IModule) ] :> IModuleT
+let ``pipeline short-circuits on error`` () =
+    let fail = Func.create (fun _ -> Error(Msg "test error"))
 
-    let x = Tensor.randn ([ 3; 4 ], F32, Cpu) |> unwrap
-    let y = seq.forwardT x false |> unwrap
-    y.Shape |> should equal [ 3; 4 ]
+    let f =
+        pipeline {
+            fail
+            Relu
+        }
+
+    let x = Tensor.randn ([ 2; 3 ], F32, Cpu) |> unwrap
+
+    match f x with
+    | Error(Msg "test error") -> ()
+    | other -> Assert.Fail $"Expected Error(Msg \"test error\"), got %A{other}"

@@ -5,6 +5,7 @@
     <Compile Include="TensorTests.fs" />
     <Compile Include="AutogradTests.fs" />
     <Compile Include="TensorOpTests.fs" />
+    <Compile Include="PipeTests.fs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -39,9 +39,6 @@ type MultiHeadAttention = {
             return! this.WO.forward attn
         }
 
-    interface IModule with
-        member this.forward x = this.forward x
-
 module MultiHeadAttention =
     let init (dim: int) (numHeads: int) (dtype: DType) (device: Device) : Result<MultiHeadAttention, ToroError> =
         let headDim = dim / numHeads
@@ -82,9 +79,6 @@ type TransformerBlock = {
             let! ffOut = this.Ff2.forward h
             return! x.add ffOut
         }
-
-    interface IModule with
-        member this.forward x = this.forward x
 
 module TransformerBlock =
     let init (dim: int) (numHeads: int) (ffDim: int) (dtype: DType) (device: Device) : Result<TransformerBlock, ToroError> =

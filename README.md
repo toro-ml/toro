@@ -53,7 +53,7 @@ let r = result {
 - **Tensor API** -- Create, reshape, index, and compute with tensors. Arithmetic operators return `Tensor` directly. Shape and math methods return `Result<Tensor, ToroError>`.
 - **Indexing** -- `t[0]`, `t[0..2]`, and `t.at [ I 1; S(0, 3) ]` for advanced patterns.
 - **Neural network layers** -- Linear, Conv1d/Conv2d, Embedding, LSTM, GRU, BatchNorm, Dropout, LayerNorm, MultiHeadAttention, TransformerBlock.
-- **Composition** -- `sequential { }` and `sequentialT { }` CEs to build models without casts.
+- **Composition** -- `sequential { }` and `pipeline { }` CEs, `>=>` Kleisli operator to build models without casts.
 - **Training** -- SGD, AdamW optimizers. MSE, cross-entropy, NLL, binary cross-entropy loss functions.
 - **Error handling** -- `result { }` CE with `let!` / `do!` for `Result` chaining.
 
@@ -64,7 +64,7 @@ let r = result {
 | [LinearRegression](examples/LinearRegression) | Gradient descent with raw tensors |
 | [SimpleTraining](examples/SimpleTraining) | XOR with `sequential { }` CE |
 | [MnistTraining](examples/MnistTraining) | MLP on MNIST |
-| [MnistCnn](examples/MnistCnn) | CNN with BatchNorm, Dropout, `sequentialT { }` |
+| [MnistCnn](examples/MnistCnn) | CNN with BatchNorm, Dropout, Kleisli composition |
 | [MnistAutoencoder](examples/MnistAutoencoder) | Autoencoder with image output |
 | [MnistGan](examples/MnistGan) | GAN image generation |
 | [CharRnn](examples/CharRnn) | Character-level text generation with LSTM |

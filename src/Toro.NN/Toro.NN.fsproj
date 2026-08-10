@@ -31,7 +31,6 @@
     <Compile Include="Layer/Activation.fs" />
     <Compile Include="Layer/Pooling.fs" />
     <Compile Include="Block/Sequential.fs" />
-    <Compile Include="Block/SequentialT.fs" />
     <Compile Include="Block/Func.fs" />
     <Compile Include="Block/RNN.fs" />
     <Compile Include="Block/KvCache.fs" />

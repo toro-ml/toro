@@ -217,14 +217,6 @@ const filePages: FilePage[] = [
   {
     subdir: "toro-nn",
     namespace: "Toro.NN",
-    slug: "api-sequentialt",
-    title: "SequentialT",
-    description: "Sequential composition with train/eval mode.",
-    sources: [{ html: "toro-nn-sequentialt.html", heading: "SequentialT" }],
-  },
-  {
-    subdir: "toro-nn",
-    namespace: "Toro.NN",
     slug: "api-func",
     title: "Func",
     description: "Custom function as a module.",

@@ -1,6 +1,6 @@
 ---
 title: Neural Networks
-description: Layers, recurrent modules, attention, Sequential and SequentialT composition, and model persistence.
+description: Layers, recurrent modules, attention, Sequential and pipeline composition, and model persistence.
 ---
 
 Toro.NN provides layers, modules, and composition tools for neural networks.
@@ -13,10 +13,12 @@ open Toro.NN
 
 ## Module Interfaces
 
-Toro defines two interfaces for neural network components:
+Toro defines a generic interface for composable layers:
 
-- **`IModule`** -- `forward: Tensor -> Result<Tensor, ToroError>`. Use for layers that behave the same during training and inference.
-- **`IModuleT`** -- `forwardT: Tensor -> train: bool -> Result<Tensor, ToroError>`. Use for layers like Dropout and BatchNorm that change behavior based on the training phase.
+- **`IModule<'In, 'Out>`** -- `forward: 'In -> Result<'Out, ToroError>`. The general-purpose module interface, Kleisli-composable via the `>=>` operator and the `pipeline { }` CE.
+- **`IModule`** -- inherits `IModule<Tensor, Tensor>`. A shortcut for the most common case. Most layers implement this interface.
+
+Layers with richer signatures (e.g. Dropout, BatchNorm) expose typed member methods like `forwardT` instead of implementing `IModule`. Use partial application (`drop.forwardT train`) to get a `Tensor -> Result<Tensor, ToroError>` function for Kleisli composition.
 
 ## Layers
 
@@ -128,13 +130,13 @@ result {
 
 #### BatchNorm
 
-Batch normalization. Implements `IModuleT` (behavior differs between training and inference):
+Batch normalization. Behavior differs between training and inference:
 
 ```fsharp
 result {
     let! bn = BatchNorm.initDefault 64 F32 Cpu
-    let! out = bn.forwardT input true   // training
-    let! out = bn.forwardT input false  // inference
+    let! out = bn.forwardT true input   // training
+    let! out = bn.forwardT false input  // inference
 }
 ```
 
@@ -153,7 +155,7 @@ result {
 
 ### Dropout
 
-Randomly zeroes elements during training. Implements `IModuleT`:
+Randomly zeroes elements during training:
 
 ```fsharp
 let drop = Dropout.create 0.5
@@ -180,13 +182,12 @@ Use them in a sequential model or call `forward` directly:
 let! out = Relu.forward input
 ```
 
-### Func, FuncT, and Identity
+### Func and Identity
 
 Wrap any function as a module:
 
 ```fsharp
 let flatten = Func.create _.flatten(1, -1)
-let dropFn = FuncT.create (fun x train -> drop.forwardT x train)
 ```
 
 `Identity()` is a module that returns its input unchanged:
@@ -241,7 +242,7 @@ result {
 
 ### MultiHeadAttention
 
-Multi-head self-attention. Implements `IModule`:
+Multi-head self-attention:
 
 ```fsharp
 result {
@@ -254,7 +255,7 @@ Supports an optional `KvCache` for autoregressive generation.
 
 ### TransformerBlock
 
-A pre-norm transformer block with multi-head attention and a feed-forward network. Implements `IModule`:
+A pre-norm transformer block with multi-head attention and a feed-forward network:
 
 ```fsharp
 result {
@@ -292,24 +293,31 @@ let model = sequential {
 let! output = model.forward input
 ```
 
-### SequentialT
+### pipeline
 
-Use `sequentialT { }` when any layer needs the `train` flag. It accepts both `IModule` and `IModuleT` layers:
+Use `pipeline { }` when you need to compose layers and functions with heterogeneous signatures (e.g. train-aware layers, custom functions). It performs Kleisli composition at compile time:
 
 ```fsharp
 let! l1 = Linear.init 784 256 F32 Cpu
 let drop = Dropout.create 0.5
 let! l2 = Linear.init 256 10 F32 Cpu
 
-let model = sequentialT {
+let forward train = pipeline {
     l1
-    Relu
-    drop
+    _.relu ()
+    drop.forwardT train
     l2
 }
 
-let! trainOut = model.forwardT input true
-let! evalOut = model.forwardT input false
+let! trainOut = forward true input
+let! evalOut = forward false input
+```
+
+You can also use the `>=>` operator directly for Kleisli composition:
+
+```fsharp
+let forward train =
+    l1.forward >=> _.relu() >=> drop.forwardT train >=> l2.forward
 ```
 
 ## Weight Initialization
@@ -346,7 +354,7 @@ let! opt = AdamW.createWithLr 0.001 vars
 ```
 
 `Model.trainableVars` uses reflection to find all `Tensor` values in the record.
-It traverses nested records and lists (including `Sequential` and `SequentialT`).
+It traverses nested records and lists (including `Sequential`).
 
 `Model.namedParams` returns all parameters with their names:
 

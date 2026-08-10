@@ -3,19 +3,45 @@ open TorchSharp
 open Toro
 open Toro.NN
 
-type CnnModel = {
-    Features: SequentialT
-    Classifier: SequentialT
+type Features = {
+    Conv1: Conv2d
+    Bn1: BatchNorm
+    Pool1: MaxPool2d
+    Conv2: Conv2d
+    Bn2: BatchNorm
+    Pool2: MaxPool2d
 } with
 
-    member this.forwardT (x: Tensor) (train: bool) : Result<Tensor, ToroError> =
-        result {
-            let! x = this.Features.forwardT x train
-            return! this.Classifier.forwardT x train
-        }
+    member this.forward(train: bool) : Tensor -> Result<Tensor, ToroError> =
+        this.Conv1.forward
+        >=> this.Bn1.forwardT train
+        >=> _.relu()
+        >=> this.Pool1.forward
+        >=> this.Conv2.forward
+        >=> this.Bn2.forwardT train
+        >=> _.relu()
+        >=> this.Pool2.forward
 
-    interface IModuleT with
-        member this.forwardT x train = this.forwardT x train
+type Classifier = {
+    Fc1: Linear
+    Drop: Dropout
+    Fc2: Linear
+} with
+
+    member this.forward(train: bool) : Tensor -> Result<Tensor, ToroError> =
+        _.flatten(1, -1)
+        >=> this.Fc1.forward
+        >=> _.relu()
+        >=> this.Drop.forwardT train
+        >=> this.Fc2.forward
+
+type CnnModel = {
+    Features: Features
+    Classifier: Classifier
+} with
+
+    member this.forward(train: bool) : Tensor -> Result<Tensor, ToroError> =
+        this.Features.forward train >=> this.Classifier.forward train
 
 let createModel () =
     let pad1 = {
@@ -34,25 +60,15 @@ let createModel () =
         let! fc2 = Linear.init 128 10 F32 Cpu
 
         return {
-            Features =
-                sequentialT {
-                    conv1
-                    bn1
-                    Relu
-                    pool
-                    conv2
-                    bn2
-                    Relu
-                    pool
-                }
-            Classifier =
-                sequentialT {
-                    Func.create (fun x -> x.flatten (1, -1))
-                    fc1
-                    Relu
-                    drop
-                    fc2
-                }
+            Features = {
+                Conv1 = conv1
+                Bn1 = bn1
+                Pool1 = pool
+                Conv2 = conv2
+                Bn2 = bn2
+                Pool2 = pool
+            }
+            Classifier = { Fc1 = fc1; Drop = drop; Fc2 = fc2 }
         }
     }
 
@@ -104,7 +120,7 @@ let main _argv =
                 let! x = Tensor.ofTorchTensor images
                 let! target = Tensor.ofTorchTensor labels
                 opt.zeroGrad ()
-                let! logits = model.forwardT x true
+                let! logits = model.forward true x
                 let! loss = Loss.crossEntropy logits target
                 do! loss.backward ()
                 do! opt.step ()
@@ -135,7 +151,7 @@ let main _argv =
 
                             let! x = Tensor.ofTorchTensor images
                             let! target = Tensor.ofTorchTensor labels
-                            let! logits = model.forwardT x false
+                            let! logits = model.forward false x
                             let! predicted = logits.argmax 1
                             let! eqSum = predicted.eq(target).sumAll ()
                             let correct = eqSum.item () |> int64

@@ -12,16 +12,17 @@ type Func = {
 module Func =
     let create (f: Tensor -> Result<Tensor, ToroError>) : Func = { F = f }
 
-type FuncT = {
-    F: Tensor -> bool -> Result<Tensor, ToroError>
-} with
-
-    interface IModuleT with
-        member this.forwardT x train = this.F x train
-
-module FuncT =
-    let create (f: Tensor -> bool -> Result<Tensor, ToroError>) : FuncT = { F = f }
-
 type Identity() =
     interface IModule with
         member _.forward x = Ok x
+
+type PipelineBuilder() =
+    member _.Yield(m: #IModule<'a, 'b>) : 'a -> Result<'b, ToroError> = m.forward
+    member _.Yield(f: 'a -> Result<'b, ToroError>) : 'a -> Result<'b, ToroError> = f
+    member inline _.Combine(f, g) = f >=> g
+    member _.Delay(f) = f ()
+    member _.Zero() = Ok
+
+[<AutoOpen>]
+module PipelineCE =
+    let pipeline = PipelineBuilder()

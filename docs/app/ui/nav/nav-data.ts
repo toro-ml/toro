@@ -122,7 +122,6 @@ export const navSections: readonly NavSection[] = [
             title: "Block",
             items: [
               { to: "/api-sequential", label: "Sequential" },
-              { to: "/api-sequentialt", label: "SequentialT" },
               { to: "/api-func", label: "Func" },
               { to: "/api-rnn", label: "RNN" },
               { to: "/api-kvcache", label: "KvCache" },

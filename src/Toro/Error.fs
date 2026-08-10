@@ -86,6 +86,12 @@ type ResultBuilder() =
 module ResultCE =
     let result = ResultBuilder()
 
+[<AutoOpen>]
+module Pipe =
+    /// Kleisli composition for Result: feeds the Ok output of f into g.
+    let inline (>=>) ([<InlineIfLambda>] f: 'a -> Result<'b, 'e>) ([<InlineIfLambda>] g: 'b -> Result<'c, 'e>) : 'a -> Result<'c, 'e> =
+        fun a -> f a |> Result.bind g
+
 module Option =
     let inline traverseResult ([<InlineIfLambda>] f: 'a -> Result<'b, 'e>) (opt: 'a option) : Result<'b option, 'e> =
         match opt with

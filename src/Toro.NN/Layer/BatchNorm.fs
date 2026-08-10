@@ -23,7 +23,7 @@ type BatchNorm = {
     Config: BatchNormConfig
 } with
 
-    member this.forwardT (x: Tensor) (train: bool) : Result<Tensor, ToroError> =
+    member this.forwardT (train: bool) (x: Tensor) : Result<Tensor, ToroError> =
         x.batchNorm (
             this.Weight,
             this.Bias,
@@ -33,9 +33,6 @@ type BatchNorm = {
             this.Config.Momentum,
             this.Config.Eps
         )
-
-    interface IModuleT with
-        member this.forwardT x train = this.forwardT x train
 
 module BatchNorm =
     let init (numFeatures: int) (config: BatchNormConfig) (dtype: DType) (device: Device) : Result<BatchNorm, ToroError> =

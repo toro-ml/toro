@@ -1,6 +1,6 @@
 # MnistCnn
 
-Train a CNN on MNIST with BatchNorm, Dropout, and `sequentialT { }`.
+Train a CNN on MNIST with BatchNorm, Dropout, and Kleisli composition (`>=>`).
 
 ## Run
 
@@ -12,6 +12,6 @@ MNIST is downloaded automatically on first run.
 
 ## Concepts
 
-- `sequentialT { }` CE for train/eval-aware layers (`IModuleT`)
+- Kleisli composition (`>=>`) for composing layers and train-aware functions
 - `BatchNorm`, `Dropout`, `MaxPool2d`
-- `forwardT x true` for training, `forwardT x false` for evaluation
+- Partial application: `drop.forwardT train` yields `Tensor -> Result<Tensor, ToroError>`

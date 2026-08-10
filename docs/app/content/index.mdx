@@ -54,17 +54,18 @@ let mnist = result {
     let drop   = Dropout.create 0.5
     let pool   = MaxPool2d.createDefault 2
 
-    return sequentialT {
-        conv1; Relu; pool
-        conv2; Relu; pool
-        Func.create _.flatten(1, -1)
-        fc1; Relu; drop; fc2
-    }
+    let forward train =
+        conv1.forward >=> _.relu() >=> pool.forward
+        >=> conv2.forward >=> _.relu() >=> pool.forward
+        >=> _.flatten(1, -1)
+        >=> fc1.forward >=> _.relu() >=> drop.forwardT train >=> fc2.forward
+
+    return forward
 }
 ```
 
 `sequential { }` composes `IModule` layers.
-`sequentialT { }` adds the `train` flag for Dropout and BatchNorm.
+`pipeline { }` and the `>=>` operator enable Kleisli composition with heterogeneous signatures (e.g. Dropout, BatchNorm).
 
 ## Evaluate
 
@@ -88,7 +89,7 @@ Toro.noGrad (fun () ->
 | [LinearRegression](https://github.com/toro-ml/toro/tree/main/examples/LinearRegression) | Gradient descent with raw tensors |
 | [SimpleTraining](https://github.com/toro-ml/toro/tree/main/examples/SimpleTraining) | XOR with `sequential { }` CE |
 | [MnistTraining](https://github.com/toro-ml/toro/tree/main/examples/MnistTraining) | CNN image classification |
-| [MnistCnn](https://github.com/toro-ml/toro/tree/main/examples/MnistCnn) | CNN with BatchNorm, Dropout, `sequentialT { }` |
+| [MnistCnn](https://github.com/toro-ml/toro/tree/main/examples/MnistCnn) | CNN with BatchNorm, Dropout, Kleisli composition |
 | [MnistAutoencoder](https://github.com/toro-ml/toro/tree/main/examples/MnistAutoencoder) | Autoencoder with image output |
 | [MnistGan](https://github.com/toro-ml/toro/tree/main/examples/MnistGan) | GAN image generation |
 | [CharRnn](https://github.com/toro-ml/toro/tree/main/examples/CharRnn) | Character-level text generation with LSTM |
