@@ -263,15 +263,18 @@ module Model =
                     | _ -> None)
                 |> Set.ofList
 
-            let! _, tensors = SafeTensors.loadSelected filePath namesToLoad
+            do!
+                scoped {
+                    let! _, tensors = SafeTensors.loadSelected filePath namesToLoad
 
-            for m in matches do
-                match m with
-                | Matched(name, target, _) ->
-                    match Map.tryFind name tensors with
-                    | Some src -> do! target.copyInPlace src
-                    | None -> ()
-                | _ -> ()
+                    for m in matches do
+                        match m with
+                        | Matched(name, target, _) ->
+                            match Map.tryFind name tensors with
+                            | Some src -> do! target.copyInPlace src
+                            | None -> ()
+                        | _ -> ()
+                }
 
             return report
         }

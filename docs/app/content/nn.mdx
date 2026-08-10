@@ -252,12 +252,13 @@ result {
 
 ### KvCache
 
-Key-value cache for autoregressive inference:
+Key-value cache for autoregressive inference.
+`KvCache` implements `IDisposable` and frees its cached tensors on disposal:
 
 ```fsharp
-let cache = KvCache.create 2  // cache dim (typically the sequence dimension)
+use cache = KvCache.create 2  // cache dim (typically the sequence dimension)
 let! k, v = cache.append (newK, newV)
-cache.reset ()
+cache.reset ()  // disposes cached tensors and resets the sequence length
 ```
 
 ## Model Composition

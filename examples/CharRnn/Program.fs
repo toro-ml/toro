@@ -109,21 +109,24 @@ let main _argv =
             let mutable totalLoss = 0.0
 
             for i in 0 .. nChunks - 1 do
-                let offset = i * seqLen
-                let inputArr = encoded[offset .. offset + seqLen - 1]
-                let targetArr = encoded[offset + 1 .. offset + seqLen]
+                do!
+                    scoped {
+                        let offset = i * seqLen
+                        let inputArr = encoded[offset .. offset + seqLen - 1]
+                        let targetArr = encoded[offset + 1 .. offset + seqLen]
 
-                let! input = Tensor.ofArray (inputArr, Cpu)
-                let! input = input.unsqueeze 0
-                let! target = Tensor.ofArray (targetArr, Cpu)
+                        let! input = Tensor.ofArray (inputArr, Cpu)
+                        let! input = input.unsqueeze 0
+                        let! target = Tensor.ofArray (targetArr, Cpu)
 
-                opt.zeroGrad ()
-                let! logits = forward model input
-                let! loss = Loss.crossEntropy logits target
-                do! loss.backward ()
-                do! opt.step ()
+                        opt.zeroGrad ()
+                        let! logits = forward model input
+                        let! loss = Loss.crossEntropy logits target
+                        do! loss.backward ()
+                        do! opt.step ()
 
-                totalLoss <- totalLoss + loss.item ()
+                        totalLoss <- totalLoss + loss.item ()
+                    }
 
             let avgLoss = totalLoss / float nChunks
 

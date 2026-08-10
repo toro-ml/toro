@@ -83,42 +83,44 @@ let main _argv =
             let mutable steps = 0
 
             for batch in trainLoader do
-                let images = batch["data"]
-                let n = int images.shape[0]
+                do!
+                    scoped {
+                        let images = batch["data"]
+                        let n = int images.shape[0]
 
-                // --- Train Discriminator ---
-                let! real = Tensor.ofTorchTensor images
-                let! real = real.flatten (1, -1)
-                // Scale [0,1] to [-1,1] to match generator's tanh output
-                let! real = real.affine (2.0, -1.0)
+                        // --- Train Discriminator ---
+                        let! real = Tensor.ofTorchTensor images
+                        let! real = real.flatten (1, -1)
+                        let! real = real.affine (2.0, -1.0)
 
-                let! realLogits = gan.Disc.forward real
-                let! onesTarget = Tensor.ones ([ n; 1 ], F32, Cpu)
-                let! dLossReal = Loss.binaryCrossEntropyWithLogit realLogits onesTarget
+                        let! realLogits = gan.Disc.forward real
+                        let! onesTarget = Tensor.ones ([ n; 1 ], F32, Cpu)
+                        let! dLossReal = Loss.binaryCrossEntropyWithLogit realLogits onesTarget
 
-                let! fake = generate gan.Gen n
-                let! fake = fake.detach ()
-                let! fakeLogits = gan.Disc.forward fake
-                let! zerosTarget = Tensor.zeros ([ n; 1 ], F32, Cpu)
-                let! dLossFake = Loss.binaryCrossEntropyWithLogit fakeLogits zerosTarget
+                        let! fake = generate gan.Gen n
+                        let! fake = fake.detach ()
+                        let! fakeLogits = gan.Disc.forward fake
+                        let! zerosTarget = Tensor.zeros ([ n; 1 ], F32, Cpu)
+                        let! dLossFake = Loss.binaryCrossEntropyWithLogit fakeLogits zerosTarget
 
-                let! dLoss = (dLossReal + dLossFake) *~. 0.5
-                optD.zeroGrad ()
-                do! dLoss.backward ()
-                do! optD.step ()
+                        let! dLoss = (dLossReal + dLossFake) *~. 0.5
+                        optD.zeroGrad ()
+                        do! dLoss.backward ()
+                        do! optD.step ()
 
-                // --- Train Generator ---
-                let! fake = generate gan.Gen n
-                let! fakeLogits = gan.Disc.forward fake
-                let! gLoss = Loss.binaryCrossEntropyWithLogit fakeLogits onesTarget
+                        // --- Train Generator ---
+                        let! fake = generate gan.Gen n
+                        let! fakeLogits = gan.Disc.forward fake
+                        let! gLoss = Loss.binaryCrossEntropyWithLogit fakeLogits onesTarget
 
-                optG.zeroGrad ()
-                do! gLoss.backward ()
-                do! optG.step ()
+                        optG.zeroGrad ()
+                        do! gLoss.backward ()
+                        do! optG.step ()
 
-                dLossSum <- dLossSum + dLoss.item ()
-                gLossSum <- gLossSum + gLoss.item ()
-                steps <- steps + 1
+                        dLossSum <- dLossSum + dLoss.item ()
+                        gLossSum <- gLossSum + gLoss.item ()
+                        steps <- steps + 1
+                    }
 
             let dAvg = dLossSum / float steps
             let gAvg = gLossSum / float steps

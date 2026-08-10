@@ -16,8 +16,9 @@ type ImageFormat =
 module Image =
 
     let private ensureImager () =
-        if isNull (box TorchSharp.torchvision.io.DefaultImager) then
-            TorchSharp.torchvision.io.DefaultImager <- TorchSharp.torchvision.io.SkiaImager()
+        match TorchSharp.torchvision.io.DefaultImager with
+        | :? TorchSharp.torchvision.io.SkiaImager -> ()
+        | _ -> TorchSharp.torchvision.io.DefaultImager <- TorchSharp.torchvision.io.SkiaImager()
 
     let private toTorchvisionFormat =
         function

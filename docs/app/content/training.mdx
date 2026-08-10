@@ -67,21 +67,27 @@ Both `SGD` and `AdamW` expose these member methods directly:
 
 ## The Training Loop
 
-A typical training loop:
+A typical training loop uses `scoped { }` to free intermediate tensors after each batch.
+Without `scoped { }`, tensors created during the forward and backward passes accumulate until the garbage collector runs, which can cause high native memory usage:
 
 ```fsharp
 for epoch in 1..epochs do
     for batch in trainLoader do
-        let x, y = batch
-        opt.zeroGrad ()
-        let! pred = model.forward x
-        let! loss = Loss.crossEntropy pred y
-        do! loss.backward ()
-        do! opt.step ()
+        do!
+            scoped {
+                let x, y = batch
+                opt.zeroGrad ()
+                let! pred = model.forward x
+                let! loss = Loss.crossEntropy pred y
+                do! loss.backward ()
+                do! opt.step ()
+            }
 
     if epoch % 10 = 0 then
         printfn "epoch %d" epoch
 ```
+
+See [Core Concepts -- Memory Management](/concepts#memory-management-with-scoped-) for details on `scoped { }`.
 
 ## Evaluation
 

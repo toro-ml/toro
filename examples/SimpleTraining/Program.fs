@@ -32,15 +32,18 @@ let main _argv =
         printfn "Training XOR with AdamW..."
 
         for epoch in 1..500 do
-            opt.zeroGrad ()
-            let! pred = model.forward x
-            let! loss = Loss.mse pred y
-            do! loss.backward ()
-            do! opt.step ()
+            do!
+                scoped {
+                    opt.zeroGrad ()
+                    let! pred = model.forward x
+                    let! loss = Loss.mse pred y
+                    do! loss.backward ()
+                    do! opt.step ()
 
-            if epoch % 100 = 0 then
-                let! v = loss.toFloat32Scalar ()
-                printfn "  epoch %4d  loss = %.6f" epoch v
+                    if epoch % 100 = 0 then
+                        let! v = loss.toFloat32Scalar ()
+                        printfn "  epoch %4d  loss = %.6f" epoch v
+                }
 
         printfn ""
         printfn "Predictions (expected: 0, 1, 1, 0):"

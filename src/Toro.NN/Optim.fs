@@ -19,9 +19,12 @@ type SGD = {
     member this.step() =
         result {
             for v in this.Vars do
-                let! g = v.grad ()
-                let! updated = v -~ g.mulScalar this.LearningRate
-                do! v.copyInPlace updated
+                do!
+                    scoped {
+                        let! g = v.grad ()
+                        let! updated = v -~ g.mulScalar this.LearningRate
+                        do! v.copyInPlace updated
+                    }
         }
 
     member this.learningRate() = this.LearningRate
@@ -75,25 +78,28 @@ type AdamW = {
 
         result {
             for param, m, v in this.Vars do
-                let! g = param.grad ()
+                do!
+                    scoped {
+                        let! g = param.grad ()
 
-                let! mNew = m.mulScalar p.Beta1 +~ g.mulScalar (1.0 - p.Beta1)
-                do! m.copyInPlace mNew
+                        let! mNew = m.mulScalar p.Beta1 +~ g.mulScalar (1.0 - p.Beta1)
+                        do! m.copyInPlace mNew
 
-                let! vNew = v.mulScalar p.Beta2 +~ g.sqr () *~. (1.0 - p.Beta2)
-                do! v.copyInPlace vNew
+                        let! vNew = v.mulScalar p.Beta2 +~ g.sqr () *~. (1.0 - p.Beta2)
+                        do! v.copyInPlace vNew
 
-                let mHatScale = 1.0 / (1.0 - pown p.Beta1 (int t))
-                let vHatScale = 1.0 / (1.0 - pown p.Beta2 (int t))
+                        let mHatScale = 1.0 / (1.0 - pown p.Beta1 (int t))
+                        let vHatScale = 1.0 / (1.0 - pown p.Beta2 (int t))
 
-                let! mHat = mNew *~. mHatScale
-                let! vHat = vNew *~. vHatScale
+                        let! mHat = mNew *~. mHatScale
+                        let! vHat = vNew *~. vHatScale
 
-                let! updated =
-                    param.mulScalar (1.0 - p.Lr * p.WeightDecay)
-                    -~ (mHat /~ (vHat.sqrt () +~. p.Eps) *~. p.Lr)
+                        let! updated =
+                            param.mulScalar (1.0 - p.Lr * p.WeightDecay)
+                            -~ (mHat /~ (vHat.sqrt () +~. p.Eps) *~. p.Lr)
 
-                do! param.copyInPlace updated
+                        do! param.copyInPlace updated
+                    }
         }
 
     member this.learningRate() = this.Params.Lr
@@ -127,22 +133,25 @@ type AdamW = {
             let path = Path.Combine(dirPath, "optimizer.safetensors")
 
             if File.Exists path then
-                let! tensors = SafeTensors.load path
+                do!
+                    scoped {
+                        let! tensors = SafeTensors.load path
 
-                match tensors |> Map.tryFind "step" with
-                | Some stepTensor ->
-                    let! stepVal = stepTensor.toInt64Scalar ()
-                    this.StepCount <- int stepVal
-                | None -> ()
+                        match tensors |> Map.tryFind "step" with
+                        | Some stepTensor ->
+                            let! stepVal = stepTensor.toInt64Scalar ()
+                            this.StepCount <- int stepVal
+                        | None -> ()
 
-                for i, (_, m, v) in this.Vars |> List.indexed do
-                    match tensors |> Map.tryFind $"m.{i}" with
-                    | Some loaded -> do! m.copyInPlace loaded
-                    | None -> ()
+                        for i, (_, m, v) in this.Vars |> List.indexed do
+                            match tensors |> Map.tryFind $"m.{i}" with
+                            | Some loaded -> do! m.copyInPlace loaded
+                            | None -> ()
 
-                    match tensors |> Map.tryFind $"v.{i}" with
-                    | Some loaded -> do! v.copyInPlace loaded
-                    | None -> ()
+                            match tensors |> Map.tryFind $"v.{i}" with
+                            | Some loaded -> do! v.copyInPlace loaded
+                            | None -> ()
+                    }
         }
 
     member this.toOps() : OptimizerOps = {

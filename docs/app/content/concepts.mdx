@@ -1,6 +1,6 @@
 ---
 title: Core Concepts
-description: Error model, the result CE, operator return types, records as models, gradient control, DType, and Device.
+description: Error model, the result CE, operator return types, records as models, gradient control, memory management, DType, and Device.
 ---
 
 Toro's API is shaped by one central decision: operations that can fail return `Result<'T, ToroError>` instead of throwing exceptions.
@@ -115,6 +115,81 @@ Toro.noGrad (fun () ->
 
 `Toro.noGrad` wraps a function call in a `torch.no_grad()` scope.
 This reduces memory use and speeds up inference.
+
+## Memory Management with `scoped { }`
+
+TorchSharp tensors hold native memory that the .NET garbage collector cannot see.
+In training loops, intermediate tensors accumulate and can cause out-of-memory errors.
+
+The `scoped { }` CE solves this. It works like `result { }` but wraps the block in a `torch.NewDisposeScope()`.
+All intermediate tensors created inside the block are disposed when the scope exits:
+
+```fsharp
+for batch in trainLoader do
+    do!
+        scoped {
+            let! x = Tensor.ofTorchTensor images
+            let! logits = model.forward x
+            let! loss = Loss.crossEntropy logits target
+            do! loss.backward ()
+            do! opt.step ()
+        }
+    // All intermediate tensors (x, logits, loss, ...) are freed here
+```
+
+### Auto-keep
+
+When a `scoped { }` block returns a value containing tensors, those tensors are automatically kept alive past the scope.
+This works for single tensors, tuples, records, discriminated unions (including `Option`), lists, and arrays:
+
+```fsharp
+// Single Tensor
+let! mask = scoped {
+    // ... intermediate work ...
+    return Tensor(filled.masked_fill (mask, negInf))
+}
+
+// Tuple
+let! k, v = scoped { return newK, newV }
+
+// Option
+let! maybeT = scoped { return Some tensor }
+
+// Record
+let! out = scoped { return { Attn = a; Weights = w } }
+```
+
+### `Tensor.keep`
+
+`Tensor.keep` moves a tensor out of the current dispose scope.
+Use it when a component (such as a cache) needs to retain a tensor past the caller's scope:
+
+```fsharp
+let cached = Tensor.keep newK  // survives the caller's dispose scope
+```
+
+`scoped { }` return values are auto-kept, so `Tensor.keep` is not needed for return values.
+
+### `disposeScope`
+
+For cases where `do! scoped { }` nesting is not desired, `disposeScope` starts a dispose scope with `use!` inside `result { }`:
+
+```fsharp
+result {
+    for batch in trainLoader do
+        use! _s = disposeScope ()
+        let! x = Tensor.ofTorchTensor images
+        let! logits = model.forward x
+        // tensors are disposed when _s goes out of scope
+}
+```
+
+Unlike `scoped { }`, return values are **not** auto-kept. Use `Tensor.keep` to preserve tensors past the scope.
+
+### Guidelines
+
+Use `scoped { }` in any hot loop that creates tensors: training batches, optimizer steps, and inference loops.
+Pre-existing tensors (model parameters, optimizer state) are not affected by the scope.
 
 ## DType and Device
 

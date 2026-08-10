@@ -116,27 +116,30 @@ let main _argv =
             let mutable totalSamples = 0L
 
             for batch in trainLoader do
-                let images = batch["data"]
-                let labels = batch["label"]
+                do!
+                    scoped {
+                        let images = batch["data"]
+                        let labels = batch["label"]
 
-                let! x = Tensor.ofTorchTensor images
-                let! x = mnistNorm.apply x
-                let! target = Tensor.ofTorchTensor labels
-                opt.zeroGrad ()
-                let! logits = model.forward true x
-                let! loss = Loss.crossEntropy logits target
-                do! loss.backward ()
-                do! opt.step ()
+                        let! x = Tensor.ofTorchTensor images
+                        let! x = mnistNorm.apply x
+                        let! target = Tensor.ofTorchTensor labels
+                        opt.zeroGrad ()
+                        let! logits = model.forward true x
+                        let! loss = Loss.crossEntropy logits target
+                        do! loss.backward ()
+                        do! opt.step ()
 
-                let lossVal = loss.item ()
-                let! predicted = logits.argmax 1
-                let! eqSum = predicted.eq(target).sumAll ()
-                let correct = eqSum.item () |> int64
-                let n = images.shape[0]
+                        let lossVal = loss.item ()
+                        let! predicted = logits.argmax 1
+                        let! eqSum = predicted.eq(target).sumAll ()
+                        let correct = eqSum.item () |> int64
+                        let n = images.shape[0]
 
-                totalLoss <- totalLoss + float lossVal * float n
-                totalCorrect <- totalCorrect + correct
-                totalSamples <- totalSamples + n
+                        totalLoss <- totalLoss + float lossVal * float n
+                        totalCorrect <- totalCorrect + correct
+                        totalSamples <- totalSamples + n
+                    }
 
             let avgLoss = totalLoss / float totalSamples
             let accuracy = float totalCorrect / float totalSamples * 100.0
@@ -149,20 +152,23 @@ let main _argv =
                 Toro.noGrad (fun () ->
                     result {
                         for batch in testLoader do
-                            let images = batch["data"]
-                            let labels = batch["label"]
+                            do!
+                                scoped {
+                                    let images = batch["data"]
+                                    let labels = batch["label"]
 
-                            let! x = Tensor.ofTorchTensor images
-                            let! x = mnistNorm.apply x
-                            let! target = Tensor.ofTorchTensor labels
-                            let! logits = model.forward false x
-                            let! predicted = logits.argmax 1
-                            let! eqSum = predicted.eq(target).sumAll ()
-                            let correct = eqSum.item () |> int64
-                            let n = images.shape[0]
+                                    let! x = Tensor.ofTorchTensor images
+                                    let! x = mnistNorm.apply x
+                                    let! target = Tensor.ofTorchTensor labels
+                                    let! logits = model.forward false x
+                                    let! predicted = logits.argmax 1
+                                    let! eqSum = predicted.eq(target).sumAll ()
+                                    let correct = eqSum.item () |> int64
+                                    let n = images.shape[0]
 
-                            testCorrect <- testCorrect + correct
-                            testTotal <- testTotal + n
+                                    testCorrect <- testCorrect + correct
+                                    testTotal <- testTotal + n
+                                }
                     })
 
             let testAcc = float testCorrect / float testTotal * 100.0

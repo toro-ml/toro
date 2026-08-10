@@ -13,12 +13,16 @@ export function meta() {
     { title: "Toro -- A lightweight ML framework for F#" },
     {
       name: "description",
-      content: "A lightweight ML framework for F# powered by TorchSharp.",
+      content: "PyTorch semantics, idiomatic F#. Powered by TorchSharp.",
     },
   ];
 }
 
-export default function Landing({ loaderData }: { loaderData: Awaited<ReturnType<typeof loader>> }) {
+export default function Landing({
+  loaderData,
+}: {
+  loaderData: Awaited<ReturnType<typeof loader>>;
+}) {
   const { code, toc } = loaderData;
   return (
     <>
@@ -26,7 +30,7 @@ export default function Landing({ loaderData }: { loaderData: Awaited<ReturnType
         <div className={heroSection}>
           <h1 className={heroTitle}>Toro</h1>
           <div className={heroSubtitle}>
-            A lightweight ML framework for F# powered by TorchSharp.
+            PyTorch semantics, idiomatic F#. Powered by TorchSharp.
           </div>
         </div>
         <MdxContent code={code} />

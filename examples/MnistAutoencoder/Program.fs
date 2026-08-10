@@ -91,16 +91,19 @@ let main _argv =
             let mutable totalSamples = 0L
 
             for batch in trainLoader do
-                let images = batch["data"]
-                let! x, recon = preprocessBatch images model
-                let! loss = Loss.mse recon x
-                opt.zeroGrad ()
-                do! loss.backward ()
-                do! opt.step ()
+                do!
+                    scoped {
+                        let images = batch["data"]
+                        let! x, recon = preprocessBatch images model
+                        let! loss = Loss.mse recon x
+                        opt.zeroGrad ()
+                        do! loss.backward ()
+                        do! opt.step ()
 
-                let n = images.shape[0]
-                totalLoss <- totalLoss + float (loss.item ()) * float n
-                totalSamples <- totalSamples + n
+                        let n = images.shape[0]
+                        totalLoss <- totalLoss + float (loss.item ()) * float n
+                        totalSamples <- totalSamples + n
+                    }
 
             let avgLoss = totalLoss / float totalSamples
             printf "Epoch %2d/%d  train mse=%.6f" epoch epochs avgLoss
@@ -112,12 +115,15 @@ let main _argv =
                 Toro.noGrad (fun () ->
                     result {
                         for batch in testLoader do
-                            let images = batch["data"]
-                            let! x, recon = preprocessBatch images model
-                            let! loss = Loss.mse recon x
-                            let n = images.shape[0]
-                            testLoss <- testLoss + float (loss.item ()) * float n
-                            testTotal <- testTotal + n
+                            do!
+                                scoped {
+                                    let images = batch["data"]
+                                    let! x, recon = preprocessBatch images model
+                                    let! loss = Loss.mse recon x
+                                    let n = images.shape[0]
+                                    testLoss <- testLoss + float (loss.item ()) * float n
+                                    testTotal <- testTotal + n
+                                }
                     })
 
             printfn "  test mse=%.6f" (testLoss / float testTotal)

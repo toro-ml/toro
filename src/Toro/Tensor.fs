@@ -673,6 +673,8 @@ type Tensor internal (inner: torch.Tensor) =
     /// Create a causal attention mask.
     static member causalMask(seqLen: int, dtype: DType, device: Device) =
         ToroError.wrap (fun () ->
+            use _scope = torch.NewDisposeScope()
+
             let ones =
                 torch.ones (int64 seqLen, int64 seqLen, dtype = torch.bool, device = Device.toTorch device)
 
@@ -681,7 +683,9 @@ type Tensor internal (inner: torch.Tensor) =
             let filled =
                 torch.zeros (int64 seqLen, int64 seqLen, dtype = DType.toTorch dtype, device = Device.toTorch device)
 
-            Tensor(filled.masked_fill (mask, toScalar System.Double.NegativeInfinity)))
+            let r = Tensor(filled.masked_fill (mask, toScalar System.Double.NegativeInfinity))
+            r.Inner.MoveToOuterDisposeScope() |> ignore
+            r)
 
     // --- Encoding ---
 
@@ -900,8 +904,117 @@ and TIdx =
     | E
     | N
 
+module Tensor =
+    /// Move a tensor out of the current dispose scope so it
+    /// survives when that scope exits.
+    let keep (t: Tensor) : Tensor =
+        t.Inner.MoveToOuterDisposeScope() |> ignore
+        t
+
 module Toro =
     /// Run f with gradient tracking disabled.
     let noGrad (f: unit -> 'a) : 'a =
         use _scope = torch.no_grad ()
         f ()
+
+/// <c>result { }</c> with automatic disposal of intermediate TorchSharp tensors.
+/// All <c>torch.Tensor</c> objects created inside the block are disposed when
+/// the scope exits. Tensors in the return value (including inside tuples)
+/// are automatically kept alive past the scope.
+type ScopedResultBuilder() =
+    static let flags =
+        System.Reflection.BindingFlags.Public
+        ||| System.Reflection.BindingFlags.NonPublic
+
+    static let rec keepTensors (v: obj) =
+        if isNull v then
+            ()
+        else
+            match v with
+            | :? Tensor as t -> t.Inner.MoveToOuterDisposeScope() |> ignore
+            | :? System.Collections.IEnumerable as xs ->
+                for item in xs do
+                    keepTensors item
+            | _ ->
+                let ty = v.GetType()
+
+                if Microsoft.FSharp.Reflection.FSharpType.IsTuple ty then
+                    for field in Microsoft.FSharp.Reflection.FSharpValue.GetTupleFields v do
+                        keepTensors field
+                elif Microsoft.FSharp.Reflection.FSharpType.IsRecord(ty, flags) then
+                    for field in Microsoft.FSharp.Reflection.FSharpValue.GetRecordFields(v, flags) do
+                        keepTensors field
+                elif Microsoft.FSharp.Reflection.FSharpType.IsUnion(ty, flags) then
+                    let _, fields = Microsoft.FSharp.Reflection.FSharpValue.GetUnionFields(v, ty, flags)
+
+                    for field in fields do
+                        keepTensors field
+
+    member _.Return x = Ok x
+    member _.ReturnFrom x = x
+
+    member _.Bind(m, f) =
+        match m with
+        | Ok x -> f x
+        | Error e -> Error e
+
+    member _.Zero() = Ok()
+
+    member _.Combine(m: Result<unit, 'e>, f: unit -> Result<'b, 'e>) =
+        match m with
+        | Ok() -> f ()
+        | Error e -> Error e
+
+    member _.Delay f = f
+
+    member _.Run(f: unit -> Result<'a, ToroError>) : Result<'a, ToroError> =
+        use _scope = torch.NewDisposeScope()
+        let r = f ()
+
+        match r with
+        | Ok v -> keepTensors (box v)
+        | _ -> ()
+
+        r
+
+    member _.TryWith(body, handler) =
+        try
+            body ()
+        with ex ->
+            handler ex
+
+    member _.TryFinally(body, finalizer) =
+        try
+            body ()
+        finally
+            finalizer ()
+
+    member _.Using(resource: #System.IDisposable, body) =
+        try
+            body resource
+        finally
+            if not (isNull (box resource)) then
+                resource.Dispose()
+
+    member this.While(guard, body) =
+        if not (guard ()) then
+            this.Zero()
+        else
+            this.Bind(body (), (fun () -> this.While(guard, body)))
+
+    member this.For(sequence: seq<'a>, body) =
+        this.Using(sequence.GetEnumerator(), fun enum -> this.While(enum.MoveNext, this.Delay(fun () -> body enum.Current)))
+
+[<AutoOpen>]
+module ScopedCE =
+    /// Computation expression that wraps <c>result { }</c> with a
+    /// <c>torch.NewDisposeScope()</c>. Intermediate tensors are disposed
+    /// automatically when the block completes.
+    let scoped = ScopedResultBuilder()
+
+    /// Start a TorchSharp dispose scope for use with <c>use!</c> inside
+    /// <c>result { }</c>. Intermediate tensors created after this point
+    /// are disposed when the binding goes out of scope.
+    /// Unlike <c>scoped { }</c>, return values are NOT auto-kept.
+    /// Use <c>Tensor.keep</c> to preserve tensors past the scope.
+    let disposeScope () : Result<System.IDisposable, ToroError> = Ok(torch.NewDisposeScope())

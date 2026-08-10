@@ -57,31 +57,33 @@ let main _argv =
         printfn ""
 
         for epoch in 1..200 do
-            let! logits = forward model x edgeIndex
+            do!
+                scoped {
+                    let! logits = forward model x edgeIndex
 
-            // Select train nodes and compute cross-entropy loss
-            let! trainLogits =
-                Tensor.ofTorchTensor (
-                    logits.Inner.index (
-                        torch.TensorIndex.Tensor(torch.tensor (trainIdx |> Array.map int64, dtype = torch.int64))
-                    )
-                )
+                    let! trainLogits =
+                        Tensor.ofTorchTensor (
+                            logits.Inner.index (
+                                torch.TensorIndex.Tensor(torch.tensor (trainIdx |> Array.map int64, dtype = torch.int64))
+                            )
+                        )
 
-            let! trainLabels =
-                Tensor.ofTorchTensor (
-                    labels.Inner.index (
-                        torch.TensorIndex.Tensor(torch.tensor (trainIdx |> Array.map int64, dtype = torch.int64))
-                    )
-                )
+                    let! trainLabels =
+                        Tensor.ofTorchTensor (
+                            labels.Inner.index (
+                                torch.TensorIndex.Tensor(torch.tensor (trainIdx |> Array.map int64, dtype = torch.int64))
+                            )
+                        )
 
-            opt.zeroGrad ()
-            let! loss = Loss.crossEntropy trainLogits trainLabels
-            do! loss.backward ()
-            do! opt.step ()
+                    opt.zeroGrad ()
+                    let! loss = Loss.crossEntropy trainLogits trainLabels
+                    do! loss.backward ()
+                    do! opt.step ()
 
-            if epoch % 50 = 0 then
-                let! v = loss.toFloat32Scalar ()
-                printfn "  epoch %4d  loss = %.4f" epoch v
+                    if epoch % 50 = 0 then
+                        let! v = loss.toFloat32Scalar ()
+                        printfn "  epoch %4d  loss = %.4f" epoch v
+                }
 
         // Evaluate
         printfn ""

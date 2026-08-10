@@ -12,6 +12,8 @@ type KvCache(dim: int) =
     member _.CurrentSeqLen = currentSeqLen
 
     member _.reset() =
+        kData |> Option.iter _.Dispose()
+        vData |> Option.iter _.Dispose()
         kData <- None
         vData <- None
         currentSeqLen <- 0
@@ -30,10 +32,23 @@ type KvCache(dim: int) =
                 | None -> Ok v
                 | Some prev -> Tensor.cat ([ prev; v ], dim)
 
+            let oldK = kData
+            let oldV = vData
             kData <- Some newK
             vData <- Some newV
             currentSeqLen <- currentSeqLen + seqLen
-            return newK, newV
+
+            oldK
+            |> Option.iter (fun t ->
+                if not (obj.ReferenceEquals(t, newK)) then
+                    t.Dispose())
+
+            oldV
+            |> Option.iter (fun t ->
+                if not (obj.ReferenceEquals(t, newV)) then
+                    t.Dispose())
+
+            return Tensor.keep newK, Tensor.keep newV
         }
 
     member _.currentData() : (Tensor * Tensor) option =
@@ -41,5 +56,8 @@ type KvCache(dim: int) =
         | Some k, Some v -> Some(k, v)
         | _ -> None
 
+    interface System.IDisposable with
+        member this.Dispose() = this.reset ()
+
 module KvCache =
-    let create (dim: int) : KvCache = KvCache dim
+    let create (dim: int) : KvCache = new KvCache(dim)

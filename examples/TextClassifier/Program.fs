@@ -125,18 +125,21 @@ let main _argv =
         let! opt = AdamW.createWithLr 1e-3 (Model.trainableVars model)
 
         for epoch in 1..100 do
-            opt.zeroGrad ()
-            let! logits = forward model input
-            let! loss = Loss.crossEntropy logits labels
-            do! loss.backward ()
-            do! opt.step ()
+            do!
+                scoped {
+                    opt.zeroGrad ()
+                    let! logits = forward model input
+                    let! loss = Loss.crossEntropy logits labels
+                    do! loss.backward ()
+                    do! opt.step ()
 
-            if epoch % 20 = 0 || epoch = 1 then
-                let! predicted = logits.argmax 1
-                let! eqSum = predicted.eq(labels).sumAll ()
-                let correct = eqSum.item () |> int
-                let acc = float correct / float nSamples * 100.0
-                printfn "Epoch %3d  loss=%.4f  acc=%.0f%% (%d/%d)" epoch (loss.item ()) acc correct nSamples
+                    if epoch % 20 = 0 || epoch = 1 then
+                        let! predicted = logits.argmax 1
+                        let! eqSum = predicted.eq(labels).sumAll ()
+                        let correct = eqSum.item () |> int
+                        let acc = float correct / float nSamples * 100.0
+                        printfn "Epoch %3d  loss=%.4f  acc=%.0f%% (%d/%d)" epoch (loss.item ()) acc correct nSamples
+                }
 
         // Test on unseen words
         printfn ""
