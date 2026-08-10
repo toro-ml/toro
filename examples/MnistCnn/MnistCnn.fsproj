@@ -12,6 +12,7 @@
   <ItemGroup>
     <ProjectReference Include="../../src/Toro/Toro.fsproj" />
     <ProjectReference Include="../../src/Toro.NN/Toro.NN.fsproj" />
+    <ProjectReference Include="../../src/Toro.Vision/Toro.Vision.fsproj" />
   </ItemGroup>
 
   <ItemGroup>

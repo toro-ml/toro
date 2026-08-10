@@ -408,6 +408,27 @@ const filePages: FilePage[] = [
   {
     subdir: "toro-vision",
     namespace: "Toro.Vision",
+    slug: "api-image",
+    title: "Image",
+    description: "Image I/O and SKBitmap-Tensor conversion via SkiaSharp.",
+    sources: [
+      { html: "toro-vision-imageformat.html", heading: "ImageFormat" },
+      { html: "toro-vision-image.html", heading: "Image" },
+    ],
+  },
+  {
+    subdir: "toro-vision",
+    namespace: "Toro.Vision",
+    slug: "api-skiatransform",
+    title: "SkiaTransform",
+    description: "Spatial transforms operating directly on SKBitmap.",
+    sources: [
+      { html: "toro-vision-skiatransform.html", heading: "SkiaTransform" },
+    ],
+  },
+  {
+    subdir: "toro-vision",
+    namespace: "Toro.Vision",
     slug: "api-transform",
     title: "Transform",
     description: "Image transforms for preprocessing and data augmentation.",

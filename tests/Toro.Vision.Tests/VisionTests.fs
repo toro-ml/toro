@@ -77,7 +77,7 @@ let ``Compose chains transforms`` () =
     let x = Tensor.randn ([ 3; 32; 32 ], F32, Cpu) |> unwrap
 
     let transforms: ITransform list = [
-        Resize.create 16 16
+        Resize.create 16 16 :> ITransform
         {
             Normalize.Mean = [ 0.5; 0.5; 0.5 ]
             Std = [ 0.5; 0.5; 0.5 ]

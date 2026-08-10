@@ -3,6 +3,7 @@
   <ItemGroup>
     <Compile Include="../Toro.Tests/TestHelper.fs" Link="TestHelper.fs" />
     <Compile Include="VisionTests.fs" />
+    <Compile Include="ImageTests.fs" />
   </ItemGroup>
 
   <ItemGroup>

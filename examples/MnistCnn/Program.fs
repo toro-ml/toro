@@ -2,6 +2,7 @@ open System
 open TorchSharp
 open Toro
 open Toro.NN
+open Toro.Vision
 
 type Features = {
     Conv1: Conv2d
@@ -85,13 +86,13 @@ let main _argv =
 
         printfn "Loading MNIST dataset..."
 
-        let norm = TorchSharp.torchvision.transforms.Normalize([| 0.1307 |], [| 0.3081 |])
+        let mnistNorm: Normalize = { Mean = [ 0.1307 ]; Std = [ 0.3081 ] }
 
         use trainDataset: torch.utils.data.Dataset =
-            TorchSharp.torchvision.datasets.MNIST(dataPath, true, download = true, target_transform = norm)
+            TorchSharp.torchvision.datasets.MNIST(dataPath, true, download = true)
 
         use testDataset: torch.utils.data.Dataset =
-            TorchSharp.torchvision.datasets.MNIST(dataPath, false, download = true, target_transform = norm)
+            TorchSharp.torchvision.datasets.MNIST(dataPath, false, download = true)
 
         printfn "  Train samples: %d" trainDataset.Count
         printfn "  Test samples:  %d" testDataset.Count
@@ -119,6 +120,7 @@ let main _argv =
                 let labels = batch["label"]
 
                 let! x = Tensor.ofTorchTensor images
+                let! x = mnistNorm.apply x
                 let! target = Tensor.ofTorchTensor labels
                 opt.zeroGrad ()
                 let! logits = model.forward true x
@@ -151,6 +153,7 @@ let main _argv =
                             let labels = batch["label"]
 
                             let! x = Tensor.ofTorchTensor images
+                            let! x = mnistNorm.apply x
                             let! target = Tensor.ofTorchTensor labels
                             let! logits = model.forward false x
                             let! predicted = logits.argmax 1

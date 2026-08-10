@@ -169,6 +169,8 @@ export const navSections: readonly NavSection[] = [
       {
         title: "Toro.Vision",
         entries: [
+          { to: "/api-image", label: "Image" },
+          { to: "/api-skiatransform", label: "SkiaTransform" },
           { to: "/api-transform", label: "Transform" },
         ],
       },

@@ -3,8 +3,7 @@ open System.IO
 open TorchSharp
 open Toro
 open Toro.NN
-
-do TorchSharp.torchvision.io.DefaultImager <- TorchSharp.torchvision.io.SkiaImager()
+open Toro.Vision
 
 type Autoencoder = {
     Encoder: Sequential
@@ -141,13 +140,7 @@ let main _argv =
                             let! reconGrid = toGrid recon
                             let! combined = Tensor.cat ([ origGrid; reconGrid ], 0)
                             let outPath = Path.Combine(__SOURCE_DIRECTORY__, "reconstruction.png")
-
-                            TorchSharp.torchvision.utils.save_image (
-                                combined.Inner,
-                                outPath,
-                                TorchSharp.torchvision.ImageFormat.Png,
-                                nrow = int64 sampleCount
-                            )
+                            do! Image.saveGrid combined outPath Png 0 sampleCount
 
                             printfn "Saved %s" outPath
                             saved <- true

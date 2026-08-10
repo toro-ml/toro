@@ -18,10 +18,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Image.fs" />
+    <Compile Include="SkiaTransform.fs" />
     <Compile Include="Transform.fs" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="SkiaSharp" Version="3.*" />
+    <PackageReference Include="TorchVision" Version="0.107.0" />
     <ProjectReference Include="../Toro/Toro.fsproj" />
   </ItemGroup>
 

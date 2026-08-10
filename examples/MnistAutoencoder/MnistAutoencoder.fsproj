@@ -12,10 +12,10 @@
   <ItemGroup>
     <ProjectReference Include="../../src/Toro/Toro.fsproj" />
     <ProjectReference Include="../../src/Toro.NN/Toro.NN.fsproj" />
+    <ProjectReference Include="../../src/Toro.Vision/Toro.Vision.fsproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="SkiaSharp" Version="4.151.1" />
     <PackageReference Include="TorchSharp-cpu" Version="0.107.0" />
     <PackageReference Include="TorchVision" Version="0.107.0" />
   </ItemGroup>

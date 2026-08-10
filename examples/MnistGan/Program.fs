@@ -3,8 +3,7 @@ open System.IO
 open TorchSharp
 open Toro
 open Toro.NN
-
-do TorchSharp.torchvision.io.DefaultImager <- TorchSharp.torchvision.io.SkiaImager()
+open Toro.Vision
 
 let latentDim = 64
 
@@ -138,8 +137,7 @@ let main _argv =
 
         let! grid = samples.reshape [ 64; 1; 28; 28 ]
         let outPath = Path.Combine(__SOURCE_DIRECTORY__, "generated.png")
-
-        TorchSharp.torchvision.utils.save_image (grid.Inner, outPath, TorchSharp.torchvision.ImageFormat.Png, nrow = 8L)
+        do! Image.saveGrid grid outPath Png 0 8
 
         printfn "Saved %s" outPath
         printfn "Done."
