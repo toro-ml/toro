@@ -1,4 +1,3 @@
-open TorchSharp
 open Toro
 open Toro.NN
 
@@ -105,9 +104,9 @@ let main _argv =
 
         let labelData = Array.append (Array.create nPos 0L) (Array.create nNeg 1L)
 
-        let! input = Tensor.ofTorchTensor (torch.tensor (inputData, dtype = torch.int64))
+        let! input = Tensor.ofArray (inputData, Cpu)
         let! input = input.reshape [ nSamples; maxLen ]
-        let! labels = Tensor.ofTorchTensor (torch.tensor (labelData, dtype = torch.int64))
+        let! labels = Tensor.ofArray (labelData, Cpu)
 
         printfn "Text classifier: positive vs negative words"
         printfn "Samples: %d (%d pos + %d neg), vocab: %d chars, maxLen: %d" nSamples nPos nNeg vocabSize maxLen
@@ -149,7 +148,7 @@ let main _argv =
             Toro.noGrad (fun () ->
                 result {
                     let testData = testWords |> Array.collect (fun w -> encodeWord w)
-                    let! t = Tensor.ofTorchTensor (torch.tensor (testData, dtype = torch.int64))
+                    let! t = Tensor.ofArray (testData, Cpu)
                     let! t = t.reshape [ testWords.Length; maxLen ]
                     let! logits = forward model t
                     return! logits.argmax 1
