@@ -2,5 +2,5 @@ pre-commit:
   commands:
     fantomas:
       glob: "*.{fs,fsi,fsx}"
-      run: dotnet fantomas {staged_files}
+      run: nix develop -c dotnet fantomas {staged_files}
       stage_fixed: true
