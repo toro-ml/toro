@@ -6,24 +6,23 @@ namespace: "Toro.Text"
 
 | Function | Description |
 | --- | --- |
-| `fromBpe vocabPath mergesPath` | Create from BPE vocab and merges files. |
-| `fromSentencePiece modelPath` | Create from a SentencePiece .model file. |
-| `fromTiktoken modelName` | Create from a Tiktoken model name (e.g. "gpt-4o", "gpt-4").
- Requires the corresponding Microsoft.ML.Tokenizers.Data package. |
+| `fromBpe config` | Create from a BPE config. |
+| `fromSentencePiece config` | Create from a SentencePiece config. |
+| `fromTiktoken config` | Create from a Tiktoken config. |
+| `fromWordPiece config` | Create from a WordPiece config. |
 | `wrap inner` | Wrap an existing Microsoft.ML.Tokenizers.Tokenizer instance. |
 
 ## fromBpe
 
 ```fsharp
-fromBpe vocabPath mergesPath
+fromBpe config
 ```
 
-Create from BPE vocab and merges files.
+Create from a BPE config.
 
 **Parameters**
 
-- `vocabPath` : `string`
-- `mergesPath` : `string`
+- `config` : `BpeConfig`
 
 **Returns** `Tokenizer`
 
@@ -32,14 +31,14 @@ Create from BPE vocab and merges files.
 ## fromSentencePiece
 
 ```fsharp
-fromSentencePiece modelPath
+fromSentencePiece config
 ```
 
-Create from a SentencePiece .model file.
+Create from a SentencePiece config.
 
 **Parameters**
 
-- `modelPath` : `string`
+- `config` : `SentencePieceConfig`
 
 **Returns** `Tokenizer`
 
@@ -48,15 +47,30 @@ Create from a SentencePiece .model file.
 ## fromTiktoken
 
 ```fsharp
-fromTiktoken modelName
+fromTiktoken config
 ```
 
-Create from a Tiktoken model name (e.g. "gpt-4o", "gpt-4").
- Requires the corresponding Microsoft.ML.Tokenizers.Data package.
+Create from a Tiktoken config.
 
 **Parameters**
 
-- `modelName` : `string`
+- `config` : `TiktokenConfig`
+
+**Returns** `Tokenizer`
+
+---
+
+## fromWordPiece
+
+```fsharp
+fromWordPiece config
+```
+
+Create from a WordPiece config.
+
+**Parameters**
+
+- `config` : `WordPieceConfig`
 
 **Returns** `Tokenizer`
 
@@ -72,7 +86,7 @@ Wrap an existing Microsoft.ML.Tokenizers.Tokenizer instance.
 
 **Parameters**
 
-- `inner` : `(type)`
+- `inner` : `Tokenizer`
 
 **Returns** `Tokenizer`
 

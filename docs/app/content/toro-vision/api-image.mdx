@@ -1,0 +1,148 @@
+---
+title: "Image"
+description: "Image I/O and SKBitmap-Tensor conversion via SkiaSharp."
+namespace: "Toro.Vision"
+showTitle: false
+---
+
+# ImageFormat
+
+Supported image output formats.
+
+## Union cases
+
+| Name | Description |
+| --- | --- |
+| `Jpeg` |  |
+| `Png` |  |
+| `Webp` |  |
+
+## Instance members
+
+| Name | Description |
+| --- | --- |
+| `this.IsJpeg` |  |
+| `this.IsPng` |  |
+| `this.IsWebp` |  |
+
+---
+
+# Image
+
+Image I/O and SKBitmap-Tensor conversion.
+
+| Function | Description |
+| --- | --- |
+| `fromTensor tensor` | Convert a [3, H, W] float32 tensor in [0, 1] to an SKBitmap. |
+| `load path device` | Load an image file as a [3, H, W] float32 tensor in [0, 1]. |
+| `loadStream stream device` | Load an image from a stream as a [3, H, W] float32 tensor in [0, 1]. |
+| `save tensor path format _quality` | Save a [3, H, W] float32 tensor as an image file. |
+| `saveGrid tensor path format quality nrow` | Save a batch tensor [N, C, H, W] as a grid image with nrow images per row. |
+| `toTensor bitmap device` | Convert an SKBitmap to a [3, H, W] float32 tensor in [0, 1].
+ Alpha channel is discarded; output has 3 channels (RGB). |
+
+## fromTensor
+
+```fsharp
+fromTensor tensor
+```
+
+Convert a [3, H, W] float32 tensor in [0, 1] to an SKBitmap.
+
+**Parameters**
+
+- `tensor` : `Tensor`
+
+**Returns** `Result<SKBitmap, ToroError>`
+
+---
+
+## load
+
+```fsharp
+load path device
+```
+
+Load an image file as a [3, H, W] float32 tensor in [0, 1].
+
+**Parameters**
+
+- `path` : `string`
+- `device` : `Device`
+
+**Returns** `Result<Tensor, ToroError>`
+
+---
+
+## loadStream
+
+```fsharp
+loadStream stream device
+```
+
+Load an image from a stream as a [3, H, W] float32 tensor in [0, 1].
+
+**Parameters**
+
+- `stream` : `Stream`
+- `device` : `Device`
+
+**Returns** `Result<Tensor, ToroError>`
+
+---
+
+## save
+
+```fsharp
+save tensor path format _quality
+```
+
+Save a [3, H, W] float32 tensor as an image file.
+
+**Parameters**
+
+- `tensor` : `Tensor`
+- `path` : `string`
+- `format` : `ImageFormat`
+- `_quality` : `int`
+
+**Returns** `Result<unit, ToroError>`
+
+---
+
+## saveGrid
+
+```fsharp
+saveGrid tensor path format quality nrow
+```
+
+Save a batch tensor [N, C, H, W] as a grid image with nrow images per row.
+
+**Parameters**
+
+- `tensor` : `Tensor`
+- `path` : `string`
+- `format` : `ImageFormat`
+- `quality` : `int`
+- `nrow` : `int`
+
+**Returns** `Result<unit, ToroError>`
+
+---
+
+## toTensor
+
+```fsharp
+toTensor bitmap device
+```
+
+Convert an SKBitmap to a [3, H, W] float32 tensor in [0, 1].
+ Alpha channel is discarded; output has 3 channels (RGB).
+
+**Parameters**
+
+- `bitmap` : `SKBitmap`
+- `device` : `Device`
+
+**Returns** `Result<Tensor, ToroError>`
+

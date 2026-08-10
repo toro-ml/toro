@@ -490,6 +490,7 @@ result
 # fsdocs
 .fsdocs/
 .fsdocs-input/
+.fsdocs-libs/
 .fsdocs-out/
 output/
 tmp/

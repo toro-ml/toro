@@ -54,6 +54,12 @@ Channel-wise normalization: $(x - \mu) / \sigma$.
 | `Mean` |  |
 | `Std` |  |
 
+## Instance members
+
+| Name | Description |
+| --- | --- |
+| `this.apply x` |  |
+
 ---
 
 # Normalize module
@@ -70,7 +76,7 @@ imageNet
 
 ImageNet normalization preset.
 
-**Returns** `ITransform`
+**Returns** `Normalize`
 
 ---
 
@@ -85,6 +91,12 @@ Resize to the target spatial size using bilinear interpolation.
 | --- | --- |
 | `Height` |  |
 | `Width` |  |
+
+## Instance members
+
+| Name | Description |
+| --- | --- |
+| `this.apply x` |  |
 
 ---
 
@@ -105,7 +117,7 @@ create height width
 - `height` : `int`
 - `width` : `int`
 
-**Returns** `ITransform`
+**Returns** `Resize`
 
 ---
 
@@ -119,6 +131,12 @@ Randomly flip the image horizontally with probability p.
 | Name | Description |
 | --- | --- |
 | `P` |  |
+
+## Instance members
+
+| Name | Description |
+| --- | --- |
+| `this.apply x` |  |
 
 ---
 
@@ -139,7 +157,7 @@ create p
 
 - `p` : `float`
 
-**Returns** `ITransform`
+**Returns** `RandomHorizontalFlip`
 
 ---
 
@@ -149,7 +167,7 @@ create p
 defaultFlip
 ```
 
-**Returns** `ITransform`
+**Returns** `RandomHorizontalFlip`
 
 ---
 
@@ -163,6 +181,12 @@ Randomly flip the image vertically with probability p.
 | Name | Description |
 | --- | --- |
 | `P` |  |
+
+## Instance members
+
+| Name | Description |
+| --- | --- |
+| `this.apply x` |  |
 
 ---
 
@@ -183,7 +207,7 @@ create p
 
 - `p` : `float`
 
-**Returns** `ITransform`
+**Returns** `RandomVerticalFlip`
 
 ---
 
@@ -193,7 +217,7 @@ create p
 defaultFlip
 ```
 
-**Returns** `ITransform`
+**Returns** `RandomVerticalFlip`
 
 ---
 
@@ -208,6 +232,12 @@ Randomly crop the image to the given size.
 | --- | --- |
 | `Height` |  |
 | `Width` |  |
+
+## Instance members
+
+| Name | Description |
+| --- | --- |
+| `this.apply x` |  |
 
 ---
 
@@ -228,7 +258,7 @@ create height width
 - `height` : `int`
 - `width` : `int`
 
-**Returns** `ITransform`
+**Returns** `RandomCrop`
 
 ---
 
@@ -243,6 +273,12 @@ Crop the center region of the image.
 | --- | --- |
 | `Height` |  |
 | `Width` |  |
+
+## Instance members
+
+| Name | Description |
+| --- | --- |
+| `this.apply x` |  |
 
 ---
 
@@ -263,7 +299,7 @@ create height width
 - `height` : `int`
 - `width` : `int`
 
-**Returns** `ITransform`
+**Returns** `CenterCrop`
 
 ---
 
@@ -277,6 +313,12 @@ Convert an RGB image to grayscale using ITU-R BT.601 weights.
 | Name | Description |
 | --- | --- |
 | `NumOutputChannels` |  |
+
+## Instance members
+
+| Name | Description |
+| --- | --- |
+| `this.apply x` |  |
 
 ---
 
@@ -298,7 +340,7 @@ create numOutputChannels
 
 - `numOutputChannels` : `int`
 
-**Returns** `ITransform`
+**Returns** `ToGrayscale`
 
 ---
 
@@ -308,7 +350,7 @@ create numOutputChannels
 single
 ```
 
-**Returns** `ITransform`
+**Returns** `ToGrayscale`
 
 ---
 
@@ -318,7 +360,7 @@ single
 triple
 ```
 
-**Returns** `ITransform`
+**Returns** `ToGrayscale`
 
 ---
 
@@ -332,6 +374,12 @@ Convert image tensor dtype, scaling between [0, 255] int and [0.0, 1.0] float ra
 | Name | Description |
 | --- | --- |
 | `TargetDType` |  |
+
+## Instance members
+
+| Name | Description |
+| --- | --- |
+| `this.apply x` |  |
 
 ---
 
@@ -351,5 +399,5 @@ create dtype
 
 - `dtype` : `DType`
 
-**Returns** `ITransform`
+**Returns** `ConvertImageDType`
 

@@ -1,0 +1,119 @@
+---
+title: "SkiaTransform"
+description: "Spatial transforms operating directly on SKBitmap."
+namespace: "Toro.Vision"
+---
+
+Spatial transforms operating directly on SKBitmap for CPU-optimized preprocessing.
+
+| Function | Description |
+| --- | --- |
+| `centerCrop width height bitmap` | Center crop a bitmap to the given width and height. |
+| `flipH bitmap` | Flip a bitmap horizontally. |
+| `flipV bitmap` | Flip a bitmap vertically. |
+| `pipeline transforms bitmap device` | Apply a list of bitmap transforms as a pipeline, then convert to a tensor. |
+| `randomCrop width height bitmap` | Random crop a bitmap to the given width and height. |
+| `resize width height bitmap` | Resize a bitmap to the given width and height using high-quality sampling. |
+
+## centerCrop
+
+```fsharp
+centerCrop width height bitmap
+```
+
+Center crop a bitmap to the given width and height.
+
+**Parameters**
+
+- `width` : `int`
+- `height` : `int`
+- `bitmap` : `SKBitmap`
+
+**Returns** `Result<SKBitmap, ToroError>`
+
+---
+
+## flipH
+
+```fsharp
+flipH bitmap
+```
+
+Flip a bitmap horizontally.
+
+**Parameters**
+
+- `bitmap` : `SKBitmap`
+
+**Returns** `SKBitmap`
+
+---
+
+## flipV
+
+```fsharp
+flipV bitmap
+```
+
+Flip a bitmap vertically.
+
+**Parameters**
+
+- `bitmap` : `SKBitmap`
+
+**Returns** `SKBitmap`
+
+---
+
+## pipeline
+
+```fsharp
+pipeline transforms bitmap device
+```
+
+Apply a list of bitmap transforms as a pipeline, then convert to a tensor.
+
+**Parameters**
+
+- `transforms` : `(SKBitmap -> SKBitmap) list`
+- `bitmap` : `SKBitmap`
+- `device` : `Device`
+
+**Returns** `Result<Tensor, ToroError>`
+
+---
+
+## randomCrop
+
+```fsharp
+randomCrop width height bitmap
+```
+
+Random crop a bitmap to the given width and height.
+
+**Parameters**
+
+- `width` : `int`
+- `height` : `int`
+- `bitmap` : `SKBitmap`
+
+**Returns** `Result<SKBitmap, ToroError>`
+
+---
+
+## resize
+
+```fsharp
+resize width height bitmap
+```
+
+Resize a bitmap to the given width and height using high-quality sampling.
+
+**Parameters**
+
+- `width` : `int`
+- `height` : `int`
+- `bitmap` : `SKBitmap`
+
+**Returns** `SKBitmap`
+
