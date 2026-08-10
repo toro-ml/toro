@@ -23,7 +23,7 @@ jobs:
         run: dotnet tool restore
 
       - name: Check formatting
-        run: dotnet fantomas --check src/ tests/
+        run: dotnet fantomas --check src/ tests/ examples/
 
   test:
     runs-on: ubuntu-latest

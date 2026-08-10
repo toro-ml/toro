@@ -27,11 +27,10 @@ let copyDeps () =
         if code <> 0 then
             eprintfn "publish %s failed: %s" proj err
 
-    let targets =
-        [
-            ("src/Toro.Text/bin/Release/net10.0", [ "Microsoft.ML.Tokenizers.dll" ])
-            ("src/Toro.Vision/bin/Release/net10.0", [ "TorchVision.dll"; "SkiaSharp.dll" ])
-        ]
+    let targets = [
+        ("src/Toro.Text/bin/Release/net10.0", [ "Microsoft.ML.Tokenizers.dll" ])
+        ("src/Toro.Vision/bin/Release/net10.0", [ "TorchVision.dll"; "SkiaSharp.dll" ])
+    ]
 
     for (destRel, dlls) in targets do
         let dest = Path.Combine(root, destRel)
@@ -44,9 +43,7 @@ let copyDeps () =
 
 let run () =
     let (code, stdout, stderr) =
-        exec
-            "dotnet"
-            "fsdocs build --clean --input .fsdocs-input --output .fsdocs-out --properties Configuration=Release"
+        exec "dotnet" "fsdocs build --clean --input .fsdocs-input --output .fsdocs-out --properties Configuration=Release"
 
     if code <> 0 then
         eprintfn "fsdocs failed: %s" stderr

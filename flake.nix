@@ -28,6 +28,7 @@
           devShells.default = pkgs.mkShell {
             buildInputs = [
               pkgs.dotnet-sdk_10
+              pkgs.lefthook
             ];
 
             DOTNET_CLI_TELEMETRY_OPTOUT = "1";
@@ -56,6 +57,10 @@
                   export ${ldVar}="''${_torch_paths#:}''${${ldVar}:+:$${ldVar}}"
                 fi
                 unset _torch_paths
+
+                if [ -d .git ]; then
+                  lefthook install >/dev/null
+                fi
               '';
           };
         };

@@ -99,7 +99,10 @@ module Image =
     let load (path: string) (device: Device) : Result<Tensor, ToroError> =
         ToroError.wrap (fun () ->
             ensureImager ()
-            let t = TorchSharp.torchvision.io.read_image (path, TorchSharp.torchvision.io.ImageReadMode.RGB)
+
+            let t =
+                TorchSharp.torchvision.io.read_image (path, TorchSharp.torchvision.io.ImageReadMode.RGB)
+
             t.to_type(torch.float32).div(torch.tensor 255.0f).``to`` (Device.toTorch device))
         |> Result.bind Tensor.ofTorchTensor
 
@@ -121,23 +124,15 @@ module Image =
     let save (tensor: Tensor) (path: string) (format: ImageFormat) (_quality: int) : Result<unit, ToroError> =
         ToroError.wrap (fun () ->
             ensureImager ()
-            let t = (tensor.Inner * torch.tensor 255.0f).clamp (torch.tensor 0.0f, torch.tensor 255.0f)
-            let t = t.to_type(torch.uint8)
+
+            let t =
+                (tensor.Inner * torch.tensor 255.0f).clamp (torch.tensor 0.0f, torch.tensor 255.0f)
+
+            let t = t.to_type (torch.uint8)
             TorchSharp.torchvision.io.write_image (t, path, toTorchvisionFormat format))
 
     /// Save a batch tensor [N, C, H, W] as a grid image with nrow images per row.
-    let saveGrid
-        (tensor: Tensor)
-        (path: string)
-        (format: ImageFormat)
-        (quality: int)
-        (nrow: int)
-        : Result<unit, ToroError> =
+    let saveGrid (tensor: Tensor) (path: string) (format: ImageFormat) (quality: int) (nrow: int) : Result<unit, ToroError> =
         ToroError.wrap (fun () ->
             ensureImager ()
-            TorchSharp.torchvision.utils.save_image (
-                tensor.Inner,
-                path,
-                toTorchvisionFormat format,
-                nrow = int64 nrow
-            ))
+            TorchSharp.torchvision.utils.save_image (tensor.Inner, path, toTorchvisionFormat format, nrow = int64 nrow))

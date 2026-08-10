@@ -9,7 +9,8 @@
 
 ## Format
 
-- Run `fantomas` to format code.
+- Run `dotnet fantomas` to format code (`src/`, `tests/`, `examples/`).
+- Lefthook formats staged `*.fs` / `*.fsi` / `*.fsx` on commit (`nix develop` installs the hook).
 - Follow F# 10 coding style.
 - Follow ASD-STE100 for technical English.
 
