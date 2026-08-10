@@ -89,7 +89,10 @@ module ResultCE =
 [<AutoOpen>]
 module Pipe =
     /// Kleisli composition for Result: feeds the Ok output of f into g.
-    let inline (>=>) ([<InlineIfLambda>] f: 'a -> Result<'b, 'e>) ([<InlineIfLambda>] g: 'b -> Result<'c, 'e>) : 'a -> Result<'c, 'e> =
+    let inline (>=>)
+        ([<InlineIfLambda>] f: 'a -> Result<'b, 'e>)
+        ([<InlineIfLambda>] g: 'b -> Result<'c, 'e>)
+        : 'a -> Result<'c, 'e> =
         fun a -> f a |> Result.bind g
 
 module Option =
@@ -97,3 +100,18 @@ module Option =
         match opt with
         | Some x -> f x |> Result.map Some
         | None -> Ok None
+
+module List =
+    /// Map each element through a Result-returning function, collecting Ok values.
+    /// Short-circuits on the first Error. Preserves order in O(n).
+    let traverseResult (f: 'a -> Result<'b, 'e>) (xs: 'a list) : Result<'b list, 'e> =
+        List.foldBack
+            (fun x acc ->
+                match f x with
+                | Error e -> Error e
+                | Ok v ->
+                    match acc with
+                    | Error e -> Error e
+                    | Ok rest -> Ok(v :: rest))
+            xs
+            (Ok [])

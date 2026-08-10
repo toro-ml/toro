@@ -11,15 +11,15 @@ module Checkpoint =
     type CheckpointMeta = { Epoch: int; LearningRate: float }
 
     /// Save model parameters, optimizer state, and epoch number to a directory.
-    let save (model: 'T) (opt: IOptimizer) (epoch: int) (dirPath: string) : Result<unit, ToroError> =
+    let save (model: 'T) (ops: OptimizerOps) (epoch: int) (dirPath: string) : Result<unit, ToroError> =
         result {
             do! ToroError.wrap (fun () -> Directory.CreateDirectory dirPath |> ignore)
             do! Model.save model (Path.Combine(dirPath, "model.safetensors"))
-            do! opt.saveState dirPath
+            do! ops.SaveState dirPath
 
             let meta = {
                 Epoch = epoch
-                LearningRate = opt.learningRate ()
+                LearningRate = ops.LearningRate()
             }
 
             do!
@@ -32,10 +32,10 @@ module Checkpoint =
 
     /// Load model parameters, optimizer state, and epoch number from a directory.
     /// Return the restored epoch number.
-    let load (model: 'T) (opt: IOptimizer) (dirPath: string) : Result<int, ToroError> =
+    let load (model: 'T) (ops: OptimizerOps) (dirPath: string) : Result<int, ToroError> =
         result {
             let! _report = Model.loadInto model (Path.Combine(dirPath, "model.safetensors")) Strict
-            do! opt.loadState dirPath
+            do! ops.LoadState dirPath
 
             let metaPath = Path.Combine(dirPath, "meta.json")
 
@@ -44,6 +44,6 @@ module Checkpoint =
                     let json = File.ReadAllText metaPath
                     JsonSerializer.Deserialize<CheckpointMeta>(json))
 
-            opt.setLearningRate meta.LearningRate
+            ops.SetLearningRate meta.LearningRate
             return meta.Epoch
         }

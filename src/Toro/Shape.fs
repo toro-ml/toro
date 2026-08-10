@@ -13,21 +13,7 @@ module Shape =
             shape |> List.fold (fun acc d -> acc * int64 d) 1L
 
     /// Convert to an int64 array.
-    let toInt64Array (shape: int list) =
-        let arr = Array.zeroCreate shape.Length
-        let mutable i = 0
-
-        for d in shape do
-            arr[i] <- int64 d
-            i <- i + 1
-
-        arr
+    let toInt64Array (shape: int list) = shape |> List.map int64 |> List.toArray
 
     /// Convert from an int64 array.
-    let ofInt64Array (shape: int64 array) =
-        let mutable acc = []
-
-        for i in shape.Length - 1 .. -1 .. 0 do
-            acc <- int shape[i] :: acc
-
-        acc
+    let ofInt64Array (shape: int64 array) = shape |> Array.map int |> Array.toList

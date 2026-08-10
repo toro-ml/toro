@@ -12,18 +12,20 @@ module RNN =
         (input: Tensor)
         : Result<'s list, ToroError> =
         result {
-            let batchDim = input.Shape[0]
             let seqLen = input.Shape[1]
-            let! initState = zeroState batchDim
-            let mutable state = initState
-            let output = System.Collections.Generic.List<'s>()
+            let! s0 = zeroState (input.Shape[0])
 
-            for i in 0 .. seqLen - 1 do
-                let! newState = step (input.at [ A; I i ]) state
-                state <- newState
-                output.Add newState
-
-            return output |> Seq.toList
+            return!
+                [ 0 .. seqLen - 1 ]
+                |> List.fold
+                    (fun acc i ->
+                        result {
+                            let! state, revStates = acc
+                            let! next = step (input.at [ A; I i ]) state
+                            return next, next :: revStates
+                        })
+                    (Ok(s0, []))
+                |> Result.map (snd >> List.rev)
         }
 
 // --- LSTM ---

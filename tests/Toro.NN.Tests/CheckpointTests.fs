@@ -42,12 +42,12 @@ let ``Checkpoint round-trip with SGD`` () =
 
         let weightBefore = Model.namedParams linear |> List.head |> snd |> tensorSum
 
-        Checkpoint.save linear opt 5 dir |> unwrap
+        Checkpoint.save linear (opt.toOps ()) 5 dir |> unwrap
 
         let linear2 = Linear.init 4 2 F32 Cpu |> unwrap
         let opt2 = SGD.create 0.01 (Model.trainableVars linear2)
 
-        let epoch = Checkpoint.load linear2 opt2 dir |> unwrap
+        let epoch = Checkpoint.load linear2 (opt2.toOps ()) dir |> unwrap
         epoch |> should equal 5
 
         let weightAfter = Model.namedParams linear2 |> List.head |> snd |> tensorSum
@@ -75,7 +75,7 @@ let ``Checkpoint round-trip with AdamW`` () =
             loss.backward () |> unwrap
             opt.step () |> unwrap
 
-        Checkpoint.save linear opt 10 dir |> unwrap
+        Checkpoint.save linear (opt.toOps ()) 10 dir |> unwrap
 
         let linear2 = Linear.init 4 2 F32 Cpu |> unwrap
 
@@ -83,7 +83,7 @@ let ``Checkpoint round-trip with AdamW`` () =
             AdamW.createWithLr 0.001 (Model.trainableVars linear2)
             |> unwrap
 
-        let epoch = Checkpoint.load linear2 opt2 dir |> unwrap
+        let epoch = Checkpoint.load linear2 (opt2.toOps ()) dir |> unwrap
         epoch |> should equal 10
         opt2.learningRate () |> should (equalWithin 1e-9) 0.01
 
@@ -97,7 +97,7 @@ let ``Checkpoint creates expected directory structure`` () =
         let linear = Linear.init 2 1 F32 Cpu |> unwrap
         let opt = SGD.create 0.1 (Model.trainableVars linear)
 
-        Checkpoint.save linear opt 1 dir |> unwrap
+        Checkpoint.save linear (opt.toOps ()) 1 dir |> unwrap
 
         File.Exists(Path.Combine(dir, "meta.json"))
         |> should equal true
@@ -126,7 +126,7 @@ let ``AdamW optimizer state survives checkpoint`` () =
             loss.backward () |> unwrap
             opt.step () |> unwrap
 
-        Checkpoint.save linear opt 5 dir |> unwrap
+        Checkpoint.save linear (opt.toOps ()) 5 dir |> unwrap
 
         let linear2 = Linear.init 4 2 F32 Cpu |> unwrap
 
@@ -134,7 +134,9 @@ let ``AdamW optimizer state survives checkpoint`` () =
             AdamW.createWithLr 0.01 (Model.trainableVars linear2)
             |> unwrap
 
-        Checkpoint.load linear2 opt2 dir |> unwrap |> ignore
+        Checkpoint.load linear2 (opt2.toOps ()) dir
+        |> unwrap
+        |> ignore
 
         for _ in 6..10 do
             opt.zeroGrad ()

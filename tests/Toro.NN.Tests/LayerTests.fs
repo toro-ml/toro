@@ -126,7 +126,7 @@ let ``Func create wraps function as IModule`` () =
 
 [<Fact>]
 let ``Identity returns input unchanged`` () =
-    let m = Identity() :> IModule
+    let m = Func.Identity
     let x = Tensor.randn ([ 2; 3 ], F32, Cpu) |> unwrap
 
     let y = m.forward x |> unwrap

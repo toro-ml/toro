@@ -12,9 +12,7 @@ type Func = {
 module Func =
     let create (f: Tensor -> Result<Tensor, ToroError>) : Func = { F = f }
 
-type Identity() =
-    interface IModule with
-        member _.forward x = Ok x
+    let Identity: IModule = create Ok :> IModule
 
 type PipelineBuilder() =
     member _.Yield(m: #IModule<'a, 'b>) : 'a -> Result<'b, ToroError> = m.forward

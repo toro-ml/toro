@@ -43,36 +43,23 @@ module Metrics =
             return tp, predCount, targetCount
         }
 
-    let private sequenceResults (results: Result<'a, ToroError> list) : Result<'a list, ToroError> =
-        results
-        |> List.fold
-            (fun acc r ->
-                result {
-                    let! lst = acc
-                    let! v = r
-                    return lst @ [ v ]
-                })
-            (Ok [])
-
     /// Per-class precision: TP / (TP + FP). Returns NaN for classes with no predicted positives.
     let precision (numClasses: int) (pred: Tensor) (target: Tensor) : Result<float list, ToroError> =
         [ 0 .. numClasses - 1 ]
-        |> List.map (fun c ->
+        |> List.traverseResult (fun c ->
             result {
                 let! tp, predCount, _ = countForClass pred target c
                 return if predCount = 0.0 then nan else tp / predCount
             })
-        |> sequenceResults
 
     /// Per-class recall: TP / (TP + FN). Returns NaN for classes with no actual positives.
     let recall (numClasses: int) (pred: Tensor) (target: Tensor) : Result<float list, ToroError> =
         [ 0 .. numClasses - 1 ]
-        |> List.map (fun c ->
+        |> List.traverseResult (fun c ->
             result {
                 let! tp, _, targetCount = countForClass pred target c
                 return if targetCount = 0.0 then nan else tp / targetCount
             })
-        |> sequenceResults
 
     /// Per-class F1 score: $2 \cdot \text{precision} \cdot \text{recall} / (\text{precision} + \text{recall})$.
     let f1 (numClasses: int) (pred: Tensor) (target: Tensor) : Result<float list, ToroError> =

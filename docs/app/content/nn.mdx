@@ -190,10 +190,10 @@ Wrap any function as a module:
 let flatten = Func.create _.flatten(1, -1)
 ```
 
-`Identity()` is a module that returns its input unchanged:
+`Func.Identity` is a module value that returns its input unchanged:
 
 ```fsharp
-let skip = Identity()
+let skip = Func.Identity
 ```
 
 ## Recurrent Layers
