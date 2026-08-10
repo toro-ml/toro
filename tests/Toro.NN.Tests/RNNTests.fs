@@ -23,27 +23,20 @@ let ``LSTM step produces correct output shape`` () =
     newState.C.Shape |> should equal [ 2; 20 ]
 
 [<Fact>]
-let ``LSTM seq processes full sequence`` () =
+let ``RNN.scan with LSTM processes full sequence`` () =
     let lstm = LSTM.initDefault 8 16 F32 Cpu |> unwrap
     let input = Tensor.randn ([ 2; 5; 8 ], F32, Cpu) |> unwrap
-    let states = lstm.seq input |> unwrap
+    let states = RNN.scan lstm.zeroState lstm.step input |> unwrap
     states.Length |> should equal 5
     states[4].H.Shape |> should equal [ 2; 16 ]
 
 [<Fact>]
-let ``LSTM statesToTensor stacks hidden states`` () =
+let ``RNN.scan with LSTM states can be stacked to tensor`` () =
     let lstm = LSTM.initDefault 8 16 F32 Cpu |> unwrap
     let input = Tensor.randn ([ 2; 5; 8 ], F32, Cpu) |> unwrap
-    let states = lstm.seq input |> unwrap
-    let output = lstm.statesToTensor states |> unwrap
+    let states = RNN.scan lstm.zeroState lstm.step input |> unwrap
+    let output = Tensor.stack (states |> List.map _.H, 1) |> unwrap
     output.Shape |> should equal [ 2; 5; 16 ]
-
-[<Fact>]
-let ``LSTM implements IRNN interface`` () =
-    let lstm = LSTM.initDefault 4 8 F32 Cpu |> unwrap
-    let rnn = lstm :> IRNN<LSTMState>
-    let state = rnn.zeroState 1 |> unwrap
-    state.H.Shape |> should equal [ 1; 8 ]
 
 [<Fact>]
 let ``GRU zeroState produces correct shape`` () =
@@ -60,24 +53,17 @@ let ``GRU step produces correct output shape`` () =
     newState.H.Shape |> should equal [ 2; 20 ]
 
 [<Fact>]
-let ``GRU seq processes full sequence`` () =
+let ``RNN.scan with GRU processes full sequence`` () =
     let gru = GRU.initDefault 8 16 F32 Cpu |> unwrap
     let input = Tensor.randn ([ 2; 5; 8 ], F32, Cpu) |> unwrap
-    let states = gru.seq input |> unwrap
+    let states = RNN.scan gru.zeroState gru.step input |> unwrap
     states.Length |> should equal 5
     states[4].H.Shape |> should equal [ 2; 16 ]
 
 [<Fact>]
-let ``GRU statesToTensor stacks hidden states`` () =
+let ``RNN.scan with GRU states can be stacked to tensor`` () =
     let gru = GRU.initDefault 8 16 F32 Cpu |> unwrap
     let input = Tensor.randn ([ 2; 5; 8 ], F32, Cpu) |> unwrap
-    let states = gru.seq input |> unwrap
-    let output = gru.statesToTensor states |> unwrap
+    let states = RNN.scan gru.zeroState gru.step input |> unwrap
+    let output = Tensor.stack (states |> List.map _.H, 1) |> unwrap
     output.Shape |> should equal [ 2; 5; 16 ]
-
-[<Fact>]
-let ``GRU implements IRNN interface`` () =
-    let gru = GRU.initDefault 4 8 F32 Cpu |> unwrap
-    let rnn = gru :> IRNN<GRUState>
-    let state = rnn.zeroState 1 |> unwrap
-    state.H.Shape |> should equal [ 1; 8 ]

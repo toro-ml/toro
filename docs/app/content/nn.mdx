@@ -198,16 +198,16 @@ let skip = Identity()
 
 ## Recurrent Layers
 
-### IRNN Interface
+Recurrent layers expose two primitive members:
 
-All recurrent layers implement `IRNN<'State>`:
+- `zeroState: int -> Result<'State, ToroError>` -- creates the initial state for a given batch size.
+- `step: Tensor -> 'State -> Result<'State, ToroError>` -- applies one time step.
+
+Use `RNN.scan` to fold `step` over a full sequence:
 
 ```fsharp
-type IRNN<'State> =
-    abstract zeroState: batchDim: int -> Result<'State, ToroError>
-    abstract step: Tensor -> 'State -> Result<'State, ToroError>
-    abstract seq: Tensor -> Result<'State list, ToroError>
-    abstract statesToTensor: 'State list -> Result<Tensor, ToroError>
+let! states = RNN.scan lstm.zeroState lstm.step inputSequence
+let! output = Tensor.stack (states |> List.map _.H, 1)
 ```
 
 ### LSTM
@@ -218,9 +218,9 @@ Long Short-Term Memory. State type: `LSTMState = { H: Tensor; C: Tensor }`:
 result {
     let! lstm = LSTM.initDefault 128 256 F32 Cpu
     let! state0 = lstm.zeroState batchSize
-    let! state1 = lstm.step input state0        // one step
-    let! states = lstm.seq inputSequence         // full sequence
-    let! output = lstm.statesToTensor states     // [seqLen; batch; hidden]
+    let! state1 = lstm.step input state0                      // one step
+    let! states = RNN.scan lstm.zeroState lstm.step sequence            // full sequence
+    let! output = Tensor.stack (states |> List.map _.H, 1)   // [batch; seqLen; hidden]
 }
 ```
 
@@ -234,7 +234,7 @@ Gated Recurrent Unit. State type: `GRUState = { H: Tensor }`:
 result {
     let! gru = GRU.initDefault 128 256 F32 Cpu
     let! state0 = gru.zeroState batchSize
-    let! states = gru.seq inputSequence
+    let! states = RNN.scan gru.zeroState gru.step sequence
 }
 ```
 

@@ -3,11 +3,28 @@ namespace Toro.NN
 open Toro
 open Toro.TensorOp
 
-type IRNN<'State> =
-    abstract zeroState: batchDim: int -> Result<'State, ToroError>
-    abstract step: Tensor -> 'State -> Result<'State, ToroError>
-    abstract seq: Tensor -> Result<'State list, ToroError>
-    abstract statesToTensor: 'State list -> Result<Tensor, ToroError>
+module RNN =
+    /// Scan a step function over the sequence dimension, collecting all states.
+    /// Input shape: [batch; seqLen; features].
+    let scan
+        (zeroState: int -> Result<'s, ToroError>)
+        (step: Tensor -> 's -> Result<'s, ToroError>)
+        (input: Tensor)
+        : Result<'s list, ToroError> =
+        result {
+            let batchDim = input.Shape[0]
+            let seqLen = input.Shape[1]
+            let! initState = zeroState batchDim
+            let mutable state = initState
+            let output = System.Collections.Generic.List<'s>()
+
+            for i in 0 .. seqLen - 1 do
+                let! newState = step (input.at [ A; I i ]) state
+                state <- newState
+                output.Add newState
+
+            return output |> Seq.toList
+        }
 
 // --- LSTM ---
 
@@ -82,33 +99,6 @@ type LSTM = {
 
             return { H = nextH; C = nextC }
         }
-
-    member this.seq(input: Tensor) : Result<LSTMState list, ToroError> =
-        result {
-            let batchDim = input.Shape[0]
-            let seqLen = input.Shape[1]
-            let! initState = this.zeroState batchDim
-            let mutable state = initState
-            let output = System.Collections.Generic.List<LSTMState>()
-
-            for i in 0 .. seqLen - 1 do
-                let step_input = input.at [ A; I i ]
-                let! newState = this.step step_input state
-                state <- newState
-                output.Add newState
-
-            return output |> Seq.toList
-        }
-
-    member _.statesToTensor(states: LSTMState list) : Result<Tensor, ToroError> =
-        let hs = states |> List.map _.H
-        Tensor.stack (hs, 1)
-
-    interface IRNN<LSTMState> with
-        member this.zeroState batchDim = this.zeroState batchDim
-        member this.step input state = this.step input state
-        member this.seq input = this.seq input
-        member this.statesToTensor states = this.statesToTensor states
 
 module LSTM =
     let init (inDim: int) (hiddenDim: int) (config: LSTMConfig) (dtype: DType) (device: Device) : Result<LSTM, ToroError> =
@@ -211,33 +201,6 @@ type GRU = {
 
             return { H = nextH }
         }
-
-    member this.seq(input: Tensor) : Result<GRUState list, ToroError> =
-        result {
-            let batchDim = input.Shape[0]
-            let seqLen = input.Shape[1]
-            let! initState = this.zeroState batchDim
-            let mutable state = initState
-            let output = System.Collections.Generic.List<GRUState>()
-
-            for i in 0 .. seqLen - 1 do
-                let step_input = input.at [ A; I i ]
-                let! newState = this.step step_input state
-                state <- newState
-                output.Add newState
-
-            return output |> Seq.toList
-        }
-
-    member _.statesToTensor(states: GRUState list) : Result<Tensor, ToroError> =
-        let hs = states |> List.map _.H
-        Tensor.stack (hs, 1)
-
-    interface IRNN<GRUState> with
-        member this.zeroState batchDim = this.zeroState batchDim
-        member this.step input state = this.step input state
-        member this.seq input = this.seq input
-        member this.statesToTensor states = this.statesToTensor states
 
 module GRU =
     let init (inDim: int) (hiddenDim: int) (config: GRUConfig) (dtype: DType) (device: Device) : Result<GRU, ToroError> =

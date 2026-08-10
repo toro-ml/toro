@@ -45,8 +45,8 @@ let createModel () =
 let forward (model: CharRnnModel) (input: Tensor) =
     result {
         let! embedded = model.Embed.forward input
-        let! states = model.Lstm.seq embedded
-        let! hidden = model.Lstm.statesToTensor states
+        let! states = RNN.scan model.Lstm.zeroState model.Lstm.step embedded
+        let! hidden = Tensor.stack (states |> List.map _.H, 1)
         let batchSeq = hidden.Shape[0] * hidden.Shape[1]
         let! flat = hidden.reshape [ batchSeq; hiddenDim ]
         return! model.Output.forward flat
