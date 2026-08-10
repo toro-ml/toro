@@ -63,7 +63,7 @@ let generate (model: CharRnnModel) (seed: char) (length: int) =
         buf.Append seed |> ignore
 
         for _ in 1..length do
-            let! inputT = Tensor.ofTorchTensor (torch.tensor [| int64 idx |])
+            let! inputT = Tensor.ofArray ([| int64 idx |], Cpu)
             let! inputT = inputT.unsqueeze 0
             let! embedded = model.Embed.forward inputT
             let step_input = embedded.at [ I 0; I 0 ]
@@ -113,9 +113,9 @@ let main _argv =
                 let inputArr = encoded[offset .. offset + seqLen - 1]
                 let targetArr = encoded[offset + 1 .. offset + seqLen]
 
-                let! input = Tensor.ofTorchTensor (torch.tensor (inputArr, dtype = torch.int64))
+                let! input = Tensor.ofArray (inputArr, Cpu)
                 let! input = input.unsqueeze 0
-                let! target = Tensor.ofTorchTensor (torch.tensor (targetArr, dtype = torch.int64))
+                let! target = Tensor.ofArray (targetArr, Cpu)
 
                 opt.zeroGrad ()
                 let! logits = forward model input

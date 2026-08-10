@@ -1,5 +1,6 @@
-/// Simple GCN node classification on a synthetic graph.
-/// 8 nodes, 2 classes. Train on 4 labeled nodes, evaluate on remaining 4.
+// Simple GCN node classification on a synthetic graph.
+// 8 nodes, 2 classes. Train on 4 labeled nodes, evaluate on remaining 4.
+open TorchSharp
 open Toro
 open Toro.NN
 open Toro.GNN
@@ -13,11 +14,8 @@ let buildGraph () =
         let edgesTarget = [| 1L; 0L; 2L; 0L; 2L; 1L; 3L; 1L; 5L; 4L; 6L; 4L; 6L; 5L; 7L; 5L; 4L; 3L |]
 
         let! edgeIndex =
-            Tensor.ofTorchTensor (
-                TorchSharp.torch
-                    .tensor(Array.append edgesSource edgesTarget, dtype = TorchSharp.torch.int64)
-                    .reshape ([| 2L; int64 edgesSource.Length |])
-            )
+            Tensor.ofArray (Array.append edgesSource edgesTarget, Cpu)
+            |> Result.bind (fun t -> t.reshape [ 2; edgesSource.Length ])
 
         let! x = Tensor.randn ([ 8; 4 ], F32, Cpu)
         return (x, edgeIndex)
@@ -45,7 +43,7 @@ let main _argv =
         let! (x, edgeIndex) = buildGraph ()
 
         // Labels: nodes 0-3 -> class 0, nodes 4-7 -> class 1
-        let! labels = Tensor.ofTorchTensor (TorchSharp.torch.tensor ([| 0L; 0L; 0L; 0L; 1L; 1L; 1L; 1L |]: int64 array))
+        let! labels = Tensor.ofArray ([| 0L; 0L; 0L; 0L; 1L; 1L; 1L; 1L |], Cpu)
 
         // Train mask: nodes 0, 1, 4, 5
         let trainIdx = [| 0; 1; 4; 5 |]
@@ -65,18 +63,14 @@ let main _argv =
             let! trainLogits =
                 Tensor.ofTorchTensor (
                     logits.Inner.index (
-                        TorchSharp.torch.TensorIndex.Tensor(
-                            TorchSharp.torch.tensor (trainIdx |> Array.map int64, dtype = TorchSharp.torch.int64)
-                        )
+                        torch.TensorIndex.Tensor(torch.tensor (trainIdx |> Array.map int64, dtype = torch.int64))
                     )
                 )
 
             let! trainLabels =
                 Tensor.ofTorchTensor (
                     labels.Inner.index (
-                        TorchSharp.torch.TensorIndex.Tensor(
-                            TorchSharp.torch.tensor (trainIdx |> Array.map int64, dtype = TorchSharp.torch.int64)
-                        )
+                        torch.TensorIndex.Tensor(torch.tensor (trainIdx |> Array.map int64, dtype = torch.int64))
                     )
                 )
 
