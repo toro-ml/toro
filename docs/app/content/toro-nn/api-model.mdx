@@ -11,7 +11,8 @@ Reflection-based parameter discovery, serialization, and deserialization for F# 
 | `loadFromDict model tensors nameMap mode` | Load tensors from a dictionary into the model, matching by parameter name.
  When nameMap is Some, dictionary keys are translated before matching. |
 | `loadInto model filePath mode` | Load tensors from a .safetensors file into the model in place.
- Only the tensors required by the model are loaded into memory. |
+ Shape and dtype are validated from the header before any tensor data is read.
+ Only the tensors that match both shape and dtype are loaded into memory. |
 | `namedParams model` | Return all named tensors in the model via reflection. |
 | `save model filePath` | Save all model tensors to a .safetensors file. |
 | `trainableVars model` | Return all tensors that require gradients. |
@@ -43,7 +44,8 @@ loadInto model filePath mode
 ```
 
 Load tensors from a .safetensors file into the model in place.
- Only the tensors required by the model are loaded into memory.
+ Shape and dtype are validated from the header before any tensor data is read.
+ Only the tensors that match both shape and dtype are loaded into memory.
 
 **Parameters**
 
