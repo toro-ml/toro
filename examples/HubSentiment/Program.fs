@@ -4,12 +4,10 @@
 //   dotnet run                                                         Default repo
 //   dotnet run -- distilbert/distilbert-base-uncased-finetuned-sst-2-english
 
-open System
-open System.IO
-open TorchSharp
 open Toro
 open Toro.NN
 open Toro.Hub
+open Toro.Text
 
 // ---------------------------------------------------------------------------
 // DistilBERT model definition
@@ -235,59 +233,23 @@ let buildNameMap () =
     Map(emb @ layers @ head)
 
 // ---------------------------------------------------------------------------
-// WordPiece tokenizer
+// Tokenizer (WordPiece via Toro.Text)
 // ---------------------------------------------------------------------------
 
-let loadVocab (repoId: string) : Async<Result<Map<string, int>, ToroError>> =
+let loadTokenizer (repoId: string) : Async<Result<Tokenizer, ToroError>> =
     async {
         let! pathResult = Hub.download repoId "vocab.txt"
 
         return
             pathResult
             |> Result.map (fun path ->
-                File.ReadAllLines(path)
-                |> Array.mapi (fun i token -> token, i)
-                |> Map.ofArray)
+                Tokenizer.fromWordPiece {
+                    WordPieceConfig.create path with
+                        SpecialTokens = [ "[UNK]", 100; "[CLS]", 101; "[SEP]", 102; "[PAD]", 0 ]
+                        PreTokenizer = Regex @"\w+|[^\w\s]+"
+                        Normalizer = LowerCase
+                })
     }
-
-/// Greedy longest-match WordPiece tokenization for a single word.
-let wordPiece (vocab: Map<string, int>) (word: string) : int list =
-    let unkId = vocab["[UNK]"]
-
-    let rec findLongest start endPos =
-        if endPos <= start then
-            None
-        else
-            let sub = word[start .. endPos - 1]
-            let candidate = if start > 0 then "##" + sub else sub
-
-            match vocab |> Map.tryFind candidate with
-            | Some id -> Some(id, endPos)
-            | None -> findLongest start (endPos - 1)
-
-    let rec loop start acc =
-        if start >= word.Length then
-            Some(List.rev acc)
-        else
-            match findLongest start word.Length with
-            | Some(id, next) -> loop next (id :: acc)
-            | None -> None
-
-    loop 0 [] |> Option.defaultValue [ unkId ]
-
-/// Tokenize text with [CLS] and [SEP].
-let tokenize (vocab: Map<string, int>) (text: string) : int64 array =
-    let words =
-        text.ToLowerInvariant().Split([| ' '; '\t' |], StringSplitOptions.RemoveEmptyEntries)
-
-    [|
-        yield int64 vocab["[CLS]"]
-
-        for w in words do
-            yield! wordPiece vocab w |> List.map int64
-
-        yield int64 vocab["[SEP]"]
-    |]
 
 // ---------------------------------------------------------------------------
 // Entry point
@@ -317,8 +279,8 @@ let main argv =
             Hub.loadSafeTensors repoId "model.safetensors"
             |> Async.RunSynchronously
 
-        let! vocab = loadVocab repoId |> Async.RunSynchronously
-        printfn "Downloaded %d tensors, vocab %d tokens" weights.Count vocab.Count
+        let! tokenizer = loadTokenizer repoId |> Async.RunSynchronously
+        printfn "Downloaded %d tensors, tokenizer ready" weights.Count
 
         let! model = createModel ()
         let nameMap = buildNameMap ()
@@ -327,12 +289,13 @@ let main argv =
         printfn ""
 
         for text in testTexts do
-            let tokenIds = tokenize vocab text
-
             let! logits =
                 Toro.noGrad (fun () ->
                     result {
-                        let! input = Tensor.ofTorchTensor (torch.tensor (tokenIds, dtype = torch.int64))
+                        let ids = tokenizer.encode text
+                        let withSpecial = 101 :: ids @ [ 102 ]
+                        let data = withSpecial |> List.map int64 |> List.toArray
+                        let! input = Tensor.ofArray (data, Cpu)
                         let! input = input.unsqueeze 0
                         return! forward model input
                     })
