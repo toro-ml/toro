@@ -56,6 +56,24 @@ Channel-wise normalization: $(x - \mu) / \sigma$.
 
 ---
 
+# Normalize module
+
+| Function | Description |
+| --- | --- |
+| `imageNet` | ImageNet normalization preset. |
+
+## imageNet
+
+```fsharp
+imageNet
+```
+
+ImageNet normalization preset.
+
+**Returns** `ITransform`
+
+---
+
 # Resize
 
 Resize to the target spatial size using bilinear interpolation.
@@ -67,6 +85,27 @@ Resize to the target spatial size using bilinear interpolation.
 | --- | --- |
 | `Height` |  |
 | `Width` |  |
+
+---
+
+# Resize module
+
+| Function | Description |
+| --- | --- |
+| `create height width` |  |
+
+## create
+
+```fsharp
+create height width
+```
+
+**Parameters**
+
+- `height` : `int`
+- `width` : `int`
+
+**Returns** `ITransform`
 
 ---
 
@@ -83,6 +122,81 @@ Randomly flip the image horizontally with probability p.
 
 ---
 
+# RandomHorizontalFlip module
+
+| Function | Description |
+| --- | --- |
+| `create p` |  |
+| `defaultFlip` |  |
+
+## create
+
+```fsharp
+create p
+```
+
+**Parameters**
+
+- `p` : `float`
+
+**Returns** `ITransform`
+
+---
+
+## defaultFlip
+
+```fsharp
+defaultFlip
+```
+
+**Returns** `ITransform`
+
+---
+
+# RandomVerticalFlip
+
+Randomly flip the image vertically with probability p.
+ Input: $[C, H, W]$ or $[B, C, H, W]$.
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `P` |  |
+
+---
+
+# RandomVerticalFlip module
+
+| Function | Description |
+| --- | --- |
+| `create p` |  |
+| `defaultFlip` |  |
+
+## create
+
+```fsharp
+create p
+```
+
+**Parameters**
+
+- `p` : `float`
+
+**Returns** `ITransform`
+
+---
+
+## defaultFlip
+
+```fsharp
+defaultFlip
+```
+
+**Returns** `ITransform`
+
+---
+
 # RandomCrop
 
 Randomly crop the image to the given size.
@@ -94,4 +208,148 @@ Randomly crop the image to the given size.
 | --- | --- |
 | `Height` |  |
 | `Width` |  |
+
+---
+
+# RandomCrop module
+
+| Function | Description |
+| --- | --- |
+| `create height width` |  |
+
+## create
+
+```fsharp
+create height width
+```
+
+**Parameters**
+
+- `height` : `int`
+- `width` : `int`
+
+**Returns** `ITransform`
+
+---
+
+# CenterCrop
+
+Crop the center region of the image.
+ Input: $[C, H, W]$ or $[B, C, H, W]$.
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `Height` |  |
+| `Width` |  |
+
+---
+
+# CenterCrop module
+
+| Function | Description |
+| --- | --- |
+| `create height width` |  |
+
+## create
+
+```fsharp
+create height width
+```
+
+**Parameters**
+
+- `height` : `int`
+- `width` : `int`
+
+**Returns** `ITransform`
+
+---
+
+# ToGrayscale
+
+Convert an RGB image to grayscale using ITU-R BT.601 weights.
+ Input: $[3, H, W]$ or $[B, 3, H, W]$.
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `NumOutputChannels` |  |
+
+---
+
+# ToGrayscale module
+
+| Function | Description |
+| --- | --- |
+| `create numOutputChannels` |  |
+| `single` |  |
+| `triple` |  |
+
+## create
+
+```fsharp
+create numOutputChannels
+```
+
+**Parameters**
+
+- `numOutputChannels` : `int`
+
+**Returns** `ITransform`
+
+---
+
+## single
+
+```fsharp
+single
+```
+
+**Returns** `ITransform`
+
+---
+
+## triple
+
+```fsharp
+triple
+```
+
+**Returns** `ITransform`
+
+---
+
+# ConvertImageDType
+
+Convert image tensor dtype, scaling between [0, 255] int and [0.0, 1.0] float ranges.
+ Input: any image tensor.
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `TargetDType` |  |
+
+---
+
+# ConvertImageDType module
+
+| Function | Description |
+| --- | --- |
+| `create dtype` |  |
+
+## create
+
+```fsharp
+create dtype
+```
+
+**Parameters**
+
+- `dtype` : `DType`
+
+**Returns** `ITransform`
 

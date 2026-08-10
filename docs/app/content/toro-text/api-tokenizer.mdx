@@ -1,32 +1,78 @@
 ---
 title: "Tokenizer"
-description: "Tokenizer interfaces and character-level tokenizer."
+description: "Tokenizer wrapping Microsoft.ML.Tokenizers with F#-idiomatic API."
 namespace: "Toro.Text"
-showTitle: false
 ---
 
-# ITokenizer
-
-Tokenizer that maps between strings and integer token sequences.
-
-## Instance members
-
-| Name | Description |
+| Function | Description |
 | --- | --- |
-| `this.decode arg1` |  |
-| `this.encode arg1` |  |
-| `this.vocabSize` |  |
+| `fromBpe vocabPath mergesPath` | Create from BPE vocab and merges files. |
+| `fromSentencePiece modelPath` | Create from a SentencePiece .model file. |
+| `fromTiktoken modelName` | Create from a Tiktoken model name (e.g. "gpt-4o", "gpt-4").
+ Requires the corresponding Microsoft.ML.Tokenizers.Data package. |
+| `wrap inner` | Wrap an existing Microsoft.ML.Tokenizers.Tokenizer instance. |
+
+## fromBpe
+
+```fsharp
+fromBpe vocabPath mergesPath
+```
+
+Create from BPE vocab and merges files.
+
+**Parameters**
+
+- `vocabPath` : `string`
+- `mergesPath` : `string`
+
+**Returns** `Tokenizer`
 
 ---
 
-# CharTokenizer
+## fromSentencePiece
 
-Character-level tokenizer built from a corpus.
+```fsharp
+fromSentencePiece modelPath
+```
 
-## Record fields
+Create from a SentencePiece .model file.
 
-| Name | Description |
-| --- | --- |
-| `CharToId` |  |
-| `IdToChar` |  |
+**Parameters**
+
+- `modelPath` : `string`
+
+**Returns** `Tokenizer`
+
+---
+
+## fromTiktoken
+
+```fsharp
+fromTiktoken modelName
+```
+
+Create from a Tiktoken model name (e.g. "gpt-4o", "gpt-4").
+ Requires the corresponding Microsoft.ML.Tokenizers.Data package.
+
+**Parameters**
+
+- `modelName` : `string`
+
+**Returns** `Tokenizer`
+
+---
+
+## wrap
+
+```fsharp
+wrap inner
+```
+
+Wrap an existing Microsoft.ML.Tokenizers.Tokenizer instance.
+
+**Parameters**
+
+- `inner` : `(type)`
+
+**Returns** `Tokenizer`
 

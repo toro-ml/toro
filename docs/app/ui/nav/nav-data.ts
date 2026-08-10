@@ -176,7 +176,7 @@ export const navSections: readonly NavSection[] = [
         title: "Toro.Text",
         entries: [
           { to: "/api-tokenizer", label: "Tokenizer" },
-          { to: "/api-preprocessing", label: "Preprocessing" },
+          { to: "/api-encode", label: "Encode" },
         ],
       },
     ],

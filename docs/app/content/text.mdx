@@ -1,10 +1,10 @@
 ---
 title: Text Processing
-description: Tokenization and preprocessing utilities for text data.
+description: Tokenization and text-to-tensor encoding via Microsoft.ML.Tokenizers.
 ---
 
-Toro.Text provides tokenization and preprocessing utilities for preparing text data.
-Open the namespace to get started:
+Toro.Text bridges [Microsoft.ML.Tokenizers](https://www.nuget.org/packages/Microsoft.ML.Tokenizers) and Toro tensors.
+It provides an F#-idiomatic `Tokenizer` wrapper and an `Encode` module for converting text to tensors.
 
 ```fsharp
 open Toro
@@ -13,86 +13,126 @@ open Toro.Text
 
 ## Tokenizer
 
-All tokenizers implement `ITokenizer`:
+`Tokenizer` wraps a `Microsoft.ML.Tokenizers.Tokenizer` instance with a simple API:
 
 ```fsharp
-type ITokenizer =
-    abstract encode: string -> int list
-    abstract decode: int list -> string
-    abstract vocabSize: int
+let tokenizer = Tokenizer.fromTiktoken (TiktokenConfig.create "gpt-4o")
+
+let ids = tokenizer.encode "hello world"       // int list
+let text = tokenizer.decode ids                 // "hello world"
+let count = tokenizer.countTokens "hello world" // int
 ```
 
-### CharTokenizer
+### Config Records
 
-A character-level tokenizer that maps each unique character to an integer:
+Each tokenizer type has a dedicated config record. Use `create` with required parameters, then override optional fields with record update syntax:
+
+| Factory | Config | Required |
+| --- | --- | --- |
+| `Tokenizer.fromTiktoken` | `TiktokenConfig` | `model` |
+| `Tokenizer.fromBpe` | `BpeConfig` | `vocabPath`, `mergesPath` |
+| `Tokenizer.fromWordPiece` | `WordPieceConfig` | `vocabPath` |
+| `Tokenizer.fromSentencePiece` | `SentencePieceConfig` | `modelPath` |
+
+#### Tiktoken (OpenAI)
 
 ```fsharp
-let corpus = "hello world"
-let tokenizer = CharTokenizer.fromCorpus corpus
+// Simple — just the model name
+let tok = Tokenizer.fromTiktoken (TiktokenConfig.create "gpt-4o")
 
-let tokens = (tokenizer :> ITokenizer).encode "hello"
-let text = (tokenizer :> ITokenizer).decode tokens
-// text = "hello"
+// With extra special tokens
+let tok = Tokenizer.fromTiktoken
+            { TiktokenConfig.create "gpt-4o" with
+                ExtraSpecialTokens = [ "<|pad|>", 100300 ] }
 ```
 
-The vocabulary is built from the unique characters in the corpus, sorted alphabetically.
-
-## Preprocessing
-
-The `Preprocessing` module provides utilities for padding, batching, and masking token sequences.
-
-### padOrTruncate
-
-Pad short sequences with a pad token or truncate long sequences to a fixed length:
+#### WordPiece (BERT)
 
 ```fsharp
-let padded = Preprocessing.padOrTruncate 5 0 [ 1; 2; 3 ]
-// padded = [ 1; 2; 3; 0; 0 ]
-
-let truncated = Preprocessing.padOrTruncate 3 0 [ 1; 2; 3; 4; 5 ]
-// truncated = [ 1; 2; 3 ]
+let tok = Tokenizer.fromWordPiece
+            { WordPieceConfig.create "vocab.txt" with
+                SpecialTokens = [ "[CLS]", 101; "[SEP]", 102; "[PAD]", 0 ]
+                PreTokenizer = Regex @"\w+|[^\w\s]+"
+                Normalizer = LowerCase }
 ```
 
-### batchToTensor
+#### BPE
 
-Convert a batch of token lists to a padded 2-D tensor:
+```fsharp
+let tok = Tokenizer.fromBpe (BpeConfig.create "vocab.json" "merges.txt")
+```
+
+#### SentencePiece
+
+```fsharp
+let tok = Tokenizer.fromSentencePiece (SentencePieceConfig.create "model.spm")
+```
+
+### Normalizer and PreTokenizer
+
+Common configurations are covered by Toro-native DU types:
+
+```fsharp
+type TextNormalizer =
+    | NoNormalizer
+    | LowerCase
+    | CustomNormalizer of Microsoft.ML.Tokenizers.Normalizer
+
+type TextPreTokenizer =
+    | DefaultPreTokenizer
+    | Regex of pattern: string
+    | CustomPreTokenizer of Microsoft.ML.Tokenizers.PreTokenizer
+```
+
+For advanced cases, use the `Custom*` constructors as escape hatches.
+
+### Escape Hatch
+
+Access the underlying `Microsoft.ML.Tokenizers.Tokenizer` via `.Inner`, or use `Tokenizer.wrap` to wrap a manually-constructed instance:
+
+```fsharp
+let inner: Microsoft.ML.Tokenizers.Tokenizer = tokenizer.Inner
+let tok = Tokenizer.wrap someCustomInstance
+```
+
+## Encode
+
+The `Encode` module converts tokenized text directly to Toro tensors.
+
+### toTensor
+
+Encode a single text to a 1-D `int64` tensor of fixed length:
 
 ```fsharp
 result {
-    let batch = [ [ 1; 2; 3 ]; [ 4; 5 ] ]
-    let! t = Preprocessing.batchToTensor 4 0 batch I64 Cpu
-    // t: [2, 4] = [[1, 2, 3, 0], [4, 5, 0, 0]]
+    let tok = Tokenizer.fromTiktoken (TiktokenConfig.create "gpt-4o")
+    let! t = Encode.toTensor tok "hello world" 16 0 Cpu
+    // t: [16] int64, padded with 0s
+}
+```
+
+### batch
+
+Encode multiple texts to a padded `[B, L]` tensor and an attention mask:
+
+```fsharp
+result {
+    let tok = Tokenizer.fromTiktoken (TiktokenConfig.create "gpt-4o")
+    let texts = [ "hello world"; "good morning" ]
+    let! struct (ids, mask) = Encode.batch tok texts 16 0 Cpu
+    // ids:  [2, 16] int64
+    // mask: [2, 16] — 1 at token positions, 0 at padding
 }
 ```
 
 ### attentionMask
 
-Generate a binary attention mask: 1 where the token differs from the pad ID, 0 at pad positions:
+Generate a mask from an existing token tensor:
 
 ```fsharp
 result {
-    let! tokens = Tensor.ofArray ([| 1L; 2L; 0L; 0L |], Cpu)
-    let mask = Preprocessing.attentionMask tokens 0
+    let! tokens = Tensor.ofArray ([| 101L; 7592L; 0L; 0L |], Cpu)
+    let mask = Encode.attentionMask tokens 0
     // mask: [4] = [1, 1, 0, 0]
-}
-```
-
-## End-to-End Example
-
-```fsharp
-open Toro
-open Toro.Text
-
-let corpus = "the quick brown fox jumps over the lazy dog"
-let tokenizer = CharTokenizer.fromCorpus corpus
-let tok = tokenizer :> ITokenizer
-
-let sentences = [ "the fox"; "a dog" ]
-let encoded = sentences |> List.map tok.encode
-
-result {
-    let! batch = Preprocessing.batchToTensor 8 0 encoded I64 Cpu
-    let mask = Preprocessing.attentionMask batch 0
-    // batch: [2, 8], mask: [2, 8]
 }
 ```

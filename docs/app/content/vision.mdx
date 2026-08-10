@@ -54,6 +54,17 @@ let flip = RandomHorizontalFlip.create 0.5
 let flip = RandomHorizontalFlip.defaultFlip
 ```
 
+### RandomVerticalFlip
+
+Flip the image vertically with a given probability:
+
+```fsharp
+let flip = RandomVerticalFlip.create 0.5
+
+// Or use the default (p = 0.5):
+let flip = RandomVerticalFlip.defaultFlip
+```
+
 ### RandomCrop
 
 Randomly crop the image to the specified size:
@@ -63,6 +74,45 @@ let crop = RandomCrop.create 224 224
 ```
 
 Returns `Error` if the input is smaller than the crop size.
+
+### CenterCrop
+
+Deterministically crop the center region of the image:
+
+```fsharp
+let crop = CenterCrop.create 224 224
+```
+
+Returns `Error` if the input is smaller than the crop size.
+
+### ToGrayscale
+
+Convert an RGB image to grayscale using ITU-R BT.601 luminance weights ($0.2989 R + 0.587 G + 0.114 B$).
+Output can be single-channel or three identical channels:
+
+```fsharp
+// Single channel output [1, H, W]:
+let gray = ToGrayscale.single
+
+// Three identical channels [3, H, W] (compatible with RGB pipelines):
+let gray = ToGrayscale.triple
+```
+
+Input must have exactly 3 channels.
+
+### ConvertImageDType
+
+Convert image tensor dtype with automatic value scaling between integer `[0, 255]` and float `[0.0, 1.0]` ranges:
+
+```fsharp
+// uint8 [0, 255] → float32 [0.0, 1.0]:
+let toFloat = ConvertImageDType.create F32
+
+// float32 [0.0, 1.0] → uint8 [0, 255]:
+let toInt = ConvertImageDType.create U8
+```
+
+Scaling is applied automatically when converting between float and integer dtypes.
 
 ## Compose
 
@@ -91,11 +141,13 @@ let trainTransforms = [
     Resize.create 256 256
     RandomCrop.create 224 224
     RandomHorizontalFlip.defaultFlip
+    RandomVerticalFlip.defaultFlip
     Normalize.imageNet
 ]
 
 let evalTransforms = [
-    Resize.create 224 224
+    Resize.create 256 256
+    CenterCrop.create 224 224
     Normalize.imageNet
 ]
 ```
