@@ -131,3 +131,120 @@ type RandomCrop = {
 
 module RandomCrop =
     let create (height: int) (width: int) : ITransform = { Height = height; Width = width }
+
+/// Crop the center region of the image.
+/// Input: $[C, H, W]$ or $[B, C, H, W]$.
+type CenterCrop = {
+    Height: int
+    Width: int
+} with
+
+    interface ITransform with
+        member this.apply x =
+            let rank = x.Rank
+            let hDim = rank - 2
+            let wDim = rank - 1
+            let h = x.Shape[hDim]
+            let w = x.Shape[wDim]
+
+            if h < this.Height || w < this.Width then
+                Error(Msg $"CenterCrop: input {h}x{w} is smaller than crop {this.Height}x{this.Width}")
+            else
+                let top = (h - this.Height) / 2
+                let left = (w - this.Width) / 2
+
+                result {
+                    let! cropped = x.narrow (hDim, int64 top, int64 this.Height)
+                    return! cropped.narrow (wDim, int64 left, int64 this.Width)
+                }
+
+module CenterCrop =
+    let create (height: int) (width: int) : ITransform = { Height = height; Width = width }
+
+/// Randomly flip the image vertically with probability p.
+/// Input: $[C, H, W]$ or $[B, C, H, W]$.
+type RandomVerticalFlip = {
+    P: float
+} with
+
+    interface ITransform with
+        member this.apply x =
+            let hDim = x.Rank - 2
+
+            if System.Random.Shared.NextDouble() < this.P then
+                x.flip [ hDim ]
+            else
+                Ok x
+
+module RandomVerticalFlip =
+    let create (p: float) : ITransform = { P = p }
+    let defaultFlip: ITransform = { P = 0.5 }
+
+/// Convert an RGB image to grayscale using ITU-R BT.601 weights.
+/// Input: $[3, H, W]$ or $[B, 3, H, W]$.
+type ToGrayscale = {
+    NumOutputChannels: int
+} with
+
+    interface ITransform with
+        member this.apply x =
+            let rank = x.Rank
+            let cDim = if rank = 4 then 1 else 0
+            let channels = x.Shape[cDim]
+
+            if channels <> 3 then
+                Error(Msg $"ToGrayscale: expected 3 channels, got {channels}")
+            else
+                result {
+                    let! r = x.narrow (cDim, 0L, 1L)
+                    let! g = x.narrow (cDim, 1L, 1L)
+                    let! b = x.narrow (cDim, 2L, 1L)
+
+                    let gray = 0.2989 * r + 0.587 * g + 0.114 * b
+
+                    if this.NumOutputChannels = 1 then
+                        return gray
+                    else
+                        return! Tensor.cat ([ gray; gray; gray ], cDim)
+                }
+
+module ToGrayscale =
+    let create (numOutputChannels: int) : ITransform = {
+        NumOutputChannels = numOutputChannels
+    }
+
+    let single: ITransform = { NumOutputChannels = 1 }
+    let triple: ITransform = { NumOutputChannels = 3 }
+
+/// Convert image tensor dtype, scaling between [0, 255] int and [0.0, 1.0] float ranges.
+/// Input: any image tensor.
+type ConvertImageDType = {
+    TargetDType: DType
+} with
+
+    interface ITransform with
+        member this.apply x =
+            let isFloatDType dt =
+                match dt with
+                | F16
+                | BF16
+                | F32
+                | F64 -> true
+                | _ -> false
+
+            let srcFloat = isFloatDType x.DType
+            let dstFloat = isFloatDType this.TargetDType
+
+            result {
+                if srcFloat && not dstFloat then
+                    let scaled = x * 255.0
+                    return! scaled.toDType this.TargetDType
+                elif (not srcFloat) && dstFloat then
+                    let! converted = x.toDType this.TargetDType
+                    return converted / 255.0
+                else
+                    return! x.toDType this.TargetDType
+            }
+
+module ConvertImageDType =
+    let create (dtype: DType) : ITransform = { TargetDType = dtype }
