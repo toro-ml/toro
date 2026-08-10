@@ -41,7 +41,8 @@ type CnnModel = {
 } with
 
     member this.forward(train: bool) : Tensor -> Result<Tensor, ToroError> =
-        this.Features.forward train >=> this.Classifier.forward train
+        this.Features.forward train
+        >=> this.Classifier.forward train
 
 let createModel () =
     let pad1 = {

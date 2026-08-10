@@ -7,7 +7,9 @@ open TestHelper
 let double x : Result<int, ToroError> = Ok(x * 2)
 let addOne x : Result<int, ToroError> = Ok(x + 1)
 let toString x : Result<string, ToroError> = Ok(string x)
-let failIfNeg x : Result<int, ToroError> = if x < 0 then Error(Msg "negative") else Ok x
+
+let failIfNeg x : Result<int, ToroError> =
+    if x < 0 then Error(Msg "negative") else Ok x
 
 [<Fact>]
 let ``chain two functions`` () =
@@ -22,6 +24,7 @@ let ``chain three functions`` () =
 [<Fact>]
 let ``short-circuits on error`` () =
     let f = failIfNeg >=> double >=> addOne
+
     match f -1 with
     | Error(Msg "negative") -> ()
     | other -> Assert.Fail $"Expected Error(Msg \"negative\"), got %A{other}"
@@ -29,6 +32,7 @@ let ``short-circuits on error`` () =
 [<Fact>]
 let ``error in middle stops chain`` () =
     let f = double >=> (fun x -> failIfNeg (x - 100)) >=> addOne
+
     match f 3 with
     | Error(Msg "negative") -> ()
     | other -> Assert.Fail $"Expected Error(Msg \"negative\"), got %A{other}"

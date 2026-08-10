@@ -177,9 +177,7 @@ let ``indexSelect selects rows`` () =
 
 [<Fact>]
 let ``clamp constrains values`` () =
-    let t =
-        Tensor.ofArray ([| -5.0f; 0.0f; 5.0f |], Cpu)
-        |> unwrap
+    let t = Tensor.ofArray ([| -5.0f; 0.0f; 5.0f |], Cpu) |> unwrap
 
     let c = t.clamp (-1.0, 1.0) |> unwrap
     scalarF32 c |> should equal 0.0f
@@ -249,9 +247,7 @@ let ``toDType converts type`` () =
 
 [<Fact>]
 let ``ofArray creates 1D tensor`` () =
-    let t =
-        Tensor.ofArray ([| 1.0f; 2.0f; 3.0f |], Cpu)
-        |> unwrap
+    let t = Tensor.ofArray ([| 1.0f; 2.0f; 3.0f |], Cpu) |> unwrap
 
     t.Shape |> should equal [ 3 ]
     scalarF32 t |> should equal 6.0f
@@ -352,9 +348,7 @@ let ``use! disposes tensor after scope`` () =
 
 [<Fact>]
 let ``oneHot encodes integer tensor`` () =
-    let t =
-        Tensor.ofArray ([| 0.0f; 1.0f; 2.0f |], Cpu)
-        |> unwrap
+    let t = Tensor.ofArray ([| 0.0f; 1.0f; 2.0f |], Cpu) |> unwrap
 
     let t = t.toDType I64 |> unwrap
     let oh = t.oneHot 3 |> unwrap
@@ -397,9 +391,7 @@ let ``leakyRelu applies negative slope`` () =
 
 [<Fact>]
 let ``elu applies exponential linear unit`` () =
-    let t =
-        Tensor.ofArray ([| -1.0f; 0.0f; 1.0f |], Cpu)
-        |> unwrap
+    let t = Tensor.ofArray ([| -1.0f; 0.0f; 1.0f |], Cpu) |> unwrap
 
     let y = t.elu 1.0 |> unwrap
     y.Shape |> should equal [ 3 ]
@@ -507,13 +499,9 @@ let ``argmax returns index of maximum along dim`` () =
 
 [<Fact>]
 let ``eq returns bool tensor`` () =
-    let a =
-        Tensor.ofArray ([| 1.0f; 2.0f; 3.0f |], Cpu)
-        |> unwrap
+    let a = Tensor.ofArray ([| 1.0f; 2.0f; 3.0f |], Cpu) |> unwrap
 
-    let b =
-        Tensor.ofArray ([| 1.0f; 0.0f; 3.0f |], Cpu)
-        |> unwrap
+    let b = Tensor.ofArray ([| 1.0f; 0.0f; 3.0f |], Cpu) |> unwrap
 
     let eq = a.eq b
     eq.Shape |> should equal [ 3 ]

@@ -19,9 +19,12 @@ module LrSchedule =
             etaMin
             + 0.5 * (baseLr - etaMin) * (1.0 + cos (System.Math.PI * t))
         | LinearWarmup warmupSteps ->
-            if step = 0 then baseLr
-            elif step <= warmupSteps then baseLr * float step / float warmupSteps
-            else baseLr
+            if step = 0 then
+                baseLr
+            elif step <= warmupSteps then
+                baseLr * float step / float warmupSteps
+            else
+                baseLr
 
 /// Scheduler that pairs a schedule with mutable step counter and LR setter.
 type Scheduler = {
