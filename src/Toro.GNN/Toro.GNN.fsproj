@@ -8,6 +8,7 @@
     <Authors>ryushiaok</Authors>
     <Description>Graph Neural Network layers for Toro</Description>
     <PackageTags>fsharp;dotnet;ml;torchsharp;gnn;graph-neural-network</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/toro-ml/toro</RepositoryUrl>
     <RepositoryBranch>main</RepositoryBranch>
@@ -33,6 +34,10 @@
   <ItemGroup>
     <ProjectReference Include="../Toro/Toro.fsproj" />
     <ProjectReference Include="../Toro.NN/Toro.NN.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="/" />
   </ItemGroup>
 
 </Project>

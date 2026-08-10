@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - "v*.*.*"
 
 permissions:
   contents: read
@@ -17,7 +17,7 @@ jobs:
 
       - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: '10.0.x'
+          dotnet-version: "10.0.x"
 
       - name: Restore tools
         run: dotnet tool restore
@@ -32,7 +32,7 @@ jobs:
 
       - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: '10.0.x'
+          dotnet-version: "10.0.x"
 
       - name: Restore
         run: dotnet restore
@@ -53,7 +53,7 @@ jobs:
 
       - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: '10.0.x'
+          dotnet-version: "10.0.x"
 
       - name: Compute package version
         id: version
@@ -72,6 +72,15 @@ jobs:
       - name: Pack Toro.NN
         run: dotnet pack src/Toro.NN/Toro.NN.fsproj --configuration Release --no-build --output artifacts /p:Version=${{ steps.version.outputs.version }}
 
+      - name: Pack Toro.GNN
+        run: dotnet pack src/Toro.GNN/Toro.GNN.fsproj --configuration Release --no-build --output artifacts /p:Version=${{ steps.version.outputs.version }}
+
+      - name: Pack Toro.Text
+        run: dotnet pack src/Toro.Text/Toro.Text.fsproj --configuration Release --no-build --output artifacts /p:Version=${{ steps.version.outputs.version }}
+
+      - name: Pack Toro.Vision
+        run: dotnet pack src/Toro.Vision/Toro.Vision.fsproj --configuration Release --no-build --output artifacts /p:Version=${{ steps.version.outputs.version }}
+
       - name: NuGet login
         uses: NuGet/login@v1
         id: login
@@ -86,11 +95,34 @@ jobs:
           --source https://api.nuget.org/v3/index.json
           --skip-duplicate
 
-      # No --skip-duplicate: surface the real NuGet 409 body for Toro.NN
-      # (prefix reservation vs id/version conflict).
       - name: NuGet push Toro.NN
         run: >
           dotnet nuget push
           artifacts/Toro.NN.${{ steps.version.outputs.version }}.nupkg
           --api-key ${{ steps.login.outputs.NUGET_API_KEY }}
           --source https://api.nuget.org/v3/index.json
+          --skip-duplicate
+
+      - name: NuGet push Toro.GNN
+        run: >
+          dotnet nuget push
+          artifacts/Toro.GNN.${{ steps.version.outputs.version }}.nupkg
+          --api-key ${{ steps.login.outputs.NUGET_API_KEY }}
+          --source https://api.nuget.org/v3/index.json
+          --skip-duplicate
+
+      - name: NuGet push Toro.Text
+        run: >
+          dotnet nuget push
+          artifacts/Toro.Text.${{ steps.version.outputs.version }}.nupkg
+          --api-key ${{ steps.login.outputs.NUGET_API_KEY }}
+          --source https://api.nuget.org/v3/index.json
+          --skip-duplicate
+
+      - name: NuGet push Toro.Vision
+        run: >
+          dotnet nuget push
+          artifacts/Toro.Vision.${{ steps.version.outputs.version }}.nupkg
+          --api-key ${{ steps.login.outputs.NUGET_API_KEY }}
+          --source https://api.nuget.org/v3/index.json
+          --skip-duplicate

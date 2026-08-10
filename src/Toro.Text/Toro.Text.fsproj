@@ -8,6 +8,7 @@
     <Authors>ryushiaok</Authors>
     <Description>Text tokenization bridge between Microsoft.ML.Tokenizers and Toro</Description>
     <PackageTags>fsharp;dotnet;ml;torchsharp;text;nlp;tokenizer</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/toro-ml/toro</RepositoryUrl>
     <RepositoryBranch>main</RepositoryBranch>
@@ -28,6 +29,10 @@
 
   <ItemGroup>
     <ProjectReference Include="../Toro/Toro.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="/" />
   </ItemGroup>
 
 </Project>

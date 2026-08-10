@@ -8,6 +8,7 @@
     <Authors>ryushiaok</Authors>
     <Description>Image transforms for Toro</Description>
     <PackageTags>fsharp;dotnet;ml;torchsharp;vision;transforms</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/toro-ml/toro</RepositoryUrl>
     <RepositoryBranch>main</RepositoryBranch>
@@ -28,6 +29,10 @@
     <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.*" />
     <PackageReference Include="TorchVision" Version="0.107.0" />
     <ProjectReference Include="../Toro/Toro.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="/" />
   </ItemGroup>
 
 </Project>

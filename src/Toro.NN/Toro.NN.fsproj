@@ -8,6 +8,7 @@
     <Authors>ryushiaok</Authors>
     <Description>Neural network building blocks for Toro</Description>
     <PackageTags>fsharp;dotnet;ml;torchsharp;neural-network</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/toro-ml/toro</RepositoryUrl>
     <RepositoryBranch>main</RepositoryBranch>
@@ -45,6 +46,10 @@
 
   <ItemGroup>
     <ProjectReference Include="../Toro/Toro.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="/" />
   </ItemGroup>
 
 </Project>
