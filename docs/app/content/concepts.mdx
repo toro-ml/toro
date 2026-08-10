@@ -1,58 +1,16 @@
 ---
-title: Design
-description: DType, Device, ToroError, the result CE, operator return types, and gradient control.
+title: Core Concepts
+description: Error model, the result CE, operator return types, records as models, gradient control, DType, and Device.
 ---
 
-This page explains the design decisions that apply across the Toro library.
-
-## DType
-
-`DType` is a discriminated union that represents data types for tensor elements:
-
-| Case   | Description                     |
-| ------ | ------------------------------- |
-| `F16`  | 16-bit floating point           |
-| `BF16` | BFloat16                        |
-| `F32`  | 32-bit floating point (default) |
-| `F64`  | 64-bit floating point           |
-| `I32`  | 32-bit integer                  |
-| `I64`  | 64-bit integer                  |
-| `U8`   | Unsigned 8-bit integer          |
-| `Bool` | Boolean                         |
-
-## Device
-
-`Device` is a discriminated union that specifies where tensors are stored:
-
-| Case     | Description             |
-| -------- | ----------------------- |
-| `Cpu`    | CPU memory              |
-| `Cuda n` | CUDA GPU with index `n` |
-
-Move a tensor to a different device with `toDevice`:
-
-```fsharp
-result {
-    let! t = Tensor.randn ([ 2; 3 ], F32, Cpu)
-    let! tGpu = t.toDevice (Cuda 0)
-}
-```
+Toro's API is shaped by one central decision: operations that can fail return `Result<'T, ToroError>` instead of throwing exceptions.
+This page covers the design choices that follow from that decision.
 
 ## Error Model
 
 Most Toro operations return `Result<'T, ToroError>`.
-`ToroError` is a discriminated union with these cases:
-
-| Case                                | Description                    |
-| ----------------------------------- | ------------------------------ |
-| `ShapeMismatch(msg, expected, got)` | Shape mismatch between tensors |
-| `DTypeMismatch msg`                 | Incompatible data types        |
-| `DeviceError msg`                   | Device-related error           |
-| `TensorNotFound path`               | File not found during load     |
-| `UnsupportedDType s`                | Data type is not supported     |
-| `UnsupportedDevice s`               | Device is not supported        |
-| `Msg s`                             | General error message          |
-| `Wrapped exn`                       | Wrapped .NET exception         |
+Shape mismatches, dtype incompatibilities, and device errors surface as values rather than exceptions, so the compiler helps you handle them.
+See the [ToroError API reference](/api-error) for the full list of error cases.
 
 ## The `result { }` Computation Expression
 
@@ -63,11 +21,11 @@ Use `let` for values that are not wrapped in `Result`.
 ```fsharp
 let r = result {
     let! x = Tensor.randn ([ 4; 2 ], F32, Cpu)    // Result -> let!
-    let! w = Tensor.randn ([ 2; 1 ], F32, Cpu)     // Result -> let!
-    let! pred = x.matmul w                          // Result -> let!
-    let shifted = pred + 1.0                        // Tensor -> let
-    let! loss = shifted.meanAll ()                   // Result -> let!
-    do! loss.backward ()                             // Result<unit> -> do!
+    let! w = Tensor.randn ([ 2; 1 ], F32, Cpu)    // Result -> let!
+    let! pred = x.matmul w                        // Result -> let!
+    let shifted = pred + 1.0                      // Tensor -> let
+    let! loss = shifted.meanAll ()                // Result -> let!
+    do! loss.backward ()                          // Result<unit> -> do!
 }
 
 match r with
@@ -97,48 +55,45 @@ This split keeps common arithmetic concise while preserving safety for operation
 
 ## Result-Based Operators
 
-When you chain multiple `Result`-returning operations, use the `~` operators.
-They accept both `Tensor` and `Result<Tensor, ToroError>` as operands:
-
-| Operator | Description              |
-| -------- | ------------------------ |
-| `+~`     | Add (tensor-tensor)      |
-| `-~`     | Subtract (tensor-tensor) |
-| `*~`     | Multiply (tensor-tensor) |
-| `/~`     | Divide (tensor-tensor)   |
-| `+~.`    | Add scalar               |
-| `-~.`    | Subtract scalar          |
-| `*~.`    | Multiply by scalar       |
-| `/~.`    | Divide by scalar         |
+The `~` operators (`+~`, `-~`, `*~`, `/~` and their scalar variants `+~.`, `-~.`, `*~.`, `/~.`) accept both `Tensor` and `Result<Tensor, ToroError>` as operands.
+`TensorR` provides pipe-friendly equivalents for the same purpose.
 
 ```fsharp
 result {
     let! a = Tensor.randn ([ 2; 3 ], F32, Cpu)
     let! b = Tensor.randn ([ 3; 2 ], F32, Cpu)
-    let! c = a.matmul b                 // Result<Tensor>
-    let! d = c +~ a.sumAll ()           // Result + Result
-    let! e = d *~. 0.5                  // Result * scalar
+    let! c = a.matmul b +~ a.sumAll ()    // ~ operators
+    let! loss = inp.sub target |> TensorR.sqr |> TensorR.meanAll  // TensorR pipes
 }
 ```
 
-### `TensorR` Module
+See the [TensorOp API reference](/api-tensorop) for the full operator and function list.
 
-`TensorR` provides pipe-friendly functions that accept both `Tensor` and `Result<Tensor, ToroError>`:
+## Records as Models
 
-| Function            | Description              |
-| ------------------- | ------------------------ |
-| `TensorR.scale s t` | Multiply by scalar `s`   |
-| `TensorR.shift s t` | Add scalar `s`           |
-| `TensorR.sqr t`     | Element-wise square      |
-| `TensorR.sqrt t`    | Element-wise square root |
-| `TensorR.neg t`     | Negate                   |
-| `TensorR.exp t`     | Element-wise exponential |
-| `TensorR.log t`     | Element-wise natural log |
-| `TensorR.meanAll t` | Mean of all elements     |
+Toro models are plain F# records. There is no base class to inherit.
+Each record defines a `forward` member that composes its layers with the `>=>` operator (Kleisli composition):
 
 ```fsharp
-let! loss = inp.sub target |> TensorR.sqr |> TensorR.meanAll
+type Features = {
+    Conv1: Conv2d; Bn1: BatchNorm; Pool: MaxPool2d
+} with
+    member this.forward(train) =
+        this.Conv1.forward >=> this.Bn1.forwardT train >=> _.relu() >=> this.Pool.forward
+
+type MyModel = { Features: Features; Fc: Linear } with
+    member this.forward(train) =
+        this.Features.forward train >=> _.flatten(1, -1) >=> this.Fc.forward
 ```
+
+Records nest naturally. `Model.trainableVars` walks the entire structure by reflection and collects every `Tensor` with `RequiresGrad = true`:
+
+```fsharp
+let vars = Model.trainableVars myModel
+let! opt = AdamW.createWithLr 0.001 vars
+```
+
+See [Neural Networks](/nn) for the full model composition guide.
 
 ## Disabling Gradients
 
@@ -160,3 +115,10 @@ Toro.noGrad (fun () ->
 
 `Toro.noGrad` wraps a function call in a `torch.no_grad()` scope.
 This reduces memory use and speeds up inference.
+
+## DType and Device
+
+Every tensor carries a `DType` (element type) and a `Device` (storage location).
+`DType` is a discriminated union with cases such as `F32` (default), `F64`, `I64`, and `Bool`.
+`Device` is either `Cpu` or `Cuda n`.
+See the [DType](/api-dtype) and [Device](/api-device) API references for the full case lists.

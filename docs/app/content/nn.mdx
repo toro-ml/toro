@@ -77,19 +77,15 @@ result {
 
 ### Pooling
 
-Pooling layers reduce spatial dimensions. All implement `IModule`:
-
-| Layer       | Factory                              | Description        |
-| ----------- | ------------------------------------ | ------------------ |
-| `MaxPool1d` | `MaxPool1d.createDefault kernelSize` | 1D max pooling     |
-| `MaxPool2d` | `MaxPool2d.createDefault kernelSize` | 2D max pooling     |
-| `AvgPool2d` | `AvgPool2d.createDefault kernelSize` | 2D average pooling |
-
-Use `create` for full control:
+Pooling layers (`MaxPool1d`, `MaxPool2d`, `AvgPool2d`) reduce spatial dimensions. All implement `IModule`.
+Use `createDefault` with a kernel size, or `create` for full control over stride and padding:
 
 ```fsharp
+let pool = MaxPool2d.createDefault 2
 let pool = MaxPool2d.create 3 2 1  // kernelSize=3, stride=2, padding=1
 ```
+
+See the [Pooling API reference](/api-pooling) for all variants.
 
 ### Embedding
 
@@ -163,24 +159,14 @@ let drop = Dropout.create 0.5
 
 ### Activation
 
-Activation functions implement `IModule`:
-
-| Case              | Description  |
-| ----------------- | ------------ |
-| `Relu`            | ReLU         |
-| `Gelu`            | GELU         |
-| `Silu`            | SiLU (Swish) |
-| `Tanh`            | Tanh         |
-| `Sigmoid`         | Sigmoid      |
-| `LeakyRelu slope` | Leaky ReLU   |
-| `Elu alpha`       | ELU          |
-| `Mish`            | Mish         |
-
+`Activation` is a discriminated union (`Relu`, `Gelu`, `Silu`, `Tanh`, `Sigmoid`, `LeakyRelu`, `Elu`, `Mish`) that implements `IModule`.
 Use them in a sequential model or call `forward` directly:
 
 ```fsharp
 let! out = Relu.forward input
 ```
+
+See the [Activation API reference](/api-activation) for all cases.
 
 ### Func and Identity
 
@@ -322,15 +308,8 @@ let forward train =
 
 ## Weight Initialization
 
-The `Init` type controls how layer weights are initialized:
-
-| Case                  | Description                              |
-| --------------------- | ---------------------------------------- |
-| `Const v`             | Fill with constant value `v`             |
-| `Randn (mean, stdev)` | Normal distribution                      |
-| `Uniform (lo, up)`    | Uniform distribution                     |
-| `KaimingNormal`       | Kaiming normal (default for most layers) |
-
+The `Init` discriminated union controls how layer weights are initialized.
+Most layers default to `KaimingNormal`. Other cases include `Const`, `Randn`, and `Uniform`.
 Use `Init.toTensor` to create a tensor, or `Init.toParam` to create a tensor with `requiresGrad`:
 
 ```fsharp
@@ -338,6 +317,8 @@ result {
     let! w = Init.toParam [ 256; 128 ] F32 Cpu KaimingNormal
 }
 ```
+
+See the [Init API reference](/api-init) for all cases.
 
 ## Parameter Collection
 

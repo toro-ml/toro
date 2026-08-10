@@ -77,16 +77,8 @@ let flipped = SkiaTransform.flipH cropped
 let! tensor = Image.toTensor flipped Cpu
 ```
 
-### Available Functions
-
-| Function | Signature | Description |
-|----------|-----------|-------------|
-| `resize` | `int -> int -> SKBitmap -> SKBitmap` | Resize with Mitchell cubic resampling |
-| `centerCrop` | `int -> int -> SKBitmap -> Result<SKBitmap, ToroError>` | Center crop |
-| `randomCrop` | `int -> int -> SKBitmap -> Result<SKBitmap, ToroError>` | Random crop |
-| `flipH` | `SKBitmap -> SKBitmap` | Horizontal flip |
-| `flipV` | `SKBitmap -> SKBitmap` | Vertical flip |
-| `pipeline` | `(SKBitmap -> SKBitmap) list -> SKBitmap -> Device -> Result<Tensor, ToroError>` | Compose transforms and convert to tensor |
+Functions include `resize`, `centerCrop`, `randomCrop`, `flipH`, `flipV`, and `pipeline`.
+See the [SkiaTransform API reference](/api-skiatransform) for signatures.
 
 ### Pipeline
 
@@ -103,12 +95,8 @@ let! tensor =
 
 ### When to Use SkiaTransform vs. ITransform
 
-| | SkiaTransform | ITransform (Tensor transforms) |
-|---|---|---|
-| Operates on | `SKBitmap` (CPU pixels) | `Tensor` (CPU or GPU) |
-| Best for | Heavy spatial transforms before tensorization | Augmentations in the training loop |
-| GPU support | No | Yes |
-
+`SkiaTransform` operates on `SKBitmap` (CPU pixels) and is best for heavy spatial transforms before tensorization.
+`ITransform` operates on `Tensor` (CPU or GPU) and is better for augmentations in the training loop.
 Both approaches can be combined: apply bitmap transforms first, convert to tensor, then apply tensor transforms.
 
 ## ITransform (Tensor Transforms)

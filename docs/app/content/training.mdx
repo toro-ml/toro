@@ -4,21 +4,12 @@ description: Loss functions, SGD and AdamW optimizers, training and evaluation l
 ---
 
 This page covers loss functions, optimizers, and the training loop.
-For the `result { }` CE and operator return type rules, see [Design](/concepts).
+For the `result { }` CE and operator return type rules, see [Core Concepts](/concepts).
 
 ## Loss Functions
 
-Toro.NN provides these loss functions. Each takes two tensors and returns `Result<Tensor, ToroError>`:
-
-| Function                                      | Description                                  |
-| --------------------------------------------- | -------------------------------------------- |
-| `Loss.mse inp target`                         | Mean squared error                           |
-| `Loss.nll inp target`                         | Negative log-likelihood                      |
-| `Loss.crossEntropy inp target`                | Cross-entropy (combines log-softmax and NLL) |
-| `Loss.binaryCrossEntropyWithLogit inp target` | Binary cross-entropy with logits             |
-| `Loss.l1 inp target`                          | Mean absolute error (L1)                     |
-| `Loss.smoothL1 beta inp target`               | Smooth L1 / Huber loss                       |
-| `Loss.klDiv inp target`                       | KL divergence (log-probs input, probs target)|
+Each loss function takes two tensors and returns `Result<Tensor, ToroError>`.
+Common choices include `Loss.crossEntropy` for classification and `Loss.mse` for regression:
 
 ```fsharp
 result {
@@ -26,6 +17,8 @@ result {
     printfn "Loss: %.4f" (loss.item ())
 }
 ```
+
+See the [Loss API reference](/api-loss) for the full list (`mse`, `nll`, `crossEntropy`, `binaryCrossEntropyWithLogit`, `l1`, `smoothL1`, `klDiv`).
 
 ## Optimizers
 
@@ -116,22 +109,9 @@ Toro.noGrad (fun () ->
 
 ## Learning Rate Scheduling
 
-Toro.NN provides a `LrSchedule` discriminated union and a `Scheduler` record that adjust the learning rate automatically.
-
-`LrSchedule.lrAt` is a pure function that computes the learning rate for any step:
-
-```fsharp
-let lr = LrSchedule.lrAt baseLr (Exponential 0.9) step
-```
-
-| Schedule                          | Description                                       |
-| --------------------------------- | ------------------------------------------------- |
-| `StepDecay(stepSize, gamma)`      | Multiply LR by gamma every stepSize steps         |
-| `Exponential gamma`               | Multiply LR by gamma each step                    |
-| `CosineAnnealing(tMax, etaMin)`   | Cosine decay to etaMin over tMax steps, then reset|
-| `LinearWarmup warmupSteps`        | Linear warmup from 0 to base LR, then hold        |
-
-Create a `Scheduler` by pairing a schedule with a `setLr` callback:
+`LrSchedule` is a discriminated union with cases `StepDecay`, `Exponential`, `CosineAnnealing`, and `LinearWarmup`.
+Create a `Scheduler` by pairing a schedule with a `setLr` callback.
+See the [Scheduler API reference](/api-scheduler) for all schedule types.
 
 ```fsharp
 let sched = Scheduler.create (CosineAnnealing(100, 0.0)) opt.setLearningRate (opt.learningRate ())
@@ -179,15 +159,8 @@ do! opt.step ()
 
 ## Metrics
 
-Toro.NN provides classification metrics in the `Metrics` module:
-
-| Function                                    | Description                                           |
-| ------------------------------------------- | ----------------------------------------------------- |
-| `Metrics.accuracy pred target`              | Fraction of matching elements                         |
-| `Metrics.accuracyFromLogits logits target`  | Argmax of logits, then compare to target              |
-| `Metrics.precision numClasses pred target`  | Per-class precision (TP / predicted positives)        |
-| `Metrics.recall numClasses pred target`     | Per-class recall (TP / actual positives)              |
-| `Metrics.f1 numClasses pred target`         | Per-class F1 score                                    |
+The `Metrics` module provides classification metrics (`accuracy`, `accuracyFromLogits`, `precision`, `recall`, `f1`).
+See the [Metrics API reference](/api-metrics) for details.
 
 ```fsharp
 Toro.noGrad (fun () ->
@@ -243,67 +216,6 @@ let! report = Model.loadInto model "weights/best.safetensors" Strict
 Only the tensors required by the model are loaded into memory.
 Use `Strict` to error on missing keys, unexpected keys, or shape/dtype mismatches, or `Lenient` to allow partial loading.
 
-## Pre-trained Models (Toro.Hub)
+## Pre-trained Models
 
-The `Toro.Hub` package provides SafeTensors file support and a Hugging Face Hub client
-for loading pre-trained model weights.
-
-### SafeTensors
-
-Read and write the [SafeTensors](https://huggingface.co/docs/safetensors/) binary format:
-
-```fsharp
-open Toro
-
-// Save tensors to a .safetensors file
-let tensors = Map [ "weight", weightTensor; "bias", biasTensor ]
-do! SafeTensors.save tensors "model.safetensors"
-
-// Load tensors from a .safetensors file
-let! loaded = SafeTensors.load "model.safetensors"
-```
-
-`SafeTensors.load` returns `Result<Map<string, Tensor>, ToroError>`.
-The map keys are the tensor names stored in the file.
-
-### Hugging Face Hub
-
-Download model files from the Hugging Face Hub:
-
-```fsharp
-open Toro.Hub
-
-// Download a single file (cached to ~/.cache/toro/hub/)
-let! path = Hub.download "openai-community/gpt2" "model.safetensors" |> Async.RunSynchronously
-
-// Download and load in one step
-let! weights =
-    Hub.loadSafeTensors "openai-community/gpt2" "model.safetensors"
-    |> Async.RunSynchronously
-```
-
-For gated models, set the `HF_TOKEN` environment variable.
-Downloaded files are cached locally and reused on subsequent calls.
-
-### Loading weights into a model
-
-Use `Model.loadFromDict` to copy tensors from a dictionary into a model's parameters:
-
-```fsharp
-let! weights = SafeTensors.load "model.safetensors"
-let! report = Model.loadFromDict model weights None Strict
-```
-
-When Hugging Face parameter names differ from Toro parameter names,
-pass a name mapping:
-
-```fsharp
-let nameMap = Map [
-    "transformer.h.0.attn.c_attn.weight", "layers.0.attention.queryWeight"
-]
-let! report = Model.loadFromDict model weights (Some nameMap) Lenient
-printfn "Loaded %d params, %d missing" report.Loaded.Length report.Missing.Length
-```
-
-`loadFromDict` returns a `LoadReport` listing `Loaded`, `Missing`, `Unexpected` keys, and any `ShapeMismatches` or `DTypeMismatches`.
-Use `Strict` to error on any mismatch, or `Lenient` to allow partial loading.
+See [Hub](/hub) for downloading and loading pre-trained weights from Hugging Face Hub.

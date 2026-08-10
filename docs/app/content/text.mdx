@@ -23,16 +23,10 @@ let text = tokenizer.decode ids                 // "hello world"
 let count = tokenizer.countTokens "hello world" // int
 ```
 
-### Config Records
+### Tokenizer Types
 
-Each tokenizer type has a dedicated config record. Use `create` with required parameters, then override optional fields with record update syntax:
-
-| Factory | Config | Required |
-| --- | --- | --- |
-| `Tokenizer.fromTiktoken` | `TiktokenConfig` | `model` |
-| `Tokenizer.fromBpe` | `BpeConfig` | `vocabPath`, `mergesPath` |
-| `Tokenizer.fromWordPiece` | `WordPieceConfig` | `vocabPath` |
-| `Tokenizer.fromSentencePiece` | `SentencePieceConfig` | `modelPath` |
+Each tokenizer type has a dedicated config record. Use `create` with required parameters, then override optional fields with record update syntax.
+See the [Tokenizer API reference](/api-tokenizer) for config details.
 
 #### Tiktoken (OpenAI)
 

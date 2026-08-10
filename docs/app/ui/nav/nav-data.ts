@@ -74,14 +74,14 @@ export const navSections: readonly NavSection[] = [
     title: null,
     items: [
       { to: "/getting-started", label: "Getting Started" },
-      { to: "/concepts", label: "Design" },
+      { to: "/concepts", label: "Core Concepts" },
       { to: "/tensor", label: "Tensor" },
       { to: "/nn", label: "Neural Networks" },
+      { to: "/training", label: "Training" },
       { to: "/gnn", label: "Graph Neural Networks" },
       { to: "/vision", label: "Vision" },
       { to: "/text", label: "Text Processing" },
       { to: "/hub", label: "Hub" },
-      { to: "/training", label: "Training" },
     ],
   },
   {

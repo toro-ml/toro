@@ -1,7 +1,24 @@
 ---
 title: Toro
-description: A lightweight ML framework for F# powered by TorchSharp.
+description: PyTorch semantics, idiomatic F#. Powered by TorchSharp.
 ---
+
+Toro wraps [TorchSharp](https://github.com/dotnet/TorchSharp) with an F#-idiomatic API.
+It keeps PyTorch's tensor semantics while using `Result` and computation expressions to make errors explicit and composable.
+
+- **Result-based safety** -- operations that can fail return `Result<'T, ToroError>`. The `result { }` CE chains them with `let!` and `do!`.
+- **Records as models** -- models are plain F# records. `Model.trainableVars` collects parameters by reflection, so there is no base class to inherit.
+- **Computation expressions for composition** -- `sequential { }` composes layers; `pipeline { }` and the `>=>` operator enable Kleisli composition for heterogeneous signatures.
+- **PyTorch-compatible surface** -- tensor operations, neural network layers, and training utilities mirror PyTorch naming and behavior.
+
+| Package | Purpose |
+| ----------- | -------------------------------------------- |
+| `Toro` | Tensors, DType, Device, SafeTensors I/O |
+| `Toro.NN` | Layers, loss functions, optimizers, metrics |
+| `Toro.GNN` | Graph neural network layers and batching |
+| `Toro.Vision` | Image I/O and transforms (SkiaSharp + Torch) |
+| `Toro.Text` | Tokenization via Microsoft.ML.Tokenizers |
+| `Toro.Hub` | Hugging Face Hub client for pre-trained models |
 
 ## Install
 
@@ -43,29 +60,40 @@ let r = result {
 Every operation that can fail returns `Result<'T, ToroError>`.
 The `result { }` CE chains them with `let!` and `do!`.
 
-## Define a CNN
+## Define a CNN with records
+
+Models are plain F# records. Each part defines a `forward` member using `>=>` (Kleisli composition):
 
 ```fsharp
-let mnist = result {
-    let! conv1 = Conv2d.initDefault 1 32 3 F32 Cpu
-    let! conv2 = Conv2d.initDefault 32 64 3 F32 Cpu
-    let! fc1   = Linear.init (64 * 5 * 5) 128 F32 Cpu
-    let! fc2   = Linear.init 128 10 F32 Cpu
-    let drop   = Dropout.create 0.5
-    let pool   = MaxPool2d.createDefault 2
+type Features = {
+    Conv1: Conv2d; Bn1: BatchNorm; Pool1: MaxPool2d
+    Conv2: Conv2d; Bn2: BatchNorm; Pool2: MaxPool2d
+} with
+    member this.forward(train) =
+        this.Conv1.forward 
+        >=> this.Bn1.forwardT train 
+        >=> _.relu() 
+        >=> this.Pool1.forward
+        >=> this.Conv2.forward
+        >=> this.Bn2.forwardT train 
+        >=> _.relu()
+        >=> this.Pool2.forward
 
-    let forward train =
-        conv1.forward >=> _.relu() >=> pool.forward
-        >=> conv2.forward >=> _.relu() >=> pool.forward
-        >=> _.flatten(1, -1)
-        >=> fc1.forward >=> _.relu() >=> drop.forwardT train >=> fc2.forward
+type Classifier = { Fc1: Linear; Drop: Dropout; Fc2: Linear } with
+    member this.forward(train) =
+        _.flatten(1, -1) 
+        >=> this.Fc1.forward 
+        >=> _.relu()
+        >=> this.Drop.forwardT train 
+        >=> this.Fc2.forward
 
-    return forward
-}
+type CnnModel = { Features: Features; Classifier: Classifier } with
+    member this.forward(train) =
+        this.Features.forward train 
+        >=> this.Classifier.forward train
 ```
 
-`sequential { }` composes `IModule` layers.
-`pipeline { }` and the `>=>` operator enable Kleisli composition with heterogeneous signatures (e.g. Dropout, BatchNorm).
+Nested records compose naturally. `Model.trainableVars` walks the entire structure by reflection.
 
 ## Evaluate
 
@@ -84,15 +112,15 @@ Toro.noGrad (fun () ->
 
 ## Examples
 
-| Example | Description |
-| ------- | ----------- |
-| [LinearRegression](https://github.com/toro-ml/toro/tree/main/examples/LinearRegression) | Gradient descent with raw tensors |
-| [SimpleTraining](https://github.com/toro-ml/toro/tree/main/examples/SimpleTraining) | XOR with `sequential { }` CE |
-| [MnistTraining](https://github.com/toro-ml/toro/tree/main/examples/MnistTraining) | CNN image classification |
-| [MnistCnn](https://github.com/toro-ml/toro/tree/main/examples/MnistCnn) | CNN with BatchNorm, Dropout, Kleisli composition |
-| [MnistAutoencoder](https://github.com/toro-ml/toro/tree/main/examples/MnistAutoencoder) | Autoencoder with image output |
-| [MnistGan](https://github.com/toro-ml/toro/tree/main/examples/MnistGan) | GAN image generation |
-| [CharRnn](https://github.com/toro-ml/toro/tree/main/examples/CharRnn) | Character-level text generation with LSTM |
-| [TextClassifier](https://github.com/toro-ml/toro/tree/main/examples/TextClassifier) | Transformer-based text classification |
-| [SimpleGcn](https://github.com/toro-ml/toro/tree/main/examples/SimpleGcn) | GNN node classification with GCNConv |
-| [HubSentiment](https://github.com/toro-ml/toro/tree/main/examples/HubSentiment) | Load DistilBERT from Hugging Face Hub for sentiment analysis |
+| Example                                                                                 | Description                                                  |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| [LinearRegression](https://github.com/toro-ml/toro/tree/main/examples/LinearRegression) | Gradient descent with raw tensors                            |
+| [SimpleTraining](https://github.com/toro-ml/toro/tree/main/examples/SimpleTraining)     | XOR with `sequential { }` CE                                 |
+| [MnistTraining](https://github.com/toro-ml/toro/tree/main/examples/MnistTraining)       | CNN image classification                                     |
+| [MnistCnn](https://github.com/toro-ml/toro/tree/main/examples/MnistCnn)                 | CNN with BatchNorm, Dropout, Kleisli composition             |
+| [MnistAutoencoder](https://github.com/toro-ml/toro/tree/main/examples/MnistAutoencoder) | Autoencoder with image output                                |
+| [MnistGan](https://github.com/toro-ml/toro/tree/main/examples/MnistGan)                 | GAN image generation                                         |
+| [CharRnn](https://github.com/toro-ml/toro/tree/main/examples/CharRnn)                   | Character-level text generation with LSTM                    |
+| [TextClassifier](https://github.com/toro-ml/toro/tree/main/examples/TextClassifier)     | Transformer-based text classification                        |
+| [SimpleGcn](https://github.com/toro-ml/toro/tree/main/examples/SimpleGcn)               | GNN node classification with GCNConv                         |
+| [HubSentiment](https://github.com/toro-ml/toro/tree/main/examples/HubSentiment)         | Load DistilBERT from Hugging Face Hub for sentiment analysis |
