@@ -1,7 +1,10 @@
 # Toro
 
-[![NuGet](https://img.shields.io/nuget/v/Toro.svg)](https://www.nuget.org/packages/Toro)
-[![NuGet](https://img.shields.io/nuget/v/Toro.NN.svg)](https://www.nuget.org/packages/Toro.NN)
+[![Toro](https://img.shields.io/nuget/v/Toro.svg?label=Toro)](https://www.nuget.org/packages/Toro)
+[![Toro.NN](https://img.shields.io/nuget/v/Toro.NN.svg?label=Toro.NN)](https://www.nuget.org/packages/Toro.NN)
+[![Toro.GNN](https://img.shields.io/nuget/v/Toro.GNN.svg?label=Toro.GNN)](https://www.nuget.org/packages/Toro.GNN)
+[![Toro.Text](https://img.shields.io/nuget/v/Toro.Text.svg?label=Toro.Text)](https://www.nuget.org/packages/Toro.Text)
+[![Toro.Vision](https://img.shields.io/nuget/v/Toro.Vision.svg?label=Toro.Vision)](https://www.nuget.org/packages/Toro.Vision)
 
 PyTorch semantics, idiomatic F#. Powered by  [TorchSharp](https://github.com/dotnet/TorchSharp).
 

@@ -1,6 +1,6 @@
 # Toro.GNN
 
-[![NuGet](https://img.shields.io/nuget/v/Toro.GNN.svg)](https://www.nuget.org/packages/Toro.GNN)
+[![Toro.GNN](https://img.shields.io/nuget/v/Toro.GNN.svg?label=Toro.GNN)](https://www.nuget.org/packages/Toro.GNN)
 
 Graph neural network layers for [Toro](https://www.nuget.org/packages/Toro). Message-passing convolutions, graph data, batching, and pooling.
 

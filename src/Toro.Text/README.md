@@ -1,6 +1,6 @@
 # Toro.Text
 
-[![NuGet](https://img.shields.io/nuget/v/Toro.Text.svg)](https://www.nuget.org/packages/Toro.Text)
+[![Toro.Text](https://img.shields.io/nuget/v/Toro.Text.svg?label=Toro.Text)](https://www.nuget.org/packages/Toro.Text)
 
 Text tokenization bridge between [Microsoft.ML.Tokenizers](https://www.nuget.org/packages/Microsoft.ML.Tokenizers) and [Toro](https://www.nuget.org/packages/Toro) tensors.
 

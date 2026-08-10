@@ -1,6 +1,6 @@
 # Toro.Vision
 
-[![NuGet](https://img.shields.io/nuget/v/Toro.Vision.svg)](https://www.nuget.org/packages/Toro.Vision)
+[![Toro.Vision](https://img.shields.io/nuget/v/Toro.Vision.svg?label=Toro.Vision)](https://www.nuget.org/packages/Toro.Vision)
 
 Image I/O and transforms for [Toro](https://www.nuget.org/packages/Toro). TorchVision-backed loading and saving, SkiaSharp bitmap preprocessing, and composable tensor transforms.
 

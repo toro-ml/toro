@@ -1,6 +1,6 @@
 # Toro.NN
 
-[![NuGet](https://img.shields.io/nuget/v/Toro.NN.svg)](https://www.nuget.org/packages/Toro.NN)
+[![Toro.NN](https://img.shields.io/nuget/v/Toro.NN.svg?label=Toro.NN)](https://www.nuget.org/packages/Toro.NN)
 
 Neural network building blocks for [Toro](https://www.nuget.org/packages/Toro). Layers, composition, optimizers, and training utilities with F# records and `result { }` error handling.
 
