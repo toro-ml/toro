@@ -926,29 +926,31 @@ type ScopedResultBuilder() =
         System.Reflection.BindingFlags.Public
         ||| System.Reflection.BindingFlags.NonPublic
 
-    static let rec keepTensors (v: obj) =
+    static let rec keepTensors (scope: DisposeScope) (v: obj) =
         if isNull v then
             ()
         else
             match v with
-            | :? Tensor as t -> t.Inner.MoveToOuterDisposeScope() |> ignore
+            | :? Tensor as t ->
+                if scope.Contains(t.Inner) then
+                    scope.MoveToOuter(t.Inner) |> ignore
             | :? System.Collections.IEnumerable as xs ->
                 for item in xs do
-                    keepTensors item
+                    keepTensors scope item
             | _ ->
                 let ty = v.GetType()
 
                 if Microsoft.FSharp.Reflection.FSharpType.IsTuple ty then
                     for field in Microsoft.FSharp.Reflection.FSharpValue.GetTupleFields v do
-                        keepTensors field
+                        keepTensors scope field
                 elif Microsoft.FSharp.Reflection.FSharpType.IsRecord(ty, flags) then
                     for field in Microsoft.FSharp.Reflection.FSharpValue.GetRecordFields(v, flags) do
-                        keepTensors field
+                        keepTensors scope field
                 elif Microsoft.FSharp.Reflection.FSharpType.IsUnion(ty, flags) then
                     let _, fields = Microsoft.FSharp.Reflection.FSharpValue.GetUnionFields(v, ty, flags)
 
                     for field in fields do
-                        keepTensors field
+                        keepTensors scope field
 
     member _.Return x = Ok x
     member _.ReturnFrom x = x
@@ -968,11 +970,11 @@ type ScopedResultBuilder() =
     member _.Delay f = f
 
     member _.Run(f: unit -> Result<'a, ToroError>) : Result<'a, ToroError> =
-        use _scope = torch.NewDisposeScope()
+        use scope = torch.NewDisposeScope()
         let r = f ()
 
         match r with
-        | Ok v -> keepTensors (box v)
+        | Ok v -> keepTensors scope (box v)
         | _ -> ()
 
         r

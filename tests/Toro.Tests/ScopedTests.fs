@@ -709,3 +709,91 @@ let ``F4 keep inside scoped for side-effect retention`` () =
     unwrap r |> ignore
     retained.Inner.IsInvalid |> should equal false
     droppedInner.IsInvalid |> should equal true
+
+// ═══════════════════════════════════════════════════════════════
+// G. Scope safety: keepTensors only moves owned tensors
+// ═══════════════════════════════════════════════════════════════
+
+// G1
+[<Fact>]
+let ``G1 same tensor in two tuple slots does not double-move`` () =
+    let r =
+        scoped {
+            let! t = Tensor.ones ([ 2 ], F32, Cpu)
+            return t, t
+        }
+
+    let a, b = unwrap r
+    obj.ReferenceEquals(a, b) |> should equal true
+    a.Inner.IsInvalid |> should equal false
+    scalarF32 a |> should (equalWithin 1e-5f) 2.0f
+
+// G2
+[<Fact>]
+let ``G2 outer tensor returned from inner scoped stays in outer scope`` () =
+    let r =
+        scoped {
+            let! outer = Tensor.ones ([ 2 ], F32, Cpu)
+
+            let! inner =
+                scoped {
+                    let! tmp = Tensor.ones ([ 2 ], F32, Cpu)
+                    let! sum = outer.add tmp
+                    return sum
+                }
+
+            return outer, inner
+        }
+
+    let outer, inner = unwrap r
+    outer.Inner.IsInvalid |> should equal false
+    inner.Inner.IsInvalid |> should equal false
+    scalarF32 outer |> should (equalWithin 1e-5f) 2.0f
+    scalarF32 inner |> should (equalWithin 1e-5f) 4.0f
+
+// G3
+[<Fact>]
+let ``G3 outer tensor returned from inner scoped is not moved past outer`` () =
+    let mutable outerInner = Unchecked.defaultof<torch.Tensor>
+
+    do
+        use _outermost = torch.NewDisposeScope()
+
+        let r =
+            scoped {
+                let! outer = Tensor.ones ([ 2 ], F32, Cpu)
+                outerInner <- outer.Inner
+
+                let! passed =
+                    scoped { return outer }
+
+                return passed
+            }
+
+        let t = unwrap r
+        t.Inner.IsInvalid |> should equal false
+        _outermost.Contains(outerInner) |> should equal true
+
+    outerInner.IsInvalid |> should equal true
+
+// G4
+[<Fact>]
+let ``G4 scoped with return! keeps result tensors`` () =
+    let helperOp () : Result<Tensor * Tensor, ToroError> =
+        result {
+            let! a = Tensor.ones ([ 3 ], F32, Cpu)
+            let! b = Tensor.zeros ([ 3 ], F32, Cpu)
+            return a, b
+        }
+
+    let r =
+        scoped {
+            let! _ = Tensor.ones ([ 1 ], F32, Cpu)
+            return! helperOp ()
+        }
+
+    let a, b = unwrap r
+    a.Inner.IsInvalid |> should equal false
+    b.Inner.IsInvalid |> should equal false
+    scalarF32 a |> should (equalWithin 1e-5f) 3.0f
+    scalarF32 b |> should (equalWithin 1e-5f) 0.0f
