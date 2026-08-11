@@ -20,14 +20,12 @@ open Toro
 open Toro.NN
 open Toro.GNN
 
-let r = result {
-    let! x = Tensor.randn ([ 4; 16 ], F32, Cpu)
-    let! edgeIndex = Tensor.ofList ([ [ 0L; 1L; 2L; 3L ]; [ 1L; 2L; 3L; 0L ] ], Cpu)
-    let g = GraphData.create x edgeIndex
+let x = Tensor.randn ([ 4; 16 ], F32, Cpu)
+let edgeIndex = Tensor.ofList ([ [ 0L; 1L; 2L; 3L ]; [ 1L; 2L; 3L; 0L ] ], Cpu)
+let g = GraphData.create x edgeIndex
 
-    let! conv = GCNConv.init 16 32 F32 Cpu
-    let! out = conv.forward (g.X, g.EdgeIndex)
-}
+let conv = GCNConv.init 16 32 F32 Cpu
+let out = conv.forward (g.X, g.EdgeIndex)
 ```
 
 ## Features

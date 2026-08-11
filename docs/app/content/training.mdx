@@ -4,18 +4,16 @@ description: Loss functions, SGD and AdamW optimizers, training and evaluation l
 ---
 
 This page covers loss functions, optimizers, and the training loop.
-For the `result { }` CE and operator return type rules, see [Core Concepts](/concepts).
+For ownership management and `scoped { }`, see [Core Concepts](/concepts).
 
 ## Loss Functions
 
-Each loss function takes two tensors and returns `Result<Tensor, ToroError>`.
+Each loss function takes two tensors and returns a `Tensor`.
 Common choices include `Loss.crossEntropy` for classification and `Loss.mse` for regression:
 
 ```fsharp
-result {
-    let! loss = Loss.crossEntropy predictions targets
-    printfn "Loss: %.4f" (loss.item ())
-}
+let loss = Loss.crossEntropy predictions targets
+printfn "Loss: %.4f" (loss.item ())
 ```
 
 See the [Loss API reference](/api-loss) for the full list (`mse`, `nll`, `crossEntropy`, `binaryCrossEntropyWithLogit`, `l1`, `smoothL1`, `klDiv`).
@@ -36,30 +34,26 @@ let opt = SGD.create 0.01 vars
 Adam with weight decay:
 
 ```fsharp
-result {
-    let vars = Model.trainableVars model
-    let! opt = AdamW.createWithLr 0.001 vars
-}
+let vars = Model.trainableVars model
+let opt = AdamW.createWithLr 0.001 vars
 ```
 
 Use `AdamW.create` for full control over hyperparameters:
 
 ```fsharp
-result {
-    let! adamw = AdamW.create {
-        ParamsAdamW.defaultParams with
-            Lr = 0.001
-            Beta1 = 0.9
-            Beta2 = 0.999
-    } vars
-}
+let adamw = AdamW.create {
+    ParamsAdamW.defaultParams with
+        Lr = 0.001
+        Beta1 = 0.9
+        Beta2 = 0.999
+} vars
 ```
 
 ### Optimizer Members
 
 Both `SGD` and `AdamW` expose these member methods directly:
 
-- `step()` -- update parameters using current gradients. Returns `Result<unit, ToroError>`.
+- `step()` -- update parameters using current gradients.
 - `zeroGrad()` -- clear accumulated gradients. Call before each training step (or skip for gradient accumulation).
 - `learningRate()` -- return the current learning rate.
 - `setLearningRate lr` -- set a new learning rate.
@@ -73,15 +67,14 @@ Without `scoped { }`, tensors created during the forward and backward passes acc
 ```fsharp
 for epoch in 1..epochs do
     for batch in trainLoader do
-        do!
-            scoped {
-                let x, y = batch
-                opt.zeroGrad ()
-                let! pred = model.forward x
-                let! loss = Loss.crossEntropy pred y
-                do! loss.backward ()
-                do! opt.step ()
-            }
+        scoped {
+            let x, y = batch
+            opt.zeroGrad ()
+            let pred = model.forward x
+            let loss = Loss.crossEntropy pred y
+            loss.backward ()
+            opt.step ()
+        }
 
     if epoch % 10 = 0 then
         printfn "epoch %d" epoch
@@ -96,20 +89,14 @@ This reduces memory use and speeds up the forward pass:
 
 ```fsharp
 Toro.noGrad (fun () ->
-    let r = result {
-        let! pred = model.forward testX
-        let! loss = Loss.crossEntropy pred testY
-        printfn "Test loss: %.4f" (loss.item ())
+    let pred = model.forward testX
+    let loss = Loss.crossEntropy pred testY
+    printfn "Test loss: %.4f" (loss.item ())
 
-        let! argmax = pred.argmax (1)
-        let! eq = (argmax .=. testY).toDType F32
-        let! total = eq.sumAll ()
-        printfn "Accuracy: %.2f%%" (total.item () / float testY.ElemCount * 100.0)
-    }
-
-    match r with
-    | Ok () -> ()
-    | Error e -> eprintfn "%A" e
+    let argmax = pred.argmax 1
+    let eq = (argmax .=. testY).toDType F32
+    let total = eq.sumAll ()
+    printfn "Accuracy: %.2f%%" (total.item () / float testY.ElemCount * 100.0)
 )
 ```
 
@@ -124,10 +111,10 @@ let sched = Scheduler.create (CosineAnnealing(100, 0.0)) opt.setLearningRate (op
 
 for epoch in 1..epochs do
     opt.zeroGrad ()
-    let! pred = model.forward x
-    let! loss = Loss.mse pred y
-    do! loss.backward ()
-    do! opt.step ()
+    let pred = model.forward x
+    let loss = Loss.mse pred y
+    loss.backward ()
+    opt.step ()
     Scheduler.step sched
 ```
 
@@ -146,21 +133,21 @@ Clip gradients to prevent exploding gradients during training:
 let vars = Model.trainableVars model
 
 // Clip by global L2 norm (returns the total norm before clipping)
-let! totalNorm = Clip.gradNorm 1.0 vars
+let totalNorm = Clip.gradNorm 1.0 vars
 
 // Or clip each gradient element to [-0.5, 0.5]
-do! Clip.gradValue 0.5 vars
+Clip.gradValue 0.5 vars
 ```
 
 Call gradient clipping after `loss.backward()` and before `opt.step()`:
 
 ```fsharp
 opt.zeroGrad ()
-let! pred = model.forward x
-let! loss = Loss.crossEntropy pred y
-do! loss.backward ()
-let! _ = Clip.gradNorm 1.0 vars
-do! opt.step ()
+let pred = model.forward x
+let loss = Loss.crossEntropy pred y
+loss.backward ()
+let _ = Clip.gradNorm 1.0 vars
+opt.step ()
 ```
 
 ## Metrics
@@ -170,11 +157,9 @@ See the [Metrics API reference](/api-metrics) for details.
 
 ```fsharp
 Toro.noGrad (fun () ->
-    result {
-        let! pred = model.forward testX
-        let! acc = Metrics.accuracyFromLogits pred testY
-        printfn "Accuracy: %.2f%%" (acc * 100.0)
-    }
+    let pred = model.forward testX
+    let acc = Metrics.accuracyFromLogits pred testY
+    printfn "Accuracy: %.2f%%" (acc * 100.0)
 )
 ```
 
@@ -188,19 +173,19 @@ model parameters, optimizer internal state (e.g. AdamW momentum), and the epoch 
 ```fsharp
 for epoch in 1..epochs do
     opt.zeroGrad ()
-    let! pred = model.forward x
-    let! loss = Loss.crossEntropy pred y
-    do! loss.backward ()
-    do! opt.step ()
+    let pred = model.forward x
+    let loss = Loss.crossEntropy pred y
+    loss.backward ()
+    opt.step ()
 
     if epoch % 50 = 0 then
-        do! Checkpoint.save model (opt.toOps ()) epoch $"checkpoints/epoch{epoch}"
+        Checkpoint.save model (opt.toOps ()) epoch $"checkpoints/epoch{epoch}"
 ```
 
 Resume training from a checkpoint:
 
 ```fsharp
-let! resumedEpoch = Checkpoint.load model (opt.toOps ()) "checkpoints/epoch200"
+let resumedEpoch = Checkpoint.load model (opt.toOps ()) "checkpoints/epoch200"
 printfn "Resumed from epoch %d" resumedEpoch
 
 for epoch in (resumedEpoch + 1)..epochs do
@@ -214,8 +199,8 @@ for epoch in (resumedEpoch + 1)..epochs do
 For saving model weights without optimizer state, use `Model.save` and `Model.loadInto`:
 
 ```fsharp
-do! Model.save model "weights/best.safetensors"
-let! report = Model.loadInto model "weights/best.safetensors" Strict
+Model.save model "weights/best.safetensors"
+let report = Model.loadInto model "weights/best.safetensors" Strict
 ```
 
 `Model.loadInto` matches parameters by name, validates shape and dtype, copies values into the model tensors, and returns a `LoadReport`.

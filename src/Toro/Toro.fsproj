@@ -21,12 +21,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Error.fs" />
     <Compile Include="Device.fs" />
     <Compile Include="DType.fs" />
     <Compile Include="Shape.fs" />
     <Compile Include="Tensor.fs" />
-    <Compile Include="TensorOp.fs" />
     <Compile Include="SafeTensors.fs" />
   </ItemGroup>
 

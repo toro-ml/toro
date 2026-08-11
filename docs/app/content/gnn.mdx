@@ -17,11 +17,9 @@ open Toro.GNN
 Graphs are represented in COO (coordinate) format with a node feature matrix and an edge index tensor:
 
 ```fsharp
-result {
-    let! x = Tensor.randn ([ 4; 16 ], F32, Cpu)
-    let! edgeIndex = Tensor.ofList ([ [ 0L; 1L; 2L; 3L ]; [ 1L; 2L; 3L; 0L ] ], Cpu)
-    let g = GraphData.create x edgeIndex
-}
+let x = Tensor.randn ([ 4; 16 ], F32, Cpu)
+let edgeIndex = Tensor.ofList ([ [ 0L; 1L; 2L; 3L ]; [ 1L; 2L; 3L; 0L ] ], Cpu)
+let g = GraphData.create x edgeIndex
 ```
 
 `edgeIndex` has shape `[2, E]` where row 0 is the source and row 1 is the target of each edge.
@@ -43,10 +41,8 @@ The `MessagePassing` module provides the shared `aggregate` and `edgeSoftmax` op
 Graph Convolutional Network (Kipf & Welling, 2017). Uses symmetric normalization:
 
 ```fsharp
-result {
-    let! conv = GCNConv.init 16 32 F32 Cpu
-    let! out = conv.forward (x, edgeIndex)  // [N, 32]
-}
+let conv = GCNConv.init 16 32 F32 Cpu
+let out = conv.forward (x, edgeIndex)  // [N, 32]
 ```
 
 ### GATConv
@@ -54,11 +50,9 @@ result {
 Graph Attention Network (Velickovic et al., 2018). Multi-head attention over edges:
 
 ```fsharp
-result {
-    let! conv = GATConv.init 16 32 4 true 0.2 F32 Cpu
-    // inChannels=16, outChannels=32, heads=4, concat=true, negativeSlope=0.2
-    let! out = conv.forward (x, edgeIndex)  // [N, 128] (4 heads * 32)
-}
+let conv = GATConv.init 16 32 4 true 0.2 F32 Cpu
+// inChannels=16, outChannels=32, heads=4, concat=true, negativeSlope=0.2
+let out = conv.forward (x, edgeIndex)  // [N, 128] (4 heads * 32)
 ```
 
 Set `concat=false` to average over heads instead of concatenating (output: `[N, 32]`).
@@ -68,10 +62,8 @@ Set `concat=false` to average over heads instead of concatenating (output: `[N, 
 GraphSAGE (Hamilton et al., 2017). Mean-aggregator variant with separate self/neighbor transforms:
 
 ```fsharp
-result {
-    let! conv = SAGEConv.init 16 32 F32 Cpu
-    let! out = conv.forward (x, edgeIndex)  // [N, 32]
-}
+let conv = SAGEConv.init 16 32 F32 Cpu
+let out = conv.forward (x, edgeIndex)  // [N, 32]
 ```
 
 ### GINConv
@@ -79,11 +71,9 @@ result {
 Graph Isomorphism Network (Xu et al., 2019). Uses a 2-layer MLP with a learnable epsilon:
 
 ```fsharp
-result {
-    let! conv = GINConv.init 16 64 32 true F32 Cpu
-    // inChannels=16, hiddenChannels=64, outChannels=32, trainEps=true
-    let! out = conv.forward (x, edgeIndex)  // [N, 32]
-}
+let conv = GINConv.init 16 64 32 true F32 Cpu
+// inChannels=16, hiddenChannels=64, outChannels=32, trainEps=true
+let out = conv.forward (x, edgeIndex)  // [N, 32]
 ```
 
 ## Normalization
@@ -93,10 +83,8 @@ result {
 Graph Normalization (Cai et al., 2021). Normalizes node features per graph with a learnable shift:
 
 ```fsharp
-result {
-    let! norm = GraphNorm.init 32 F32 Cpu
-    let! normalized = norm.forward (out, Some batchVec)
-}
+let norm = GraphNorm.init 32 F32 Cpu
+let normalized = norm.forward (out, Some batchVec)
 ```
 
 When `batch` is `None`, all nodes are treated as belonging to a single graph.
@@ -106,10 +94,8 @@ When `batch` is `None`, all nodes are treated as belonging to a single graph.
 Combine multiple graphs into a single disconnected graph for batched processing:
 
 ```fsharp
-result {
-    let! batched = Batch.batch [ g1; g2; g3 ]
-    // batched.Batch = Some batchVector  ([N_total] mapping nodes to graph index)
-}
+let batched = Batch.batch [ g1; g2; g3 ]
+// batched.Batch = Some batchVector  ([N_total] mapping nodes to graph index)
 ```
 
 ## Global Pooling
@@ -117,12 +103,10 @@ result {
 Aggregate node features into graph-level representations:
 
 ```fsharp
-result {
-    let batchVec = batched.Batch.Value
-    let numGraphs = Batch.numGraphs batched
-    let! graphEmb = GlobalPool.globalMeanPool batched.X batchVec numGraphs
-    // graphEmb: [numGraphs, features]
-}
+let batchVec = batched.Batch.Value
+let numGraphs = Batch.numGraphs batched
+let graphEmb = GlobalPool.globalMeanPool batched.X batchVec numGraphs
+// graphEmb: [numGraphs, features]
 ```
 
 Available operations: `globalMeanPool`, `globalSumPool`, `globalMaxPool`.
@@ -137,23 +121,21 @@ open Toro.GNN
 type GcnModel = { Conv1: GCNConv; Conv2: GCNConv }
 
 let forward model (x, edgeIndex) =
-    result {
-        let! h = model.Conv1.forward (x, edgeIndex)
-        let! h = h.relu ()
-        return! model.Conv2.forward (h, edgeIndex)
-    }
+    let h = model.Conv1.forward (x, edgeIndex)
+    let h = h.relu ()
+    model.Conv2.forward (h, edgeIndex)
 
-result {
-    let! conv1 = GCNConv.init inFeatures 16 F32 Cpu
-    let! conv2 = GCNConv.init 16 numClasses F32 Cpu
-    let model = { Conv1 = conv1; Conv2 = conv2 }
+let conv1 = GCNConv.init inFeatures 16 F32 Cpu
+let conv2 = GCNConv.init 16 numClasses F32 Cpu
+let model = { Conv1 = conv1; Conv2 = conv2 }
 
-    let! opt = AdamW.createWithLr 0.01 (Model.trainableVars model)
-    for _ in 1..200 do
+let opt = AdamW.createWithLr 0.01 (Model.trainableVars model)
+for _ in 1..200 do
+    scoped {
         opt.zeroGrad ()
-        let! logits = forward model (x, edgeIndex)
-        let! loss = Loss.crossEntropy logits labels
-        do! loss.backward ()
-        do! opt.step ()
-}
+        let logits = forward model (x, edgeIndex)
+        let loss = Loss.crossEntropy logits labels
+        loss.backward ()
+        opt.step ()
+    }
 ```

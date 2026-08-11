@@ -53,7 +53,7 @@ Convert a [3, H, W] float32 tensor in [0, 1] to an SKBitmap.
 
 - `tensor` : `Tensor`
 
-**Returns** `Result<SKBitmap, ToroError>`
+**Returns** `SKBitmap`
 
 ---
 
@@ -70,7 +70,7 @@ Load an image file as a [3, H, W] float32 tensor in [0, 1].
 - `path` : `string`
 - `device` : `Device`
 
-**Returns** `Result<Tensor, ToroError>`
+**Returns** `Tensor`
 
 ---
 
@@ -87,7 +87,7 @@ Load an image from a stream as a [3, H, W] float32 tensor in [0, 1].
 - `stream` : `Stream`
 - `device` : `Device`
 
-**Returns** `Result<Tensor, ToroError>`
+**Returns** `Tensor`
 
 ---
 
@@ -105,8 +105,6 @@ Save a [3, H, W] float32 tensor as an image file.
 - `path` : `string`
 - `format` : `ImageFormat`
 - `_quality` : `int`
-
-**Returns** `Result<unit, ToroError>`
 
 ---
 
@@ -126,8 +124,6 @@ Save a batch tensor [N, C, H, W] as a grid image with nrow images per row.
 - `quality` : `int`
 - `nrow` : `int`
 
-**Returns** `Result<unit, ToroError>`
-
 ---
 
 ## toTensor
@@ -144,5 +140,5 @@ Convert an SKBitmap to a [3, H, W] float32 tensor in [0, 1].
 - `bitmap` : `SKBitmap`
 - `device` : `Device`
 
-**Returns** `Result<Tensor, ToroError>`
+**Returns** `Tensor`
 

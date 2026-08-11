@@ -45,7 +45,7 @@ Encode a batch of texts to a padded [B, L] tensor and an attention mask.
 - `padId` : `int`
 - `device` : `Device`
 
-**Returns** `Result<(Tensor * Tensor), ToroError>`
+**Returns** `Tensor * Tensor`
 
 ---
 
@@ -65,5 +65,5 @@ Encode a single text to a 1-D token ID tensor of length maxLen.
 - `padId` : `int`
 - `device` : `Device`
 
-**Returns** `Result<Tensor, ToroError>`
+**Returns** `Tensor`
 

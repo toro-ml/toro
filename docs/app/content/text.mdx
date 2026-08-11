@@ -98,11 +98,9 @@ The `Encode` module converts tokenized text directly to Toro tensors.
 Encode a single text to a 1-D `int64` tensor of fixed length:
 
 ```fsharp
-result {
-    let tok = Tokenizer.fromTiktoken (TiktokenConfig.create "gpt-4o")
-    let! t = Encode.toTensor tok "hello world" 16 0 Cpu
-    // t: [16] int64, padded with 0s
-}
+let tok = Tokenizer.fromTiktoken (TiktokenConfig.create "gpt-4o")
+let t = Encode.toTensor tok "hello world" 16 0 Cpu
+// t: [16] int64, padded with 0s
 ```
 
 ### batch
@@ -110,13 +108,11 @@ result {
 Encode multiple texts to a padded `[B, L]` tensor and an attention mask:
 
 ```fsharp
-result {
-    let tok = Tokenizer.fromTiktoken (TiktokenConfig.create "gpt-4o")
-    let texts = [ "hello world"; "good morning" ]
-    let! struct (ids, mask) = Encode.batch tok texts 16 0 Cpu
-    // ids:  [2, 16] int64
-    // mask: [2, 16] — 1 at token positions, 0 at padding
-}
+let tok = Tokenizer.fromTiktoken (TiktokenConfig.create "gpt-4o")
+let texts = [ "hello world"; "good morning" ]
+let struct (ids, mask) = Encode.batch tok texts 16 0 Cpu
+// ids:  [2, 16] int64
+// mask: [2, 16] — 1 at token positions, 0 at padding
 ```
 
 ### attentionMask
@@ -124,9 +120,7 @@ result {
 Generate a mask from an existing token tensor:
 
 ```fsharp
-result {
-    let! tokens = Tensor.ofArray ([| 101L; 7592L; 0L; 0L |], Cpu)
-    let mask = Encode.attentionMask tokens 0
-    // mask: [4] = [1, 1, 0, 0]
-}
+let tokens = Tensor.ofArray ([| 101L; 7592L; 0L; 0L |], Cpu)
+let mask = Encode.attentionMask tokens 0
+// mask: [4] = [1, 1, 0, 0]
 ```

@@ -6,44 +6,38 @@ open Toro
 /// Aggregate node features into a single graph-level representation.
 module GlobalPool =
     /// Mean of node features per graph. batch: [N] maps nodes to graph index.
-    let globalMeanPool (x: Tensor) (batch: Tensor) (numGraphs: int) : Result<Tensor, ToroError> =
+    let globalMeanPool (x: Tensor) (batch: Tensor) (numGraphs: int) : Tensor =
         let features = x.Shape[1]
 
-        result {
-            let! sum = Tensor.zeros ([ numGraphs; features ], x.DType, x.Device)
-            let! batchIdx = batch.unsqueeze 1
-            let! batchIdx = batchIdx.expand [ x.Shape[0]; features ]
-            let! sum = sum.scatterAdd (0, batchIdx, x)
+        let sum = Tensor.zeros ([ numGraphs; features ], x.DType, x.Device)
+        let batchIdx = batch.unsqueeze 1
+        let batchIdx = batchIdx.expand [ x.Shape[0]; features ]
+        let sum = sum.scatterAdd (0, batchIdx, x)
 
-            let! count = Tensor.zeros ([ numGraphs ], x.DType, x.Device)
-            let! ones = Tensor.ones ([ x.Shape[0] ], x.DType, x.Device)
-            let! count = count.scatterAdd (0, batch, ones)
-            let! count = count.unsqueeze 1
-            return! sum.div count
-        }
+        let count = Tensor.zeros ([ numGraphs ], x.DType, x.Device)
+        let ones = Tensor.ones ([ x.Shape[0] ], x.DType, x.Device)
+        let count = count.scatterAdd (0, batch, ones)
+        let count = count.unsqueeze 1
+        sum.div count
 
     /// Sum of node features per graph.
-    let globalSumPool (x: Tensor) (batch: Tensor) (numGraphs: int) : Result<Tensor, ToroError> =
+    let globalSumPool (x: Tensor) (batch: Tensor) (numGraphs: int) : Tensor =
         let features = x.Shape[1]
 
-        result {
-            let! out = Tensor.zeros ([ numGraphs; features ], x.DType, x.Device)
-            let! batchIdx = batch.unsqueeze 1
-            let! batchIdx = batchIdx.expand [ x.Shape[0]; features ]
-            return! out.scatterAdd (0, batchIdx, x)
-        }
+        let out = Tensor.zeros ([ numGraphs; features ], x.DType, x.Device)
+        let batchIdx = batch.unsqueeze 1
+        let batchIdx = batchIdx.expand [ x.Shape[0]; features ]
+        out.scatterAdd (0, batchIdx, x)
 
     /// Max of node features per graph.
-    let globalMaxPool (x: Tensor) (batch: Tensor) (numGraphs: int) : Result<Tensor, ToroError> =
-        result {
-            let results = ResizeArray<Tensor>()
+    let globalMaxPool (x: Tensor) (batch: Tensor) (numGraphs: int) : Tensor =
+        let results = ResizeArray<Tensor>()
 
-            for i in 0 .. numGraphs - 1 do
-                let mask = batch.eqScalar (float i)
-                let indices = TorchSharp.torch.nonzero(mask.Inner).squeeze (1L)
-                let! selected = x.indexSelect (0, Tensor.ofTorchTensor indices |> Result.defaultValue x)
-                let! (maxVals, _) = selected.max 0
-                results.Add(maxVals)
+        for i in 0 .. numGraphs - 1 do
+            let mask = batch.eqScalar (float i)
+            let indices = TorchSharp.torch.nonzero(mask.Inner).squeeze (1L)
+            let selected = x.indexSelect (0, Tensor.ofTorchTensor indices)
+            let maxVals, _ = selected.max 0
+            results.Add(maxVals)
 
-            return! Tensor.stack (results |> Seq.toList, 0)
-        }
+        Tensor.stack (results |> Seq.toList, 0)

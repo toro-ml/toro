@@ -11,39 +11,33 @@ module Checkpoint =
     type CheckpointMeta = { Epoch: int; LearningRate: float }
 
     /// Save model parameters, optimizer state, and epoch number to a directory.
-    let save (model: 'T) (ops: OptimizerOps) (epoch: int) (dirPath: string) : Result<unit, ToroError> =
-        result {
-            do! ToroError.wrap (fun () -> Directory.CreateDirectory dirPath |> ignore)
-            do! Model.save model (Path.Combine(dirPath, "model.safetensors"))
-            do! ops.SaveState dirPath
+    let save (model: 'T) (ops: OptimizerOps) (epoch: int) (dirPath: string) : unit =
+        Directory.CreateDirectory dirPath |> ignore
+        Model.save model (Path.Combine(dirPath, "model.safetensors"))
+        ops.SaveState dirPath
 
-            let meta = {
-                Epoch = epoch
-                LearningRate = ops.LearningRate()
-            }
-
-            do!
-                ToroError.wrap (fun () ->
-                    let json =
-                        JsonSerializer.Serialize(meta, JsonSerializerOptions(WriteIndented = true))
-
-                    File.WriteAllText(Path.Combine(dirPath, "meta.json"), json))
+        let meta = {
+            Epoch = epoch
+            LearningRate = ops.LearningRate()
         }
+
+        let json =
+            JsonSerializer.Serialize(meta, JsonSerializerOptions(WriteIndented = true))
+
+        File.WriteAllText(Path.Combine(dirPath, "meta.json"), json)
 
     /// Load model parameters, optimizer state, and epoch number from a directory.
     /// Return the restored epoch number.
-    let load (model: 'T) (ops: OptimizerOps) (dirPath: string) : Result<int, ToroError> =
-        result {
-            let! _report = Model.loadInto model (Path.Combine(dirPath, "model.safetensors")) Strict
-            do! ops.LoadState dirPath
+    let load (model: 'T) (ops: OptimizerOps) (dirPath: string) : int =
+        let _report =
+            Model.loadInto model (Path.Combine(dirPath, "model.safetensors")) Strict
 
-            let metaPath = Path.Combine(dirPath, "meta.json")
+        ops.LoadState dirPath
 
-            let! meta =
-                ToroError.wrap (fun () ->
-                    let json = File.ReadAllText metaPath
-                    JsonSerializer.Deserialize<CheckpointMeta>(json))
+        let metaPath = Path.Combine(dirPath, "meta.json")
 
-            ops.SetLearningRate meta.LearningRate
-            return meta.Epoch
-        }
+        let json = File.ReadAllText metaPath
+        let meta = JsonSerializer.Deserialize<CheckpointMeta>(json)
+
+        ops.SetLearningRate meta.LearningRate
+        meta.Epoch

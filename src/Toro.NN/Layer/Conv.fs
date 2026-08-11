@@ -29,7 +29,7 @@ type Conv1d = {
 } with
 
     /// Apply 1-D convolution to the input.
-    member this.forward(x: Tensor) : Result<Tensor, ToroError> =
+    member this.forward(x: Tensor) : Tensor =
         let c = this.Config
 
         x.conv1d (
@@ -53,30 +53,23 @@ module Conv1d =
         (config: Conv1dConfig)
         (dtype: DType)
         (device: Device)
-        : Result<Conv1d, ToroError> =
+        : Conv1d =
         let groupInC = inChannels / config.Groups
         let bound = 1.0 / sqrt (float (groupInC * kernelSize))
 
-        result {
-            let! ws = Init.toParam [ outChannels; groupInC; kernelSize ] dtype device Init.defaultKaimingNormal
+        let ws =
+            Init.toParam [ outChannels; groupInC; kernelSize ] dtype device Init.defaultKaimingNormal
 
-            let! bs = Init.toParam [ outChannels ] dtype device (Init.Uniform(-bound, bound))
+        let bs = Init.toParam [ outChannels ] dtype device (Init.Uniform(-bound, bound))
 
-            return {
-                Weight = ws
-                Bias = Some bs
-                Config = config
-            }
+        {
+            Weight = ws
+            Bias = Some bs
+            Config = config
         }
 
     /// Create a Conv1d layer with default configuration.
-    let initDefault
-        (inChannels: int)
-        (outChannels: int)
-        (kernelSize: int)
-        (dtype: DType)
-        (device: Device)
-        : Result<Conv1d, ToroError> =
+    let initDefault (inChannels: int) (outChannels: int) (kernelSize: int) (dtype: DType) (device: Device) : Conv1d =
         init inChannels outChannels kernelSize Conv1dConfig.defaultConfig dtype device
 
     /// Create a Conv1d layer without bias.
@@ -87,17 +80,16 @@ module Conv1d =
         (config: Conv1dConfig)
         (dtype: DType)
         (device: Device)
-        : Result<Conv1d, ToroError> =
+        : Conv1d =
         let groupInC = inChannels / config.Groups
 
-        result {
-            let! ws = Init.toParam [ outChannels; groupInC; kernelSize ] dtype device Init.defaultKaimingNormal
+        let ws =
+            Init.toParam [ outChannels; groupInC; kernelSize ] dtype device Init.defaultKaimingNormal
 
-            return {
-                Weight = ws
-                Bias = None
-                Config = config
-            }
+        {
+            Weight = ws
+            Bias = None
+            Config = config
         }
 
 // --- Conv2d ---
@@ -127,7 +119,7 @@ type Conv2d = {
 } with
 
     /// Apply 2-D convolution to the input.
-    member this.forward(x: Tensor) : Result<Tensor, ToroError> =
+    member this.forward(x: Tensor) : Tensor =
         let c = this.Config
 
         x.conv2d (
@@ -151,30 +143,23 @@ module Conv2d =
         (config: Conv2dConfig)
         (dtype: DType)
         (device: Device)
-        : Result<Conv2d, ToroError> =
+        : Conv2d =
         let groupInC = inChannels / config.Groups
         let bound = 1.0 / sqrt (float (groupInC * kernelSize * kernelSize))
 
-        result {
-            let! ws = Init.toParam [ outChannels; groupInC; kernelSize; kernelSize ] dtype device Init.defaultKaimingNormal
+        let ws =
+            Init.toParam [ outChannels; groupInC; kernelSize; kernelSize ] dtype device Init.defaultKaimingNormal
 
-            let! bs = Init.toParam [ outChannels ] dtype device (Init.Uniform(-bound, bound))
+        let bs = Init.toParam [ outChannels ] dtype device (Init.Uniform(-bound, bound))
 
-            return {
-                Weight = ws
-                Bias = Some bs
-                Config = config
-            }
+        {
+            Weight = ws
+            Bias = Some bs
+            Config = config
         }
 
     /// Create a Conv2d layer with default configuration.
-    let initDefault
-        (inChannels: int)
-        (outChannels: int)
-        (kernelSize: int)
-        (dtype: DType)
-        (device: Device)
-        : Result<Conv2d, ToroError> =
+    let initDefault (inChannels: int) (outChannels: int) (kernelSize: int) (dtype: DType) (device: Device) : Conv2d =
         init inChannels outChannels kernelSize Conv2dConfig.defaultConfig dtype device
 
     /// Create a Conv2d layer without bias.
@@ -185,17 +170,16 @@ module Conv2d =
         (config: Conv2dConfig)
         (dtype: DType)
         (device: Device)
-        : Result<Conv2d, ToroError> =
+        : Conv2d =
         let groupInC = inChannels / config.Groups
 
-        result {
-            let! ws = Init.toParam [ outChannels; groupInC; kernelSize; kernelSize ] dtype device Init.defaultKaimingNormal
+        let ws =
+            Init.toParam [ outChannels; groupInC; kernelSize; kernelSize ] dtype device Init.defaultKaimingNormal
 
-            return {
-                Weight = ws
-                Bias = None
-                Config = config
-            }
+        {
+            Weight = ws
+            Bias = None
+            Config = config
         }
 
 // --- ConvTranspose1d ---
@@ -225,7 +209,7 @@ type ConvTranspose1d = {
     Config: ConvTranspose1dConfig
 } with
 
-    member this.forward(x: Tensor) : Result<Tensor, ToroError> =
+    member this.forward(x: Tensor) : Tensor =
         let c = this.Config
 
         x.convTranspose1d (
@@ -249,30 +233,22 @@ module ConvTranspose1d =
         (config: ConvTranspose1dConfig)
         (dtype: DType)
         (device: Device)
-        : Result<ConvTranspose1d, ToroError> =
+        : ConvTranspose1d =
         let groupInC = inChannels / config.Groups
         let bound = 1.0 / sqrt (float (groupInC * kernelSize))
 
-        result {
-            let! ws =
-                Init.toParam [ inChannels; outChannels / config.Groups; kernelSize ] dtype device Init.defaultKaimingNormal
+        let ws =
+            Init.toParam [ inChannels; outChannels / config.Groups; kernelSize ] dtype device Init.defaultKaimingNormal
 
-            let! bs = Init.toParam [ outChannels ] dtype device (Init.Uniform(-bound, bound))
+        let bs = Init.toParam [ outChannels ] dtype device (Init.Uniform(-bound, bound))
 
-            return {
-                Weight = ws
-                Bias = Some bs
-                Config = config
-            }
+        {
+            Weight = ws
+            Bias = Some bs
+            Config = config
         }
 
-    let initDefault
-        (inChannels: int)
-        (outChannels: int)
-        (kernelSize: int)
-        (dtype: DType)
-        (device: Device)
-        : Result<ConvTranspose1d, ToroError> =
+    let initDefault (inChannels: int) (outChannels: int) (kernelSize: int) (dtype: DType) (device: Device) : ConvTranspose1d =
         init inChannels outChannels kernelSize ConvTranspose1dConfig.defaultConfig dtype device
 
 // --- ConvTranspose2d ---
@@ -302,7 +278,7 @@ type ConvTranspose2d = {
     Config: ConvTranspose2dConfig
 } with
 
-    member this.forward(x: Tensor) : Result<Tensor, ToroError> =
+    member this.forward(x: Tensor) : Tensor =
         let c = this.Config
 
         x.convTranspose2d (
@@ -326,32 +302,24 @@ module ConvTranspose2d =
         (config: ConvTranspose2dConfig)
         (dtype: DType)
         (device: Device)
-        : Result<ConvTranspose2d, ToroError> =
+        : ConvTranspose2d =
         let groupInC = inChannels / config.Groups
         let bound = 1.0 / sqrt (float (groupInC * kernelSize * kernelSize))
 
-        result {
-            let! ws =
-                Init.toParam
-                    [ inChannels; outChannels / config.Groups; kernelSize; kernelSize ]
-                    dtype
-                    device
-                    Init.defaultKaimingNormal
+        let ws =
+            Init.toParam
+                [ inChannels; outChannels / config.Groups; kernelSize; kernelSize ]
+                dtype
+                device
+                Init.defaultKaimingNormal
 
-            let! bs = Init.toParam [ outChannels ] dtype device (Init.Uniform(-bound, bound))
+        let bs = Init.toParam [ outChannels ] dtype device (Init.Uniform(-bound, bound))
 
-            return {
-                Weight = ws
-                Bias = Some bs
-                Config = config
-            }
+        {
+            Weight = ws
+            Bias = Some bs
+            Config = config
         }
 
-    let initDefault
-        (inChannels: int)
-        (outChannels: int)
-        (kernelSize: int)
-        (dtype: DType)
-        (device: Device)
-        : Result<ConvTranspose2d, ToroError> =
+    let initDefault (inChannels: int) (outChannels: int) (kernelSize: int) (dtype: DType) (device: Device) : ConvTranspose2d =
         init inChannels outChannels kernelSize ConvTranspose2dConfig.defaultConfig dtype device

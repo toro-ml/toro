@@ -76,7 +76,7 @@ module Model =
         |> Seq.collect (fun (i, item) -> collect (makePath prefix (string i)) item)
         |> Seq.toList
 
-    let private validateUniqueNames (ps: (string * Tensor) list) : Result<unit, ToroError> =
+    let private validateUniqueNames (ps: (string * Tensor) list) : unit =
         let duplicates =
             ps
             |> List.countBy fst
@@ -84,8 +84,8 @@ module Model =
             |> List.map fst
 
         match duplicates with
-        | [] -> Ok()
-        | dupes -> Error(Msg $"Duplicate parameter names: %A{dupes}")
+        | [] -> ()
+        | dupes -> failwith $"Duplicate parameter names: %A{dupes}"
 
     let private formatShape (shape: int list) =
         sprintf "[%s]" (shape |> List.map string |> String.concat ", ")
@@ -148,7 +148,7 @@ module Model =
                 | _ -> None)
     }
 
-    let private enforceStrict (report: LoadReport) (mode: LoadMode) : Result<LoadReport, ToroError> =
+    let private enforceStrict (report: LoadReport) (mode: LoadMode) : unit =
         match mode with
         | Strict when
             report.Missing <> []
@@ -169,8 +169,8 @@ module Model =
                     $"dtype mismatches: %A{names}"
             ]
 
-            Error(Msg(parts |> String.concat "; "))
-        | _ -> Ok report
+            failwith (parts |> String.concat "; ")
+        | _ -> ()
 
     /// Return all named tensors in the model via reflection.
     let namedParams (model: 'T) : (string * Tensor) list = collect "" (box model)
@@ -181,13 +181,11 @@ module Model =
         |> List.choose (fun (_, t) -> if t.RequiresGrad then Some t else None)
 
     /// Save all model tensors to a .safetensors file.
-    let save (model: 'T) (filePath: string) : Result<unit, ToroError> =
-        result {
-            let ps = namedParams model
-            do! validateUniqueNames ps
-            let tensors = ps |> Map.ofList
-            do! SafeTensors.save tensors filePath
-        }
+    let save (model: 'T) (filePath: string) : unit =
+        let ps = namedParams model
+        validateUniqueNames ps
+        let tensors = ps |> Map.ofList
+        SafeTensors.save tensors filePath
 
     /// Load tensors from a dictionary into the model, matching by parameter name.
     /// When nameMap is Some, dictionary keys are translated before matching.
@@ -196,85 +194,80 @@ module Model =
         (tensors: Map<string, Tensor>)
         (nameMap: Map<string, string> option)
         (mode: LoadMode)
-        : Result<LoadReport, ToroError> =
-        result {
-            let lookup =
-                match nameMap with
-                | Some mapping ->
-                    tensors
-                    |> Map.toSeq
-                    |> Seq.map (fun (k, v) ->
-                        let mapped = mapping |> Map.tryFind k |> Option.defaultValue k
-                        mapped, v)
-                    |> Map.ofSeq
-                | None -> tensors
+        : LoadReport =
+        let lookup =
+            match nameMap with
+            | Some mapping ->
+                tensors
+                |> Map.toSeq
+                |> Seq.map (fun (k, v) ->
+                    let mapped = mapping |> Map.tryFind k |> Option.defaultValue k
+                    mapped, v)
+                |> Map.ofSeq
+            | None -> tensors
 
-            let modelNames = namedParams model
+        let modelNames = namedParams model
 
-            let matches =
-                modelNames
-                |> List.map (fun (name, tensor) -> classifyParam lookup (_.Shape) (_.DType) name tensor)
+        let matches =
+            modelNames
+            |> List.map (fun (name, tensor) -> classifyParam lookup (_.Shape) (_.DType) name tensor)
 
-            let modelNameSet = modelNames |> List.map fst |> Set.ofList
+        let modelNameSet = modelNames |> List.map fst |> Set.ofList
 
-            let unexpected =
-                lookup
-                |> Map.toList
-                |> List.map fst
-                |> List.filter (fun k -> not (Set.contains k modelNameSet))
+        let unexpected =
+            lookup
+            |> Map.toList
+            |> List.map fst
+            |> List.filter (fun k -> not (Set.contains k modelNameSet))
 
-            let report = buildReport matches unexpected
-            do! enforceStrict report mode |> Result.map ignore
+        let report = buildReport matches unexpected
+        enforceStrict report mode
 
-            for m in matches do
-                match m with
-                | Matched(_, target, src) -> do! target.copyInPlace src
-                | _ -> ()
+        for m in matches do
+            match m with
+            | Matched(_, target, src) -> target.copyInPlace src
+            | _ -> ()
 
-            return report
-        }
+        report
 
     /// Load tensors from a .safetensors file into the model in place.
     /// Shape and dtype are validated from the header before any tensor data is read.
     /// Only the tensors that match both shape and dtype are loaded into memory.
-    let loadInto (model: 'T) (filePath: string) (mode: LoadMode) : Result<LoadReport, ToroError> =
-        result {
-            let modelNames = namedParams model
-            let neededNames = modelNames |> List.map fst |> Set.ofList
+    let loadInto (model: 'T) (filePath: string) (mode: LoadMode) : LoadReport =
+        let modelNames = namedParams model
+        let neededNames = modelNames |> List.map fst |> Set.ofList
 
-            let! allMeta = SafeTensors.loadMeta filePath
-            let allFileKeys = allMeta |> Map.toList |> List.map fst
+        let allMeta = SafeTensors.loadMeta filePath
+        let allFileKeys = allMeta |> Map.toList |> List.map fst
 
-            let unexpected =
-                allFileKeys
-                |> List.filter (fun k -> not (Set.contains k neededNames))
+        let unexpected =
+            allFileKeys
+            |> List.filter (fun k -> not (Set.contains k neededNames))
 
-            let matches =
-                modelNames
-                |> List.map (fun (name, tensor) -> classifyParam allMeta (_.Shape) (_.DType) name tensor)
+        let matches =
+            modelNames
+            |> List.map (fun (name, tensor) -> classifyParam allMeta (_.Shape) (_.DType) name tensor)
 
-            let report = buildReport matches unexpected
-            do! enforceStrict report mode |> Result.map ignore
+        let report = buildReport matches unexpected
+        enforceStrict report mode
 
-            let namesToLoad =
-                matches
-                |> List.choose (function
-                    | Matched(n, _, _) -> Some n
-                    | _ -> None)
-                |> Set.ofList
+        let namesToLoad =
+            matches
+            |> List.choose (function
+                | Matched(n, _, _) -> Some n
+                | _ -> None)
+            |> Set.ofList
 
-            do!
-                scoped {
-                    let! _, tensors = SafeTensors.loadSelected filePath namesToLoad
+        scoped {
+            let _, tensors = SafeTensors.loadSelected filePath namesToLoad
 
-                    for m in matches do
-                        match m with
-                        | Matched(name, target, _) ->
-                            match Map.tryFind name tensors with
-                            | Some src -> do! target.copyInPlace src
-                            | None -> ()
-                        | _ -> ()
-                }
-
-            return report
+            for m in matches do
+                match m with
+                | Matched(name, target, _) ->
+                    match Map.tryFind name tensors with
+                    | Some src -> target.copyInPlace src
+                    | None -> ()
+                | _ -> ()
         }
+
+        report

@@ -8,7 +8,7 @@ type MaxPool1d = {
     Padding: int
 } with
 
-    member this.forward(x: Tensor) : Result<Tensor, ToroError> =
+    member this.forward(x: Tensor) : Tensor =
         x.maxPool1d (this.KernelSize, stride = this.Stride, padding = this.Padding)
 
     interface IModule with
@@ -33,7 +33,7 @@ type MaxPool2d = {
     Padding: int
 } with
 
-    member this.forward(x: Tensor) : Result<Tensor, ToroError> =
+    member this.forward(x: Tensor) : Tensor =
         x.maxPool2d (this.KernelSize, stride = this.Stride, padding = this.Padding)
 
     interface IModule with
@@ -58,7 +58,7 @@ type AvgPool2d = {
     Padding: int
 } with
 
-    member this.forward(x: Tensor) : Result<Tensor, ToroError> =
+    member this.forward(x: Tensor) : Tensor =
         x.avgPool2d (this.KernelSize, stride = this.Stride, padding = this.Padding)
 
     interface IModule with
@@ -83,7 +83,7 @@ type AvgPool1d = {
     Padding: int
 } with
 
-    member this.forward(x: Tensor) : Result<Tensor, ToroError> =
+    member this.forward(x: Tensor) : Tensor =
         x.avgPool1d (this.KernelSize, stride = this.Stride, padding = this.Padding)
 
     interface IModule with
@@ -106,7 +106,7 @@ type AdaptiveAvgPool2d = {
     OutputSize: int
 } with
 
-    member this.forward(x: Tensor) : Result<Tensor, ToroError> = x.adaptiveAvgPool2d this.OutputSize
+    member this.forward(x: Tensor) : Tensor = x.adaptiveAvgPool2d this.OutputSize
 
     interface IModule with
         member this.forward x = this.forward x
@@ -118,7 +118,7 @@ type AdaptiveAvgPool1d = {
     OutputSize: int
 } with
 
-    member this.forward(x: Tensor) : Result<Tensor, ToroError> = x.adaptiveAvgPool1d this.OutputSize
+    member this.forward(x: Tensor) : Tensor = x.adaptiveAvgPool1d this.OutputSize
 
     interface IModule with
         member this.forward x = this.forward x

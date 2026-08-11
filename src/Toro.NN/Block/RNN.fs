@@ -1,32 +1,22 @@
 namespace Toro.NN
 
 open Toro
-open Toro.TensorOp
 
 module RNN =
     /// Scan a step function over the sequence dimension, collecting all states.
     /// Input shape: [batch; seqLen; features].
-    let scan
-        (zeroState: int -> Result<'s, ToroError>)
-        (step: Tensor -> 's -> Result<'s, ToroError>)
-        (input: Tensor)
-        : Result<'s list, ToroError> =
-        result {
-            let seqLen = input.Shape[1]
-            let! s0 = zeroState (input.Shape[0])
+    let scan (zeroState: int -> 's) (step: Tensor -> 's -> 's) (input: Tensor) : 's list =
+        let seqLen = input.Shape[1]
+        let s0 = zeroState (input.Shape[0])
 
-            return!
-                [ 0 .. seqLen - 1 ]
-                |> List.fold
-                    (fun acc i ->
-                        result {
-                            let! state, revStates = acc
-                            let! next = step (input.at [ A; I i ]) state
-                            return next, next :: revStates
-                        })
-                    (Ok(s0, []))
-                |> Result.map (snd >> List.rev)
-        }
+        [ 0 .. seqLen - 1 ]
+        |> List.fold
+            (fun (state, revStates) i ->
+                let next = step (input.at [ A; I i ]) state
+                next, next :: revStates)
+            (s0, [])
+        |> snd
+        |> List.rev
 
 // --- LSTM ---
 
@@ -63,72 +53,64 @@ type LSTM = {
     Device: Device
 } with
 
-    member this.zeroState(batchDim: int) : Result<LSTMState, ToroError> =
-        result {
-            let! zeros = Tensor.zeros ([ batchDim; this.HiddenDim ], this.DType, this.Device)
+    member this.zeroState(batchDim: int) : LSTMState =
+        let zeros = Tensor.zeros ([ batchDim; this.HiddenDim ], this.DType, this.Device)
+        let zeros2 = zeros.clone ()
+        { H = zeros; C = zeros2 }
 
-            let! zeros2 = zeros.clone ()
-            return { H = zeros; C = zeros2 }
-        }
+    member this.step (input: Tensor) (state: LSTMState) : LSTMState =
+        let wIhT = this.WIh.t ()
+        let wHhT = this.WHh.t ()
+        let ihGates = input.matmul wIhT
+        let hhGates = state.H.matmul wHhT
 
-    member this.step (input: Tensor) (state: LSTMState) : Result<LSTMState, ToroError> =
-        result {
-            let! wIhT = this.WIh.t ()
-            let! wHhT = this.WHh.t ()
-            let! ihGates = input.matmul wIhT
-            let! hhGates = state.H.matmul wHhT
+        let ihGates =
+            match this.BIh with
+            | Some b -> ihGates.add b
+            | None -> ihGates
 
-            let! ihGates =
-                match this.BIh with
-                | Some b -> ihGates.add b
-                | None -> Ok ihGates
+        let hhGates =
+            match this.BHh with
+            | Some b -> hhGates.add b
+            | None -> hhGates
 
-            let! hhGates =
-                match this.BHh with
-                | Some b -> hhGates.add b
-                | None -> Ok hhGates
+        let gates = ihGates.add hhGates
+        let chunks = gates.chunk (4, 1)
 
-            let! gates = ihGates.add hhGates
-            let! chunks = gates.chunk (4, 1)
+        let inGate = chunks[0].sigmoid ()
+        let forgetGate = chunks[1].sigmoid ()
+        let cellGate = chunks[2].tanh ()
+        let outGate = chunks[3].sigmoid ()
 
-            let! inGate = chunks[0].sigmoid ()
-            let! forgetGate = chunks[1].sigmoid ()
-            let! cellGate = chunks[2].tanh ()
-            let! outGate = chunks[3].sigmoid ()
+        let nextC = forgetGate.mul state.C + inGate.mul cellGate
+        let nextH = outGate * nextC.tanh ()
 
-            let! nextC = forgetGate.mul state.C +~ inGate.mul cellGate
-            let! nextH = outGate *~ nextC.tanh ()
-
-            return { H = nextH; C = nextC }
-        }
+        { H = nextH; C = nextC }
 
 module LSTM =
-    let init (inDim: int) (hiddenDim: int) (config: LSTMConfig) (dtype: DType) (device: Device) : Result<LSTM, ToroError> =
-        result {
-            let! wIh = Init.toParam [ 4 * hiddenDim; inDim ] dtype device config.WIhInit
+    let init (inDim: int) (hiddenDim: int) (config: LSTMConfig) (dtype: DType) (device: Device) : LSTM =
+        let wIh = Init.toParam [ 4 * hiddenDim; inDim ] dtype device config.WIhInit
+        let wHh = Init.toParam [ 4 * hiddenDim; hiddenDim ] dtype device config.WHhInit
 
-            let! wHh = Init.toParam [ 4 * hiddenDim; hiddenDim ] dtype device config.WHhInit
+        let bIh =
+            config.BIhInit
+            |> Option.map (Init.toParam [ 4 * hiddenDim ] dtype device)
 
-            let! bIh =
-                config.BIhInit
-                |> Option.traverseResult (Init.toParam [ 4 * hiddenDim ] dtype device)
+        let bHh =
+            config.BHhInit
+            |> Option.map (Init.toParam [ 4 * hiddenDim ] dtype device)
 
-            let! bHh =
-                config.BHhInit
-                |> Option.traverseResult (Init.toParam [ 4 * hiddenDim ] dtype device)
-
-            return {
-                WIh = wIh
-                WHh = wHh
-                BIh = bIh
-                BHh = bHh
-                HiddenDim = hiddenDim
-                DType = dtype
-                Device = device
-            }
+        {
+            WIh = wIh
+            WHh = wHh
+            BIh = bIh
+            BHh = bHh
+            HiddenDim = hiddenDim
+            DType = dtype
+            Device = device
         }
 
-    let initDefault (inDim: int) (hiddenDim: int) (dtype: DType) (device: Device) : Result<LSTM, ToroError> =
+    let initDefault (inDim: int) (hiddenDim: int) (dtype: DType) (device: Device) : LSTM =
         init inDim hiddenDim LSTMConfig.defaultConfig dtype device
 
 // --- GRU ---
@@ -166,69 +148,61 @@ type GRU = {
     Device: Device
 } with
 
-    member this.zeroState(batchDim: int) : Result<GRUState, ToroError> =
-        result {
-            let! zeros = Tensor.zeros ([ batchDim; this.HiddenDim ], this.DType, this.Device)
+    member this.zeroState(batchDim: int) : GRUState =
+        let zeros = Tensor.zeros ([ batchDim; this.HiddenDim ], this.DType, this.Device)
+        { H = zeros }
 
-            return { H = zeros }
-        }
+    member this.step (input: Tensor) (state: GRUState) : GRUState =
+        let wIhT = this.WIh.t ()
+        let wHhT = this.WHh.t ()
+        let ihGates = input.matmul wIhT
+        let hhGates = state.H.matmul wHhT
 
-    member this.step (input: Tensor) (state: GRUState) : Result<GRUState, ToroError> =
-        result {
-            let! wIhT = this.WIh.t ()
-            let! wHhT = this.WHh.t ()
-            let! ihGates = input.matmul wIhT
-            let! hhGates = state.H.matmul wHhT
+        let ihGates =
+            match this.BIh with
+            | Some b -> ihGates.add b
+            | None -> ihGates
 
-            let! ihGates =
-                match this.BIh with
-                | Some b -> ihGates.add b
-                | None -> Ok ihGates
+        let hhGates =
+            match this.BHh with
+            | Some b -> hhGates.add b
+            | None -> hhGates
 
-            let! hhGates =
-                match this.BHh with
-                | Some b -> hhGates.add b
-                | None -> Ok hhGates
+        let chunksIh = ihGates.chunk (3, 1)
+        let chunksHh = hhGates.chunk (3, 1)
 
-            let! chunksIh = ihGates.chunk (3, 1)
-            let! chunksHh = hhGates.chunk (3, 1)
+        let rGate = (chunksIh[0] + chunksHh[0]).sigmoid ()
+        let zGate = (chunksIh[1] + chunksHh[1]).sigmoid ()
 
-            let! rGate = (chunksIh[0] + chunksHh[0]).sigmoid ()
-            let! zGate = (chunksIh[1] + chunksHh[1]).sigmoid ()
+        let rHh = rGate.mul chunksHh[2]
+        let nGate = (chunksIh[2] + rHh).tanh ()
 
-            let! rHh = rGate.mul chunksHh[2]
-            let! nGate = (chunksIh[2] + rHh).tanh ()
+        let nextH = zGate.mul state.H + (1.0 - zGate).mul nGate
 
-            let! nextH = zGate.mul state.H +~ (1.0 - zGate).mul nGate
-
-            return { H = nextH }
-        }
+        { H = nextH }
 
 module GRU =
-    let init (inDim: int) (hiddenDim: int) (config: GRUConfig) (dtype: DType) (device: Device) : Result<GRU, ToroError> =
-        result {
-            let! wIh = Init.toParam [ 3 * hiddenDim; inDim ] dtype device config.WIhInit
+    let init (inDim: int) (hiddenDim: int) (config: GRUConfig) (dtype: DType) (device: Device) : GRU =
+        let wIh = Init.toParam [ 3 * hiddenDim; inDim ] dtype device config.WIhInit
+        let wHh = Init.toParam [ 3 * hiddenDim; hiddenDim ] dtype device config.WHhInit
 
-            let! wHh = Init.toParam [ 3 * hiddenDim; hiddenDim ] dtype device config.WHhInit
+        let bIh =
+            config.BIhInit
+            |> Option.map (Init.toParam [ 3 * hiddenDim ] dtype device)
 
-            let! bIh =
-                config.BIhInit
-                |> Option.traverseResult (Init.toParam [ 3 * hiddenDim ] dtype device)
+        let bHh =
+            config.BHhInit
+            |> Option.map (Init.toParam [ 3 * hiddenDim ] dtype device)
 
-            let! bHh =
-                config.BHhInit
-                |> Option.traverseResult (Init.toParam [ 3 * hiddenDim ] dtype device)
-
-            return {
-                WIh = wIh
-                WHh = wHh
-                BIh = bIh
-                BHh = bHh
-                HiddenDim = hiddenDim
-                DType = dtype
-                Device = device
-            }
+        {
+            WIh = wIh
+            WHh = wHh
+            BIh = bIh
+            BHh = bHh
+            HiddenDim = hiddenDim
+            DType = dtype
+            Device = device
         }
 
-    let initDefault (inDim: int) (hiddenDim: int) (dtype: DType) (device: Device) : Result<GRU, ToroError> =
+    let initDefault (inDim: int) (hiddenDim: int) (dtype: DType) (device: Device) : GRU =
         init inDim hiddenDim GRUConfig.defaultConfig dtype device

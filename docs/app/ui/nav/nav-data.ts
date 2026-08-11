@@ -90,12 +90,10 @@ export const navSections: readonly NavSection[] = [
       {
         title: "Toro",
         entries: [
-          { to: "/api-error", label: "Error" },
           { to: "/api-device", label: "Device" },
           { to: "/api-dtype", label: "DType" },
           { to: "/api-shape", label: "Shape" },
           { to: "/api-tensor", label: "Tensor" },
-          { to: "/api-tensorop", label: "TensorOp" },
           { to: "/api-safetensors", label: "SafeTensors" },
         ],
       },

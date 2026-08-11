@@ -6,8 +6,8 @@ type Sequential = {
     Layers: IModule list
 } with
 
-    member this.forward: Tensor -> Result<Tensor, ToroError> =
-        this.Layers |> List.map _.forward |> List.fold (>=>) Ok
+    member this.forward(x: Tensor) : Tensor =
+        this.Layers |> List.fold (fun acc m -> m.forward acc) x
 
     interface IModule with
         member this.forward x = this.forward x

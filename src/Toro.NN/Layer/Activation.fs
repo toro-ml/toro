@@ -17,7 +17,7 @@ type Activation =
     | Hardswish
     | Hardsigmoid
 
-    member this.forward(x: Tensor) : Result<Tensor, ToroError> =
+    member this.forward(x: Tensor) : Tensor =
         match this with
         | Relu -> x.relu ()
         | Gelu -> x.gelu ()

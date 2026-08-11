@@ -20,19 +20,15 @@ The `SafeTensors` module is in the `Toro` namespace (core package).
 ### Save
 
 ```fsharp
-result {
-    let tensors = Map [ "weight", weightTensor; "bias", biasTensor ]
-    do! SafeTensors.save tensors "model.safetensors"
-}
+let tensors = Map [ "weight", weightTensor; "bias", biasTensor ]
+SafeTensors.save tensors "model.safetensors"
 ```
 
 ### Load
 
 ```fsharp
-result {
-    let! loaded = SafeTensors.load "model.safetensors"
-    // loaded: Map<string, Tensor>
-}
+let loaded = SafeTensors.load "model.safetensors"
+// loaded: Map<string, Tensor>
 ```
 
 Supported data types: `F16`, `BF16`, `F32`, `F64`, `I32`, `I64`, `U8`, `Bool`.
@@ -44,7 +40,7 @@ Download model files from the Hugging Face Hub with automatic caching to `~/.cac
 ### Download a file
 
 ```fsharp
-let! path =
+let path =
     Hub.download "openai-community/gpt2" "model.safetensors"
     |> Async.RunSynchronously
 // path: local file path in the cache directory
@@ -53,7 +49,7 @@ let! path =
 ### Download and load weights
 
 ```fsharp
-let! weights =
+let weights =
     Hub.loadSafeTensors "openai-community/gpt2" "model.safetensors"
     |> Async.RunSynchronously
 // weights: Map<string, Tensor>
@@ -74,13 +70,11 @@ The client adds a `Bearer` token automatically when `HF_TOKEN` is set.
 Use `Model.loadFromDict` (from Toro.NN) to copy downloaded weights into a model:
 
 ```fsharp
-result {
-    let! weights =
-        Hub.loadSafeTensors "openai-community/gpt2" "model.safetensors"
-        |> Async.RunSynchronously
+let weights =
+    Hub.loadSafeTensors "openai-community/gpt2" "model.safetensors"
+    |> Async.RunSynchronously
 
-    let! report = Model.loadFromDict model weights None Strict
-}
+let report = Model.loadFromDict model weights None Strict
 ```
 
 Pass a name map when the parameter names in the file do not match the model:
@@ -90,7 +84,7 @@ let nameMap = Map [
     "transformer.wte.weight", "Embedding.Embeddings"
     // ...
 ]
-let! report = Model.loadFromDict model weights (Some nameMap) Lenient
+let report = Model.loadFromDict model weights (Some nameMap) Lenient
 printfn "Loaded %d params, %d missing" report.Loaded.Length report.Missing.Length
 ```
 

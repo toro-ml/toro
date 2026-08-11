@@ -6,9 +6,9 @@ type Dropout = {
     DropP: float
 } with
 
-    member this.forwardT (train: bool) (x: Tensor) : Result<Tensor, ToroError> =
+    member this.forwardT (train: bool) (x: Tensor) : Tensor =
         if not train || this.DropP = 0.0 then
-            Ok x
+            x
         else
             x.dropout (this.DropP, train)
 

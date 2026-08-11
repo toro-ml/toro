@@ -23,7 +23,7 @@ type BatchNorm = {
     Config: BatchNormConfig
 } with
 
-    member this.forwardT (train: bool) (x: Tensor) : Result<Tensor, ToroError> =
+    member this.forwardT (train: bool) (x: Tensor) : Tensor =
         x.batchNorm (
             this.Weight,
             this.Bias,
@@ -35,29 +35,27 @@ type BatchNorm = {
         )
 
 module BatchNorm =
-    let init (numFeatures: int) (config: BatchNormConfig) (dtype: DType) (device: Device) : Result<BatchNorm, ToroError> =
-        result {
-            let affine = if config.Affine then Some() else None
+    let init (numFeatures: int) (config: BatchNormConfig) (dtype: DType) (device: Device) : BatchNorm =
+        let affine = if config.Affine then Some() else None
 
-            let! weight =
-                affine
-                |> Option.traverseResult (fun () -> Init.toParam [ numFeatures ] dtype device (Init.Const 1.0))
+        let weight =
+            affine
+            |> Option.map (fun () -> Init.toParam [ numFeatures ] dtype device (Init.Const 1.0))
 
-            let! bias =
-                affine
-                |> Option.traverseResult (fun () -> Init.toParam [ numFeatures ] dtype device (Init.Const 0.0))
+        let bias =
+            affine
+            |> Option.map (fun () -> Init.toParam [ numFeatures ] dtype device (Init.Const 0.0))
 
-            let! runningMean = Tensor.zeros ([ numFeatures ], dtype, device)
-            let! runningVar = Tensor.ones ([ numFeatures ], dtype, device)
+        let runningMean = Tensor.zeros ([ numFeatures ], dtype, device)
+        let runningVar = Tensor.ones ([ numFeatures ], dtype, device)
 
-            return {
-                Weight = weight
-                Bias = bias
-                RunningMean = runningMean
-                RunningVar = runningVar
-                Config = config
-            }
+        {
+            Weight = weight
+            Bias = bias
+            RunningMean = runningMean
+            RunningVar = runningVar
+            Config = config
         }
 
-    let initDefault (numFeatures: int) (dtype: DType) (device: Device) : Result<BatchNorm, ToroError> =
+    let initDefault (numFeatures: int) (dtype: DType) (device: Device) : BatchNorm =
         init numFeatures BatchNormConfig.defaultConfig dtype device

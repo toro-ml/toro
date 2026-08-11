@@ -24,9 +24,7 @@ let tokenizer = Tokenizer.fromTiktoken (TiktokenConfig.create "gpt-4o")
 let ids = tokenizer.encode "hello world"
 let text = tokenizer.decode ids
 
-let r = result {
-    let! tensor = Encode.toTensor tokenizer "hello world" 16 0 Cpu
-}
+let tensor = Encode.toTensor tokenizer "hello world" 16 0 Cpu
 ```
 
 ## Features

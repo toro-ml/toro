@@ -34,21 +34,21 @@ module DType =
         | U8 -> torch.ScalarType.Byte
         | Bool -> torch.ScalarType.Bool
 
-    /// Try to convert a TorchSharp scalar type. Return Error for unsupported types.
-    let tryOfTorch (dtype: torch.ScalarType) : Result<DType, ToroError> =
+    /// Try to convert a TorchSharp scalar type. Return None for unsupported types.
+    let tryOfTorch (dtype: torch.ScalarType) : DType option =
         match dtype with
-        | torch.ScalarType.Float16 -> Ok F16
-        | torch.ScalarType.BFloat16 -> Ok BF16
-        | torch.ScalarType.Float32 -> Ok F32
-        | torch.ScalarType.Float64 -> Ok F64
-        | torch.ScalarType.Int32 -> Ok I32
-        | torch.ScalarType.Int64 -> Ok I64
-        | torch.ScalarType.Byte -> Ok U8
-        | torch.ScalarType.Bool -> Ok Bool
-        | dt -> Error(UnsupportedDType(string dt))
+        | torch.ScalarType.Float16 -> Some F16
+        | torch.ScalarType.BFloat16 -> Some BF16
+        | torch.ScalarType.Float32 -> Some F32
+        | torch.ScalarType.Float64 -> Some F64
+        | torch.ScalarType.Int32 -> Some I32
+        | torch.ScalarType.Int64 -> Some I64
+        | torch.ScalarType.Byte -> Some U8
+        | torch.ScalarType.Bool -> Some Bool
+        | _ -> None
 
     /// Convert a TorchSharp scalar type. Raise on unsupported types.
     let ofTorch (dtype: torch.ScalarType) : DType =
         match tryOfTorch dtype with
-        | Ok d -> d
-        | Error e -> raise (System.NotSupportedException(string e))
+        | Some d -> d
+        | None -> raise (System.NotSupportedException $"Unsupported dtype: {dtype}")

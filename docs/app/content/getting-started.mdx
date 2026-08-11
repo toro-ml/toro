@@ -36,26 +36,23 @@ Open `Program.fs` and add the training data for XOR:
 open Toro
 open Toro.NN
 
-let r = result {
-    let! x = Tensor.ofList ([ [ 0f; 0f ]; [ 0f; 1f ]; [ 1f; 0f ]; [ 1f; 1f ] ], Cpu)
-    let! y = Tensor.ofList ([ [ 0f ]; [ 1f ]; [ 1f ]; [ 0f ] ], Cpu)
+let x = Tensor.ofList ([ [ 0f; 0f ]; [ 0f; 1f ]; [ 1f; 0f ]; [ 1f; 1f ] ], Cpu)
+let y = Tensor.ofList ([ [ 0f ]; [ 1f ]; [ 1f ]; [ 0f ] ], Cpu)
 ```
 
 `Tensor.ofList` creates a tensor from an F# list. For arrays, use `Tensor.ofArray`.
-Both return `Result<Tensor, ToroError>`.
-Use `let!` to unwrap the result inside `result { }`.
 
 ## Step 4: Build the Model
 
 Create a two-layer network with the `sequential { }` computation expression:
 
 ```fsharp
-    let! l1 = Linear.init 2 16 F32 Cpu
-    let! l2 = Linear.init 16 1 F32 Cpu
+let l1 = Linear.init 2 16 F32 Cpu
+let l2 = Linear.init 16 1 F32 Cpu
 
-    let model = sequential {
-        l1; Relu; l2
-    }
+let model = sequential {
+    l1; Relu; l2
+}
 ```
 
 - `Linear.init inDim outDim dtype device` creates a fully connected layer.
@@ -67,7 +64,7 @@ Create a two-layer network with the `sequential { }` computation expression:
 Create an AdamW optimizer from the model parameters:
 
 ```fsharp
-    let! opt = AdamW.createWithLr 0.01 (Model.trainableVars model)
+let opt = AdamW.createWithLr 0.01 (Model.trainableVars model)
 ```
 
 `Model.trainableVars` collects all tensors with `RequiresGrad = true` from the model record.
@@ -77,20 +74,17 @@ Create an AdamW optimizer from the model parameters:
 Run the training loop:
 
 ```fsharp
-    for epoch in 1..500 do
+for epoch in 1..500 do
+    scoped {
         opt.zeroGrad ()
-        let! pred = model.forward x
-        let! loss = Loss.mse pred y
-        do! loss.backward ()
-        do! opt.step ()
+        let pred = model.forward x
+        let loss = Loss.mse pred y
+        loss.backward ()
+        opt.step ()
 
         if epoch % 100 = 0 then
             printfn "epoch %d  loss=%.6f" epoch (loss.item ())
-}
-
-match r with
-| Ok () -> 0
-| Error e -> eprintfn "%A" e; 1
+    }
 ```
 
 - `opt.zeroGrad ()` clears accumulated gradients.
@@ -98,6 +92,7 @@ match r with
 - `Loss.mse` computes mean squared error.
 - `loss.backward ()` computes gradients via backpropagation.
 - `opt.step ()` updates parameters using the gradients.
+- `scoped { }` disposes intermediate tensors at the end of each iteration.
 
 ## Step 7: Run
 
@@ -117,7 +112,7 @@ epoch 500  loss=0.000001
 
 ## Next Steps
 
-- [Core Concepts](/concepts) -- Error handling, `result { }` CE, DType, Device
+- [Core Concepts](/concepts) -- Ownership management, `scoped { }` CE, DType, Device
 - [Tensor](/tensor) -- Tensor operations
 - [Neural Networks](/nn) -- Layers and model composition
 - [Training](/training) -- Loss functions and optimizers

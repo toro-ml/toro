@@ -71,101 +71,87 @@ let numHeads = 4
 let ffDim = 128
 
 let createModel () =
-    result {
-        let! embed = Embedding.init vocabSize dim F32 Cpu
-        let! block = TransformerBlock.init dim numHeads ffDim F32 Cpu
-        let! head = Linear.init dim 2 F32 Cpu
+    let embed = Embedding.init vocabSize dim F32 Cpu
+    let block = TransformerBlock.init dim numHeads ffDim F32 Cpu
+    let head = Linear.init dim 2 F32 Cpu
 
-        return {
-            Embed = embed
-            Block = block
-            Head = head
-        }
+    {
+        Embed = embed
+        Block = block
+        Head = head
     }
 
 let forward (model: TransformerClassifier) (input: Tensor) =
-    result {
-        let! x = model.Embed.forward input
-        let! x = model.Block.forward x
-        let! pooled = x.mean (1)
-        return! model.Head.forward pooled
-    }
+    let x = model.Embed.forward input
+    let x = model.Block.forward x
+    let pooled = x.mean (1)
+    model.Head.forward pooled
 
 [<EntryPoint>]
 let main _argv =
-    result {
-        let nPos = positiveWords.Length
-        let nNeg = negativeWords.Length
-        let nSamples = nPos + nNeg
+    let nPos = positiveWords.Length
+    let nNeg = negativeWords.Length
+    let nSamples = nPos + nNeg
 
-        let inputData =
-            Array.append positiveWords negativeWords
-            |> Array.collect (fun w -> encodeWord w)
+    let inputData =
+        Array.append positiveWords negativeWords
+        |> Array.collect (fun w -> encodeWord w)
 
-        let labelData = Array.append (Array.create nPos 0L) (Array.create nNeg 1L)
+    let labelData = Array.append (Array.create nPos 0L) (Array.create nNeg 1L)
 
-        let! input = Tensor.ofArray (inputData, Cpu)
-        let! input = input.reshape [ nSamples; maxLen ]
-        let! labels = Tensor.ofArray (labelData, Cpu)
+    let input = Tensor.ofArray (inputData, Cpu)
+    let input = input.reshape [ nSamples; maxLen ]
+    let labels = Tensor.ofArray (labelData, Cpu)
 
-        printfn "Text classifier: positive vs negative words"
-        printfn "Samples: %d (%d pos + %d neg), vocab: %d chars, maxLen: %d" nSamples nPos nNeg vocabSize maxLen
+    printfn "Text classifier: positive vs negative words"
+    printfn "Samples: %d (%d pos + %d neg), vocab: %d chars, maxLen: %d" nSamples nPos nNeg vocabSize maxLen
 
-        printfn
-            "Model: Embedding(%d,%d) -> TransformerBlock(heads=%d, ff=%d) -> mean pool -> Linear(%d,2)"
-            vocabSize
-            dim
-            numHeads
-            ffDim
-            dim
+    printfn
+        "Model: Embedding(%d,%d) -> TransformerBlock(heads=%d, ff=%d) -> mean pool -> Linear(%d,2)"
+        vocabSize
+        dim
+        numHeads
+        ffDim
+        dim
 
-        printfn ""
+    printfn ""
 
-        let! model = createModel ()
-        let! opt = AdamW.createWithLr 1e-3 (Model.trainableVars model)
+    let model = createModel ()
+    let opt = AdamW.createWithLr 1e-3 (Model.trainableVars model)
 
-        for epoch in 1..100 do
-            do!
-                scoped {
-                    opt.zeroGrad ()
-                    let! logits = forward model input
-                    let! loss = Loss.crossEntropy logits labels
-                    do! loss.backward ()
-                    do! opt.step ()
+    for epoch in 1..100 do
+        scoped {
+            opt.zeroGrad ()
+            let logits = forward model input
+            let loss = Loss.crossEntropy logits labels
+            loss.backward ()
+            opt.step ()
 
-                    if epoch % 20 = 0 || epoch = 1 then
-                        let! predicted = logits.argmax 1
-                        let! eqSum = predicted.eq(labels).sumAll ()
-                        let correct = eqSum.item () |> int
-                        let acc = float correct / float nSamples * 100.0
-                        printfn "Epoch %3d  loss=%.4f  acc=%.0f%% (%d/%d)" epoch (loss.item ()) acc correct nSamples
-                }
+            if epoch % 20 = 0 || epoch = 1 then
+                let predicted = logits.argmax 1
+                let eqSum = predicted.eq(labels).sumAll ()
+                let correct = eqSum.item () |> int
+                let acc = float correct / float nSamples * 100.0
+                printfn "Epoch %3d  loss=%.4f  acc=%.0f%% (%d/%d)" epoch (loss.item ()) acc correct nSamples
+        }
 
-        // Test on unseen words
-        printfn ""
-        printfn "--- Predictions on unseen words ---"
+    // Test on unseen words
+    printfn ""
+    printfn "--- Predictions on unseen words ---"
 
-        let testWords = [| "lovely"; "sweet"; "cruel"; "dire"; "glad"; "bleak" |]
+    let testWords = [| "lovely"; "sweet"; "cruel"; "dire"; "glad"; "bleak" |]
 
-        let! testInput =
-            Toro.noGrad (fun () ->
-                result {
-                    let testData = testWords |> Array.collect (fun w -> encodeWord w)
-                    let! t = Tensor.ofArray (testData, Cpu)
-                    let! t = t.reshape [ testWords.Length; maxLen ]
-                    let! logits = forward model t
-                    return! logits.argmax 1
-                })
+    let testInput =
+        Toro.noGrad (fun () ->
+            let testData = testWords |> Array.collect (fun w -> encodeWord w)
+            let t = Tensor.ofArray (testData, Cpu)
+            let t = t.reshape [ testWords.Length; maxLen ]
+            let logits = forward model t
+            logits.argmax 1)
 
-        for i in 0 .. testWords.Length - 1 do
-            let! v = testInput[i].toFloat32Scalar ()
-            let label = if int v = 0 then "positive" else "negative"
-            printfn "  %-10s -> %s" testWords[i] label
-    }
+    for i in 0 .. testWords.Length - 1 do
+        let v = testInput[i].toFloat32Scalar ()
+        let label = if int v = 0 then "positive" else "negative"
+        printfn "  %-10s -> %s" testWords[i] label
 
-
-    |> function
-        | Ok() -> 0
-        | Error e ->
-            eprintfn "%A" e
-            1
+    0

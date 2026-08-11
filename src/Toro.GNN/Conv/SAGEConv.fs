@@ -11,59 +11,60 @@ type SAGEConv = {
     Bias: Tensor option
 } with
 
-    member this.forward(x: Tensor, edgeIndex: Tensor) : Result<Tensor, ToroError> =
+    member this.forward(x: Tensor, edgeIndex: Tensor) : Tensor =
         let numNodes = x.Shape[0]
         let inChannels = x.Shape[1]
 
-        result {
-            let src = edgeIndex[0]
-            let tgt = edgeIndex[1]
+        let src = edgeIndex[0]
+        let tgt = edgeIndex[1]
 
-            // Aggregate neighbor features with mean
-            let neighborMsg = x.at [ T src; A ]
-            let! aggr = MessagePassing.aggregate Mean neighborMsg tgt numNodes inChannels
+        // Aggregate neighbor features with mean
+        let neighborMsg = x.at [ T src; A ]
+        let aggr = MessagePassing.aggregate Mean neighborMsg tgt numNodes inChannels
 
-            // Self transform: x @ W_self^T
-            let! wSelfT = this.WeightSelf.t ()
-            let! selfOut = x.matmul wSelfT
+        // Self transform: x @ W_self^T
+        let wSelfT = this.WeightSelf.t ()
+        let selfOut = x.matmul wSelfT
 
-            // Neighbor transform: aggr @ W_neighbor^T
-            let! wNeighborT = this.WeightNeighbor.t ()
-            let! neighborOut = aggr.matmul wNeighborT
+        // Neighbor transform: aggr @ W_neighbor^T
+        let wNeighborT = this.WeightNeighbor.t ()
+        let neighborOut = aggr.matmul wNeighborT
 
-            // Combine
-            let! out = selfOut.add neighborOut
+        // Combine
+        let out = selfOut.add neighborOut
 
-            match this.Bias with
-            | None -> return out
-            | Some bias -> return! out.add bias
-        }
+        match this.Bias with
+        | None -> out
+        | Some bias -> out.add bias
 
 module SAGEConv =
     /// Create a SAGEConv layer with bias.
-    let init (inChannels: int) (outChannels: int) (dtype: DType) (device: Device) : Result<SAGEConv, ToroError> =
-        result {
-            let! wSelf = Init.toParam [ outChannels; inChannels ] dtype device Init.defaultKaimingNormal
-            let! wNeighbor = Init.toParam [ outChannels; inChannels ] dtype device Init.defaultKaimingNormal
-            let bound = 1.0 / sqrt (float outChannels)
-            let! b = Init.toParam [ outChannels ] dtype device (Init.Uniform(-bound, bound))
+    let init (inChannels: int) (outChannels: int) (dtype: DType) (device: Device) : SAGEConv =
+        let wSelf =
+            Init.toParam [ outChannels; inChannels ] dtype device Init.defaultKaimingNormal
 
-            return {
-                WeightSelf = wSelf
-                WeightNeighbor = wNeighbor
-                Bias = Some b
-            }
+        let wNeighbor =
+            Init.toParam [ outChannels; inChannels ] dtype device Init.defaultKaimingNormal
+
+        let bound = 1.0 / sqrt (float outChannels)
+        let b = Init.toParam [ outChannels ] dtype device (Init.Uniform(-bound, bound))
+
+        {
+            WeightSelf = wSelf
+            WeightNeighbor = wNeighbor
+            Bias = Some b
         }
 
     /// Create a SAGEConv layer without bias.
-    let initNoBias (inChannels: int) (outChannels: int) (dtype: DType) (device: Device) : Result<SAGEConv, ToroError> =
-        result {
-            let! wSelf = Init.toParam [ outChannels; inChannels ] dtype device Init.defaultKaimingNormal
-            let! wNeighbor = Init.toParam [ outChannels; inChannels ] dtype device Init.defaultKaimingNormal
+    let initNoBias (inChannels: int) (outChannels: int) (dtype: DType) (device: Device) : SAGEConv =
+        let wSelf =
+            Init.toParam [ outChannels; inChannels ] dtype device Init.defaultKaimingNormal
 
-            return {
-                WeightSelf = wSelf
-                WeightNeighbor = wNeighbor
-                Bias = None
-            }
+        let wNeighbor =
+            Init.toParam [ outChannels; inChannels ] dtype device Init.defaultKaimingNormal
+
+        {
+            WeightSelf = wSelf
+            WeightNeighbor = wNeighbor
+            Bias = None
         }

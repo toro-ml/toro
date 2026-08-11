@@ -14,28 +14,28 @@ module SkiaTransform =
         resized
 
     /// Center crop a bitmap to the given width and height.
-    let centerCrop (width: int) (height: int) (bitmap: SKBitmap) : Result<SKBitmap, ToroError> =
+    let centerCrop (width: int) (height: int) (bitmap: SKBitmap) : SKBitmap =
         if bitmap.Width < width || bitmap.Height < height then
-            Error(Msg $"centerCrop: input {bitmap.Width}x{bitmap.Height} is smaller than crop {width}x{height}")
+            failwith $"centerCrop: input {bitmap.Width}x{bitmap.Height} is smaller than crop {width}x{height}"
         else
             let left = (bitmap.Width - width) / 2
             let top = (bitmap.Height - height) / 2
             let rect = SKRectI(left, top, left + width, top + height)
             let cropped = new SKBitmap(width, height, bitmap.ColorType, bitmap.AlphaType)
             bitmap.ExtractSubset(cropped, rect) |> ignore
-            Ok cropped
+            cropped
 
     /// Random crop a bitmap to the given width and height.
-    let randomCrop (width: int) (height: int) (bitmap: SKBitmap) : Result<SKBitmap, ToroError> =
+    let randomCrop (width: int) (height: int) (bitmap: SKBitmap) : SKBitmap =
         if bitmap.Width < width || bitmap.Height < height then
-            Error(Msg $"randomCrop: input {bitmap.Width}x{bitmap.Height} is smaller than crop {width}x{height}")
+            failwith $"randomCrop: input {bitmap.Width}x{bitmap.Height} is smaller than crop {width}x{height}"
         else
             let left = System.Random.Shared.Next(0, bitmap.Width - width + 1)
             let top = System.Random.Shared.Next(0, bitmap.Height - height + 1)
             let rect = SKRectI(left, top, left + width, top + height)
             let cropped = new SKBitmap(width, height, bitmap.ColorType, bitmap.AlphaType)
             bitmap.ExtractSubset(cropped, rect) |> ignore
-            Ok cropped
+            cropped
 
     /// Flip a bitmap horizontally.
     let flipH (bitmap: SKBitmap) : SKBitmap =
@@ -60,7 +60,7 @@ module SkiaTransform =
         flipped
 
     /// Apply a list of bitmap transforms as a pipeline, then convert to a tensor.
-    let pipeline (transforms: (SKBitmap -> SKBitmap) list) (bitmap: SKBitmap) (device: Device) : Result<Tensor, ToroError> =
+    let pipeline (transforms: (SKBitmap -> SKBitmap) list) (bitmap: SKBitmap) (device: Device) : Tensor =
         let mutable current = bitmap
 
         for t in transforms do

@@ -33,7 +33,7 @@ $\text{BCE} = \max(x,0) - x \cdot y + \ln(1 + e^{-\lvert x \rvert})$
 - `inp` : `Tensor`
 - `target` : `Tensor`
 
-**Returns** `Result<Tensor, ToroError>`
+**Returns** `Tensor`
 
 ---
 
@@ -52,7 +52,7 @@ Cosine embedding loss for similarity learning.
 - `x2` : `Tensor`
 - `target` : `Tensor`
 
-**Returns** `Result<Tensor, ToroError>`
+**Returns** `Tensor`
 
 ---
 
@@ -69,7 +69,7 @@ $H(p,q) = -(1/n)\sum \log\text{softmax}(x)_{y_i}$
 - `inp` : `Tensor`
 - `target` : `Tensor`
 
-**Returns** `Result<Tensor, ToroError>`
+**Returns** `Tensor`
 
 ---
 
@@ -88,7 +88,7 @@ CTC loss for sequence-to-sequence alignment.
 - `inputLengths` : `Tensor`
 - `targetLengths` : `Tensor`
 
-**Returns** `Result<Tensor, ToroError>`
+**Returns** `Tensor`
 
 ---
 
@@ -106,7 +106,7 @@ Huber loss: smooth combination of L1 and L2.
 - `inp` : `Tensor`
 - `target` : `Tensor`
 
-**Returns** `Result<Tensor, ToroError>`
+**Returns** `Tensor`
 
 ---
 
@@ -123,7 +123,7 @@ $\text{KL}(p \| q) = (1/n)\sum p_i (\log p_i - q_i)$. Expects log-probabilities 
 - `inp` : `Tensor`
 - `target` : `Tensor`
 
-**Returns** `Result<Tensor, ToroError>`
+**Returns** `Tensor`
 
 ---
 
@@ -140,7 +140,7 @@ $\text{L1} = (1/n)\sum|x_i - y_i|$
 - `inp` : `Tensor`
 - `target` : `Tensor`
 
-**Returns** `Result<Tensor, ToroError>`
+**Returns** `Tensor`
 
 ---
 
@@ -157,7 +157,7 @@ $\text{MSE} = (1/n)\sum(x_i - y_i)^2$
 - `inp` : `Tensor`
 - `target` : `Tensor`
 
-**Returns** `Result<Tensor, ToroError>`
+**Returns** `Tensor`
 
 ---
 
@@ -174,7 +174,7 @@ $\text{NLL} = -(1/n)\sum x_{i,y_i}$
 - `inp` : `Tensor`
 - `target` : `Tensor`
 
-**Returns** `Result<Tensor, ToroError>`
+**Returns** `Tensor`
 
 ---
 
@@ -192,7 +192,7 @@ $\text{SmoothL1} = (1/n)\sum z_i$ where $z_i = 0.5 x_i^2/\beta$ if $|x_i| < \bet
 - `inp` : `Tensor`
 - `target` : `Tensor`
 
-**Returns** `Result<Tensor, ToroError>`
+**Returns** `Tensor`
 
 ---
 
@@ -211,5 +211,5 @@ Triplet margin loss for metric learning.
 - `positive` : `Tensor`
 - `negative` : `Tensor`
 
-**Returns** `Result<Tensor, ToroError>`
+**Returns** `Tensor`
 

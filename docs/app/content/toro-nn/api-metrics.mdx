@@ -29,7 +29,7 @@ Fraction of matching elements between predictions and targets.
 - `pred` : `Tensor`
 - `target` : `Tensor`
 
-**Returns** `Result<float, ToroError>`
+**Returns** `float`
 
 ---
 
@@ -46,7 +46,7 @@ Accuracy from logits: take argmax over the last dimension, then compare to targe
 - `logits` : `Tensor`
 - `target` : `Tensor`
 
-**Returns** `Result<float, ToroError>`
+**Returns** `float`
 
 ---
 
@@ -64,7 +64,7 @@ Per-class F1 score: $2 \cdot \text{precision} \cdot \text{recall} / (\text{preci
 - `pred` : `Tensor`
 - `target` : `Tensor`
 
-**Returns** `Result<float list, ToroError>`
+**Returns** `float list`
 
 ---
 
@@ -82,7 +82,7 @@ Per-class precision: TP / (TP + FP). Returns NaN for classes with no predicted p
 - `pred` : `Tensor`
 - `target` : `Tensor`
 
-**Returns** `Result<float list, ToroError>`
+**Returns** `float list`
 
 ---
 
@@ -100,5 +100,5 @@ Per-class recall: TP / (TP + FN). Returns NaN for classes with no actual positiv
 - `pred` : `Tensor`
 - `target` : `Tensor`
 
-**Returns** `Result<float list, ToroError>`
+**Returns** `float list`
 

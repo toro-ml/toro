@@ -26,7 +26,7 @@ Download a single file from Hugging Face Hub.
 - `repoId` : `string`
 - `filename` : `string`
 
-**Returns** `Async<Result<string, ToroError>>`
+**Returns** `Async<string>`
 
 ---
 
@@ -43,5 +43,5 @@ Download a .safetensors file from Hugging Face Hub and load it as a tensor dicti
 - `repoId` : `string`
 - `filename` : `string`
 
-**Returns** `Async<Result<Map<string, Tensor>, ToroError>>`
+**Returns** `Async<Map<string, Tensor>>`
 

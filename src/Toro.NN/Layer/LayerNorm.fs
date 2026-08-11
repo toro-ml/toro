@@ -22,72 +22,66 @@ type LayerNorm = {
     Eps: float
 } with
 
-    member this.forward(x: Tensor) : Result<Tensor, ToroError> =
+    member this.forward(x: Tensor) : Tensor =
         if this.RemoveMean then
             x.layerNorm (this.Weight.Shape, weight = this.Weight, ?bias = this.Bias, eps = this.Eps)
         else
-            result {
-                let xDType = x.DType
+            let xDType = x.DType
 
-                let internalDType =
-                    match xDType with
-                    | F16
-                    | BF16 -> F32
-                    | d -> d
+            let internalDType =
+                match xDType with
+                | F16
+                | BF16 -> F32
+                | d -> d
 
-                let! x = x.toDType internalDType
-                let! xSqr = x.sqr ()
-                let! normX = xSqr.mean (-1, keepDim = true)
-                let! xNormed = x /~ (normX.addScalar this.Eps |> TensorR.sqrt)
-                let! xNormed = xNormed.toDType xDType
-                let! x = xNormed.mul this.Weight
+            let x = x.toDType internalDType
+            let xSqr = x.sqr ()
+            let normX = xSqr.mean (-1, keepDim = true)
+            let xNormed = x / (normX.addScalar(this.Eps).sqrt ())
+            let xNormed = xNormed.toDType xDType
+            let x = xNormed.mul this.Weight
 
-                match this.Bias with
-                | None -> return x
-                | Some bias -> return! x.add bias
-            }
+            match this.Bias with
+            | None -> x
+            | Some bias -> x.add bias
 
     interface IModule with
         member this.forward x = this.forward x
 
 module LayerNorm =
-    let init (size: int) (config: LayerNormConfig) (dtype: DType) (device: Device) : Result<LayerNorm, ToroError> =
-        result {
-            let! weight = Init.toParam [ size ] dtype device (Init.Const 1.0)
+    let init (size: int) (config: LayerNormConfig) (dtype: DType) (device: Device) : LayerNorm =
+        let weight = Init.toParam [ size ] dtype device (Init.Const 1.0)
 
-            let! bias =
-                (if config.Affine then Some(Init.Const 0.0) else None)
-                |> Option.traverseResult (Init.toParam [ size ] dtype device)
+        let bias =
+            (if config.Affine then Some(Init.Const 0.0) else None)
+            |> Option.map (Init.toParam [ size ] dtype device)
 
-            return {
-                Weight = weight
-                Bias = bias
-                RemoveMean = config.RemoveMean
-                Eps = config.Eps
-            }
+        {
+            Weight = weight
+            Bias = bias
+            RemoveMean = config.RemoveMean
+            Eps = config.Eps
         }
 
-    let initDefault (size: int) (dtype: DType) (device: Device) : Result<LayerNorm, ToroError> =
+    let initDefault (size: int) (dtype: DType) (device: Device) : LayerNorm =
         init size LayerNormConfig.defaultConfig dtype device
 
 type RmsNorm = {
     Inner: LayerNorm
 } with
 
-    member this.forward(x: Tensor) : Result<Tensor, ToroError> = this.Inner.forward x
+    member this.forward(x: Tensor) : Tensor = this.Inner.forward x
 
     interface IModule with
         member this.forward x = this.forward x
 
 module RmsNorm =
-    let init (size: int) (eps: float) (dtype: DType) (device: Device) : Result<RmsNorm, ToroError> =
+    let init (size: int) (eps: float) (dtype: DType) (device: Device) : RmsNorm =
         let config = {
             Eps = eps
             RemoveMean = false
             Affine = false
         }
 
-        result {
-            let! inner = LayerNorm.init size config dtype device
-            return { Inner = inner }
-        }
+        let inner = LayerNorm.init size config dtype device
+        { Inner = inner }

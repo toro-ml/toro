@@ -19,12 +19,10 @@ dotnet add package TorchSharp-cpu
 open Toro
 open Toro.Vision
 
-let r = result {
-    let! img = Image.load "photo.jpg" Cpu
-    let! resized = (Resize.create 224 224).apply img
-    let! normalized = Normalize.imageNet.apply resized
-    do! Image.save normalized "out.jpg" Jpeg 0
-}
+let img = Image.load "photo.jpg" Cpu
+let resized = (Resize.create 224 224).apply img
+let normalized = Normalize.imageNet.apply resized
+Image.save normalized "out.jpg" Jpeg 0
 ```
 
 ## Features

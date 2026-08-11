@@ -18,19 +18,18 @@ let private withTempDir f =
         if Directory.Exists dir then
             Directory.Delete(dir, true)
 
-let private tensorSum (t: Tensor) =
-    (t.sumAll () |> unwrap).toFloat32Scalar () |> unwrap
+let private tensorSum (t: Tensor) = (t.sumAll ()).toFloat32Scalar ()
 
 [<Fact>]
 let ``SafeTensors round-trip F32`` () =
     withTempDir (fun dir ->
         let path = Path.Combine(dir, "test.safetensors")
-        let t1 = Tensor.randn ([ 3; 4 ], F32, Cpu) |> unwrap
-        let t2 = Tensor.randn ([ 5 ], F32, Cpu) |> unwrap
+        let t1 = Tensor.randn ([ 3; 4 ], F32, Cpu)
+        let t2 = Tensor.randn ([ 5 ], F32, Cpu)
         let tensors = Map [ "weight", t1; "bias", t2 ]
 
-        SafeTensors.save tensors path |> unwrap
-        let loaded = SafeTensors.load path |> unwrap
+        SafeTensors.save tensors path
+        let loaded = SafeTensors.load path
 
         loaded |> Map.count |> should equal 2
         loaded["weight"].Shape |> should equal [ 3; 4 ]
@@ -47,20 +46,19 @@ let ``SafeTensors round-trip I64`` () =
     withTempDir (fun dir ->
         let path = Path.Combine(dir, "int.safetensors")
 
-        let t = Tensor.ofArray ([| 1L; 2L; 3L; 4L; 5L; 6L |], Cpu) |> unwrap
+        let t = Tensor.ofArray ([| 1L; 2L; 3L; 4L; 5L; 6L |], Cpu)
 
         let tensors = Map [ "ids", t ]
 
-        SafeTensors.save tensors path |> unwrap
-        let loaded = SafeTensors.load path |> unwrap
+        SafeTensors.save tensors path
+        let loaded = SafeTensors.load path
 
         loaded["ids"].Shape |> should equal [ 6 ]
 
-        let orig = (t.sumAll () |> unwrap).toInt64Scalar () |> unwrap
+        let orig = (t.sumAll ()).toInt64Scalar ()
 
-        let roundTripped =
-            (loaded["ids"].sumAll () |> unwrap).toInt64Scalar ()
-            |> unwrap
+        let roundTripped = (loaded["ids"].sumAll ()).toInt64Scalar ()
+
 
         roundTripped |> should equal orig)
 
@@ -68,12 +66,12 @@ let ``SafeTensors round-trip I64`` () =
 let ``SafeTensors round-trip multiple dtypes`` () =
     withTempDir (fun dir ->
         let path = Path.Combine(dir, "multi.safetensors")
-        let f32 = Tensor.randn ([ 2; 3 ], F32, Cpu) |> unwrap
-        let f64 = Tensor.randn ([ 4 ], F64, Cpu) |> unwrap
+        let f32 = Tensor.randn ([ 2; 3 ], F32, Cpu)
+        let f64 = Tensor.randn ([ 4 ], F64, Cpu)
         let tensors = Map [ "f32", f32; "f64", f64 ]
 
-        SafeTensors.save tensors path |> unwrap
-        let loaded = SafeTensors.load path |> unwrap
+        SafeTensors.save tensors path
+        let loaded = SafeTensors.load path
 
         loaded["f32"].DType |> should equal F32
         loaded["f64"].DType |> should equal F64)
@@ -82,25 +80,25 @@ let ``SafeTensors round-trip multiple dtypes`` () =
 let ``SafeTensors empty map produces valid file`` () =
     withTempDir (fun dir ->
         let path = Path.Combine(dir, "empty.safetensors")
-        SafeTensors.save Map.empty path |> unwrap
-        let loaded = SafeTensors.load path |> unwrap
+        SafeTensors.save Map.empty path
+        let loaded = SafeTensors.load path
         loaded |> Map.isEmpty |> should equal true)
 
 [<Fact>]
 let ``SafeTensors scalar tensor round-trip`` () =
     withTempDir (fun dir ->
         let path = Path.Combine(dir, "scalar.safetensors")
-        let t = Tensor.ofArray ([| 42.0f |], Cpu) |> unwrap
+        let t = Tensor.ofArray ([| 42.0f |], Cpu)
         let tensors = Map [ "val", t ]
 
-        SafeTensors.save tensors path |> unwrap
-        let loaded = SafeTensors.load path |> unwrap
+        SafeTensors.save tensors path
+        let loaded = SafeTensors.load path
 
         tensorSum loaded["val"] |> should (equalWithin 1e-5f) 42.0f)
 
 [<Fact>]
 let ``Model.loadFromDict without nameMap`` () =
-    let linear = Linear.init 4 2 F32 Cpu |> unwrap
+    let linear = Linear.init 4 2 F32 Cpu
     let original = Model.namedParams linear
 
     let dict =
@@ -108,8 +106,8 @@ let ``Model.loadFromDict without nameMap`` () =
         |> List.map (fun (name, t) -> name, t)
         |> Map.ofList
 
-    let linear2 = Linear.init 4 2 F32 Cpu |> unwrap
-    let report = Model.loadFromDict linear2 dict None Strict |> unwrap
+    let linear2 = Linear.init 4 2 F32 Cpu
+    let report = Model.loadFromDict linear2 dict None Strict
 
     report.Loaded.Length |> should equal 2
     report.Missing |> should be Empty
@@ -123,7 +121,7 @@ let ``Model.loadFromDict without nameMap`` () =
 
 [<Fact>]
 let ``Model.loadFromDict with nameMap`` () =
-    let linear = Linear.init 4 2 F32 Cpu |> unwrap
+    let linear = Linear.init 4 2 F32 Cpu
     let original = Model.namedParams linear
 
     let renamedDict =
@@ -136,11 +134,10 @@ let ``Model.loadFromDict with nameMap`` () =
         |> List.map (fun (name, _) -> "hf." + name, name)
         |> Map.ofList
 
-    let linear2 = Linear.init 4 2 F32 Cpu |> unwrap
+    let linear2 = Linear.init 4 2 F32 Cpu
 
-    let report =
-        Model.loadFromDict linear2 renamedDict (Some nameMap) Strict
-        |> unwrap
+    let report = Model.loadFromDict linear2 renamedDict (Some nameMap) Strict
+
 
     report.Loaded.Length |> should equal 2
 
@@ -150,9 +147,9 @@ let ``Model.loadFromDict with nameMap`` () =
 
 [<Fact>]
 let ``Model.loadFromDict Lenient reports missing keys`` () =
-    let linear = Linear.init 4 2 F32 Cpu |> unwrap
+    let linear = Linear.init 4 2 F32 Cpu
     let before = Model.namedParams linear |> List.head |> snd |> tensorSum
-    let report = Model.loadFromDict linear Map.empty None Lenient |> unwrap
+    let report = Model.loadFromDict linear Map.empty None Lenient
     let after = Model.namedParams linear |> List.head |> snd |> tensorSum
     after |> should (equalWithin 1e-5f) before
     report.Loaded |> should be Empty
@@ -162,28 +159,32 @@ let ``Model.loadFromDict Lenient reports missing keys`` () =
 
 [<Fact>]
 let ``Model.loadFromDict Strict fails on missing keys`` () =
-    let linear = Linear.init 4 2 F32 Cpu |> unwrap
+    let linear = Linear.init 4 2 F32 Cpu
 
-    match Model.loadFromDict linear Map.empty None Strict with
-    | Error _ -> ()
-    | Ok _ -> failwith "Expected Error for missing keys in Strict mode"
+    try
+        Model.loadFromDict linear Map.empty None Strict |> ignore
+        failwith "Expected exception for missing keys in Strict mode"
+    with _ ->
+        ()
 
 [<Fact>]
 let ``Model.loadFromDict Strict fails on unexpected keys`` () =
-    let linear = Linear.init 4 2 F32 Cpu |> unwrap
+    let linear = Linear.init 4 2 F32 Cpu
     let original = Model.namedParams linear
 
     let dict =
         original
         |> List.map (fun (name, t) -> name, t)
         |> Map.ofList
-        |> Map.add "Extra" (Tensor.randn ([ 2 ], F32, Cpu) |> unwrap)
+        |> Map.add "Extra" (Tensor.randn ([ 2 ], F32, Cpu))
 
-    let linear2 = Linear.init 4 2 F32 Cpu |> unwrap
+    let linear2 = Linear.init 4 2 F32 Cpu
 
-    match Model.loadFromDict linear2 dict None Strict with
-    | Error _ -> ()
-    | Ok _ -> failwith "Expected Error for unexpected keys in Strict mode"
+    try
+        Model.loadFromDict linear2 dict None Strict |> ignore
+        failwith "Expected exception for unexpected keys in Strict mode"
+    with _ ->
+        ()
 
 // --- Validation and mismatch tests ---
 
@@ -191,12 +192,12 @@ let ``Model.loadFromDict Strict fails on unexpected keys`` () =
 let ``SafeTensors loadMeta returns tensor metadata`` () =
     withTempDir (fun dir ->
         let path = Path.Combine(dir, "meta.safetensors")
-        let t1 = Tensor.randn ([ 3; 4 ], F32, Cpu) |> unwrap
-        let t2 = Tensor.randn ([ 5 ], F64, Cpu) |> unwrap
+        let t1 = Tensor.randn ([ 3; 4 ], F32, Cpu)
+        let t2 = Tensor.randn ([ 5 ], F64, Cpu)
         let tensors = Map [ "weight", t1; "bias", t2 ]
 
-        SafeTensors.save tensors path |> unwrap
-        let meta = SafeTensors.loadMeta path |> unwrap
+        SafeTensors.save tensors path
+        let meta = SafeTensors.loadMeta path
 
         meta |> Map.count |> should equal 2
         meta["weight"].DType |> should equal F32
@@ -208,8 +209,8 @@ let ``SafeTensors loadMeta returns tensor metadata`` () =
 let ``SafeTensors save produces 8-byte aligned header`` () =
     withTempDir (fun dir ->
         let path = Path.Combine(dir, "aligned.safetensors")
-        let t = Tensor.randn ([ 2 ], F32, Cpu) |> unwrap
-        SafeTensors.save (Map [ "x", t ]) path |> unwrap
+        let t = Tensor.randn ([ 2 ], F32, Cpu)
+        SafeTensors.save (Map [ "x", t ]) path
 
         use fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read)
         use reader = new BinaryReader(fs)
@@ -220,13 +221,13 @@ let ``SafeTensors save produces 8-byte aligned header`` () =
 let ``SafeTensors loadSelected loads only requested tensors`` () =
     withTempDir (fun dir ->
         let path = Path.Combine(dir, "selective.safetensors")
-        let t1 = Tensor.randn ([ 3 ], F32, Cpu) |> unwrap
-        let t2 = Tensor.randn ([ 5 ], F32, Cpu) |> unwrap
-        let t3 = Tensor.randn ([ 7 ], F32, Cpu) |> unwrap
+        let t1 = Tensor.randn ([ 3 ], F32, Cpu)
+        let t2 = Tensor.randn ([ 5 ], F32, Cpu)
+        let t3 = Tensor.randn ([ 7 ], F32, Cpu)
         let tensors = Map [ "a", t1; "b", t2; "c", t3 ]
 
-        SafeTensors.save tensors path |> unwrap
-        let meta, loaded = SafeTensors.loadSelected path (Set [ "a"; "c" ]) |> unwrap
+        SafeTensors.save tensors path
+        let meta, loaded = SafeTensors.loadSelected path (Set [ "a"; "c" ])
 
         meta |> Map.count |> should equal 3
         loaded |> Map.count |> should equal 2
@@ -236,17 +237,16 @@ let ``SafeTensors loadSelected loads only requested tensors`` () =
 
 [<Fact>]
 let ``Model.loadFromDict Lenient reports shape mismatch`` () =
-    let linear = Linear.init 4 2 F32 Cpu |> unwrap
+    let linear = Linear.init 4 2 F32 Cpu
 
     let wrongShapeDict =
         Map [
-            "Weight", Tensor.randn ([ 3; 2 ], F32, Cpu) |> unwrap
-            "Bias", Tensor.randn ([ 2 ], F32, Cpu) |> unwrap
+            "Weight", Tensor.randn ([ 3; 2 ], F32, Cpu)
+            "Bias", Tensor.randn ([ 2 ], F32, Cpu)
         ]
 
-    let report =
-        Model.loadFromDict linear wrongShapeDict None Lenient
-        |> unwrap
+    let report = Model.loadFromDict linear wrongShapeDict None Lenient
+
 
     report.ShapeMismatches.Length |> should equal 1
     report.ShapeMismatches[0].Name |> should equal "Weight"
@@ -254,17 +254,16 @@ let ``Model.loadFromDict Lenient reports shape mismatch`` () =
 
 [<Fact>]
 let ``Model.loadFromDict Lenient reports dtype mismatch`` () =
-    let linear = Linear.init 4 2 F32 Cpu |> unwrap
+    let linear = Linear.init 4 2 F32 Cpu
 
     let wrongDTypeDict =
         Map [
-            "Weight", Tensor.randn ([ 2; 4 ], F64, Cpu) |> unwrap
-            "Bias", Tensor.randn ([ 2 ], F32, Cpu) |> unwrap
+            "Weight", Tensor.randn ([ 2; 4 ], F64, Cpu)
+            "Bias", Tensor.randn ([ 2 ], F32, Cpu)
         ]
 
-    let report =
-        Model.loadFromDict linear wrongDTypeDict None Lenient
-        |> unwrap
+    let report = Model.loadFromDict linear wrongDTypeDict None Lenient
+
 
     report.DTypeMismatches.Length |> should equal 1
     report.DTypeMismatches[0].Name |> should equal "Weight"
@@ -272,31 +271,39 @@ let ``Model.loadFromDict Lenient reports dtype mismatch`` () =
 
 [<Fact>]
 let ``Model.loadFromDict Strict fails on shape mismatch`` () =
-    let linear = Linear.init 4 2 F32 Cpu |> unwrap
+    let linear = Linear.init 4 2 F32 Cpu
 
     let wrongShapeDict =
         Map [
-            "Weight", Tensor.randn ([ 3; 2 ], F32, Cpu) |> unwrap
-            "Bias", Tensor.randn ([ 2 ], F32, Cpu) |> unwrap
+            "Weight", Tensor.randn ([ 3; 2 ], F32, Cpu)
+            "Bias", Tensor.randn ([ 2 ], F32, Cpu)
         ]
 
-    match Model.loadFromDict linear wrongShapeDict None Strict with
-    | Error _ -> ()
-    | Ok _ -> failwith "Expected Error for shape mismatch in Strict mode"
+    try
+        Model.loadFromDict linear wrongShapeDict None Strict
+        |> ignore
+
+        failwith "Expected exception for shape mismatch in Strict mode"
+    with _ ->
+        ()
 
 [<Fact>]
 let ``Model.loadFromDict Strict fails on dtype mismatch`` () =
-    let linear = Linear.init 4 2 F32 Cpu |> unwrap
+    let linear = Linear.init 4 2 F32 Cpu
 
     let wrongDTypeDict =
         Map [
-            "Weight", Tensor.randn ([ 2; 4 ], F64, Cpu) |> unwrap
-            "Bias", Tensor.randn ([ 2 ], F32, Cpu) |> unwrap
+            "Weight", Tensor.randn ([ 2; 4 ], F64, Cpu)
+            "Bias", Tensor.randn ([ 2 ], F32, Cpu)
         ]
 
-    match Model.loadFromDict linear wrongDTypeDict None Strict with
-    | Error _ -> ()
-    | Ok _ -> failwith "Expected Error for dtype mismatch in Strict mode"
+    try
+        Model.loadFromDict linear wrongDTypeDict None Strict
+        |> ignore
+
+        failwith "Expected exception for dtype mismatch in Strict mode"
+    with _ ->
+        ()
 
 // --- Spec-fidelity tests ---
 
@@ -317,10 +324,11 @@ let ``SafeTensors rejects negative shape dimension`` () =
 
         writeSafeTensorsRaw path header (Array.zeroCreate 16)
 
-        match SafeTensors.load path with
-        | Error(Msg msg) -> msg |> should haveSubstring "negative dimension"
-        | Error e -> failwith $"Expected Msg error, got: %A{e}"
-        | Ok _ -> failwith "Expected Error for negative dimension")
+        try
+            SafeTensors.load path |> ignore
+            failwith "Expected exception for negative dimension"
+        with :? System.InvalidOperationException as ex ->
+            ex.Message |> should haveSubstring "negative dimension")
 
 [<Fact>]
 let ``SafeTensors allows zero-element tensor`` () =
@@ -331,7 +339,7 @@ let ``SafeTensors allows zero-element tensor`` () =
 
         writeSafeTensorsRaw path header Array.empty
 
-        let loaded = SafeTensors.load path |> unwrap
+        let loaded = SafeTensors.load path
         loaded |> Map.count |> should equal 1
         loaded["empty"].Shape |> should equal [ 0; 4 ])
 
@@ -345,10 +353,11 @@ let ``SafeTensors rejects offset gap`` () =
 
         writeSafeTensorsRaw path header (Array.zeroCreate 12)
 
-        match SafeTensors.load path with
-        | Error(Msg msg) -> msg |> should haveSubstring "offset gap"
-        | Error e -> failwith $"Expected Msg error, got: %A{e}"
-        | Ok _ -> failwith "Expected Error for offset gap")
+        try
+            SafeTensors.load path |> ignore
+            failwith "Expected exception for offset gap"
+        with :? System.InvalidOperationException as ex ->
+            ex.Message |> should haveSubstring "offset gap")
 
 [<Fact>]
 let ``SafeTensors rejects overlapping offsets`` () =
@@ -360,23 +369,24 @@ let ``SafeTensors rejects overlapping offsets`` () =
 
         writeSafeTensorsRaw path header (Array.zeroCreate 8)
 
-        match SafeTensors.load path with
-        | Error(Msg msg) -> msg |> should haveSubstring "offset gap"
-        | Error e -> failwith $"Expected Msg error, got: %A{e}"
-        | Ok _ -> failwith "Expected Error for overlapping offsets")
+        try
+            SafeTensors.load path |> ignore
+            failwith "Expected exception for overlapping offsets"
+        with :? System.InvalidOperationException as ex ->
+            ex.Message |> should haveSubstring "offset gap")
 
 [<Fact>]
 let ``SafeTensors save orders by descending dtype alignment then name`` () =
     withTempDir (fun dir ->
         let path = Path.Combine(dir, "sorted.safetensors")
-        let u8 = Tensor.zeros ([ 1 ], U8, Cpu) |> unwrap
-        let f64 = Tensor.randn ([ 1 ], F64, Cpu) |> unwrap
-        let f32 = Tensor.randn ([ 1 ], F32, Cpu) |> unwrap
+        let u8 = Tensor.zeros ([ 1 ], U8, Cpu)
+        let f64 = Tensor.randn ([ 1 ], F64, Cpu)
+        let f32 = Tensor.randn ([ 1 ], F32, Cpu)
 
         SafeTensors.save (Map [ "z_u8", u8; "a_f32", f32; "b_f64", f64 ]) path
-        |> unwrap
 
-        let meta = SafeTensors.loadMeta path |> unwrap
+
+        let meta = SafeTensors.loadMeta path
 
         let ordered =
             meta
@@ -393,7 +403,8 @@ let ``SafeTensors rejects header not starting with brace`` () =
         let badHeader = "[\"not an object\"]"
         writeSafeTensorsRaw path badHeader Array.empty
 
-        match SafeTensors.load path with
-        | Error(Msg msg) -> msg |> should haveSubstring "start with '{'"
-        | Error e -> failwith $"Expected Msg error, got: %A{e}"
-        | Ok _ -> failwith "Expected Error for invalid header")
+        try
+            SafeTensors.load path |> ignore
+            failwith "Expected exception for invalid header"
+        with :? System.InvalidOperationException as ex ->
+            ex.Message |> should haveSubstring "start with '{'")

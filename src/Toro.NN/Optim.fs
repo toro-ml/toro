@@ -5,8 +5,8 @@ open Toro
 
 /// Function record for checkpoint save/load operations.
 type OptimizerOps = {
-    SaveState: string -> Result<unit, ToroError>
-    LoadState: string -> Result<unit, ToroError>
+    SaveState: string -> unit
+    LoadState: string -> unit
     LearningRate: unit -> float
     SetLearningRate: float -> unit
 }
@@ -17,15 +17,12 @@ type SGD = {
 } with
 
     member this.step() =
-        result {
-            for v in this.Vars do
-                do!
-                    scoped {
-                        let! g = v.grad ()
-                        let! updated = v -~ g.mulScalar this.LearningRate
-                        do! v.copyInPlace updated
-                    }
-        }
+        for v in this.Vars do
+            scoped {
+                let g = v.grad ()
+                let updated = v - g.mulScalar this.LearningRate
+                v.copyInPlace updated
+            }
 
     member this.learningRate() = this.LearningRate
 
@@ -35,8 +32,8 @@ type SGD = {
         for v in this.Vars do
             v.zeroGrad ()
 
-    member _.saveState(_dirPath: string) : Result<unit, ToroError> = Ok()
-    member _.loadState(_dirPath: string) : Result<unit, ToroError> = Ok()
+    member _.saveState(_dirPath: string) = ()
+    member _.loadState(_dirPath: string) = ()
 
     member this.toOps() : OptimizerOps = {
         SaveState = this.saveState
@@ -76,31 +73,28 @@ type AdamW = {
         let p = this.Params
         let t = float this.StepCount
 
-        result {
-            for param, m, v in this.Vars do
-                do!
-                    scoped {
-                        let! g = param.grad ()
+        for param, m, v in this.Vars do
+            scoped {
+                let g = param.grad ()
 
-                        let! mNew = m.mulScalar p.Beta1 +~ g.mulScalar (1.0 - p.Beta1)
-                        do! m.copyInPlace mNew
+                let mNew = m.mulScalar p.Beta1 + g.mulScalar (1.0 - p.Beta1)
+                m.copyInPlace mNew
 
-                        let! vNew = v.mulScalar p.Beta2 +~ g.sqr () *~. (1.0 - p.Beta2)
-                        do! v.copyInPlace vNew
+                let vNew = v.mulScalar p.Beta2 + g.sqr () * (1.0 - p.Beta2)
+                v.copyInPlace vNew
 
-                        let mHatScale = 1.0 / (1.0 - pown p.Beta1 (int t))
-                        let vHatScale = 1.0 / (1.0 - pown p.Beta2 (int t))
+                let mHatScale = 1.0 / (1.0 - pown p.Beta1 (int t))
+                let vHatScale = 1.0 / (1.0 - pown p.Beta2 (int t))
 
-                        let! mHat = mNew *~. mHatScale
-                        let! vHat = vNew *~. vHatScale
+                let mHat = mNew * mHatScale
+                let vHat = vNew * vHatScale
 
-                        let! updated =
-                            param.mulScalar (1.0 - p.Lr * p.WeightDecay)
-                            -~ (mHat /~ (vHat.sqrt () +~. p.Eps) *~. p.Lr)
+                let updated =
+                    param.mulScalar (1.0 - p.Lr * p.WeightDecay)
+                    - (mHat / (vHat.sqrt () + p.Eps) * p.Lr)
 
-                        do! param.copyInPlace updated
-                    }
-        }
+                param.copyInPlace updated
+            }
 
     member this.learningRate() = this.Params.Lr
 
@@ -112,47 +106,40 @@ type AdamW = {
             param.zeroGrad ()
 
     member this.saveState(dirPath: string) =
-        result {
-            do! ToroError.wrap (fun () -> Directory.CreateDirectory dirPath |> ignore)
+        Directory.CreateDirectory dirPath |> ignore
 
-            let stepTensor =
-                Tensor.ofList ([ int64 this.StepCount ], Cpu)
-                |> Result.defaultWith (fun _ -> failwith "unreachable")
+        let stepTensor = Tensor.ofList ([ int64 this.StepCount ], Cpu)
 
-            let mutable tensors = Map [ "step", stepTensor ]
+        let mutable tensors = Map [ "step", stepTensor ]
 
-            for i, (_, m, v) in this.Vars |> List.indexed do
-                tensors <- tensors |> Map.add $"m.{i}" m
-                tensors <- tensors |> Map.add $"v.{i}" v
+        for i, (_, m, v) in this.Vars |> List.indexed do
+            tensors <- tensors |> Map.add $"m.{i}" m
+            tensors <- tensors |> Map.add $"v.{i}" v
 
-            do! SafeTensors.save tensors (Path.Combine(dirPath, "optimizer.safetensors"))
-        }
+        SafeTensors.save tensors (Path.Combine(dirPath, "optimizer.safetensors"))
 
     member this.loadState(dirPath: string) =
-        result {
-            let path = Path.Combine(dirPath, "optimizer.safetensors")
+        let path = Path.Combine(dirPath, "optimizer.safetensors")
 
-            if File.Exists path then
-                do!
-                    scoped {
-                        let! tensors = SafeTensors.load path
+        if File.Exists path then
+            scoped {
+                let tensors = SafeTensors.load path
 
-                        match tensors |> Map.tryFind "step" with
-                        | Some stepTensor ->
-                            let! stepVal = stepTensor.toInt64Scalar ()
-                            this.StepCount <- int stepVal
-                        | None -> ()
+                match tensors |> Map.tryFind "step" with
+                | Some stepTensor ->
+                    let stepVal = stepTensor.toInt64Scalar ()
+                    this.StepCount <- int stepVal
+                | None -> ()
 
-                        for i, (_, m, v) in this.Vars |> List.indexed do
-                            match tensors |> Map.tryFind $"m.{i}" with
-                            | Some loaded -> do! m.copyInPlace loaded
-                            | None -> ()
+                for i, (_, m, v) in this.Vars |> List.indexed do
+                    match tensors |> Map.tryFind $"m.{i}" with
+                    | Some loaded -> m.copyInPlace loaded
+                    | None -> ()
 
-                            match tensors |> Map.tryFind $"v.{i}" with
-                            | Some loaded -> do! v.copyInPlace loaded
-                            | None -> ()
-                    }
-        }
+                    match tensors |> Map.tryFind $"v.{i}" with
+                    | Some loaded -> v.copyInPlace loaded
+                    | None -> ()
+            }
 
     member this.toOps() : OptimizerOps = {
         SaveState = this.saveState
@@ -162,25 +149,21 @@ type AdamW = {
     }
 
 module AdamW =
-    let create (config: ParamsAdamW) (vars: Tensor list) : Result<AdamW, ToroError> =
-        result {
-            let! varTriples =
-                vars
-                |> List.traverseResult (fun param ->
-                    result {
-                        let! m = Tensor.zeros (param.Shape, param.DType, param.Device)
-                        let! v = Tensor.zeros (param.Shape, param.DType, param.Device)
-                        return param, m, v
-                    })
+    let create (config: ParamsAdamW) (vars: Tensor list) : AdamW =
+        let varTriples =
+            vars
+            |> List.map (fun param ->
+                let m = Tensor.zeros (param.Shape, param.DType, param.Device)
+                let v = Tensor.zeros (param.Shape, param.DType, param.Device)
+                param, m, v)
 
-            return {
-                Vars = varTriples
-                StepCount = 0
-                Params = config
-            }
+        {
+            Vars = varTriples
+            StepCount = 0
+            Params = config
         }
 
-    let createWithLr (lr: float) (vars: Tensor list) : Result<AdamW, ToroError> =
+    let createWithLr (lr: float) (vars: Tensor list) : AdamW =
         create
             {
                 ParamsAdamW.defaultParams with

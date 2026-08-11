@@ -19,21 +19,21 @@ The `Image` module provides image loading and saving via TorchVision, plus SKBit
 
 ```fsharp
 // Load from file as [3, H, W] float32 in [0, 1]:
-let! img = Image.load "photo.jpg" Cpu
+let img = Image.load "photo.jpg" Cpu
 
 // Load from stream (uses SkiaSharp internally):
 use stream = File.OpenRead("photo.png")
-let! img = Image.loadStream stream Cpu
+let img = Image.loadStream stream Cpu
 ```
 
 ### Saving
 
 ```fsharp
 // Save a [3, H, W] tensor as JPEG:
-do! Image.save tensor "output.jpg" Jpeg 0
+Image.save tensor "output.jpg" Jpeg 0
 
 // Save as PNG:
-do! Image.save tensor "output.png" Png 0
+Image.save tensor "output.png" Png 0
 ```
 
 The `quality` parameter is reserved for future use.
@@ -44,7 +44,7 @@ Save a batch of images as a grid (wraps `torchvision.utils.save_image`):
 
 ```fsharp
 // Save [N, C, H, W] batch as a grid with 8 images per row:
-do! Image.saveGrid batch "grid.png" Png 0 8
+Image.saveGrid batch "grid.png" Png 0 8
 ```
 
 ### Bitmap-Tensor Conversion
@@ -56,10 +56,10 @@ open SkiaSharp
 
 // SKBitmap → Tensor [3, H, W] float32 [0, 1]:
 let bitmap = SKBitmap.Decode("photo.jpg")
-let! tensor = Image.toTensor bitmap Cpu
+let tensor = Image.toTensor bitmap Cpu
 
 // Tensor → SKBitmap:
-let! bmp = Image.fromTensor tensor
+let bmp = Image.fromTensor tensor
 ```
 
 ## SkiaTransform (Bitmap-Level Pipeline)
@@ -72,9 +72,9 @@ open SkiaSharp
 
 let bitmap = SKBitmap.Decode("photo.jpg")
 let resized = SkiaTransform.resize 256 256 bitmap
-let! cropped = SkiaTransform.centerCrop 224 224 resized
+let cropped = SkiaTransform.centerCrop 224 224 resized
 let flipped = SkiaTransform.flipH cropped
-let! tensor = Image.toTensor flipped Cpu
+let tensor = Image.toTensor flipped Cpu
 ```
 
 Functions include `resize`, `centerCrop`, `randomCrop`, `flipH`, `flipV`, and `pipeline`.
@@ -86,7 +86,7 @@ Chain bitmap transforms and convert to tensor in one call.
 Intermediate bitmaps are disposed automatically:
 
 ```fsharp
-let! tensor =
+let tensor =
     SkiaTransform.pipeline
         [ SkiaTransform.resize 256 256; SkiaTransform.flipH ]
         bitmap
@@ -105,14 +105,14 @@ All tensor transforms implement `ITransform` and expose a direct `apply` member:
 
 ```fsharp
 type ITransform =
-    abstract apply: Tensor -> Result<Tensor, ToroError>
+    abstract apply: Tensor -> Tensor
 ```
 
 Each transform record has a public `member apply` — you can call it directly without casting:
 
 ```fsharp
 let norm = Normalize.imageNet
-let! result = norm.apply tensor   // no cast needed
+let result = norm.apply tensor   // no cast needed
 ```
 
 Input tensors are expected in `[C, H, W]` or `[B, C, H, W]` format with `float32` values.
@@ -125,7 +125,7 @@ Channel-wise normalization: $(x - \mu) / \sigma$.
 
 ```fsharp
 let norm = Normalize.imageNet
-let! out = norm.apply img
+let out = norm.apply img
 ```
 
 ### Resize
@@ -134,7 +134,7 @@ Resize spatial dimensions using bilinear interpolation:
 
 ```fsharp
 let resize = Resize.create 224 224
-let! out = resize.apply img
+let out = resize.apply img
 ```
 
 ### RandomHorizontalFlip
@@ -163,7 +163,7 @@ Randomly crop the image to the specified size:
 let crop = RandomCrop.create 224 224
 ```
 
-Returns `Error` if the input is smaller than the crop size.
+Throws if the input is smaller than the crop size.
 
 ### CenterCrop
 
@@ -173,7 +173,7 @@ Deterministically crop the center region of the image:
 let crop = CenterCrop.create 224 224
 ```
 
-Returns `Error` if the input is smaller than the crop size.
+Throws if the input is smaller than the crop size.
 
 ### ToGrayscale
 
@@ -202,17 +202,15 @@ Chain multiple transforms into a single pipeline with `Compose.apply`.
 Items in the list must be typed as `ITransform`:
 
 ```fsharp
-result {
-    let! img = Image.load "photo.jpg" Cpu
+let img = Image.load "photo.jpg" Cpu
 
-    let transforms: ITransform list = [
-        Resize.create 224 224
-        RandomHorizontalFlip.defaultFlip
-        Normalize.imageNet
-    ]
+let transforms: ITransform list = [
+    Resize.create 224 224
+    RandomHorizontalFlip.defaultFlip
+    Normalize.imageNet
+]
 
-    let! processed = Compose.apply transforms img
-}
+let processed = Compose.apply transforms img
 ```
 
 ## Training vs. Inference Pipeline
@@ -240,16 +238,14 @@ open Toro
 open Toro.Vision
 open SkiaSharp
 
-result {
-    // Bitmap preprocessing (CPU, no tensor allocation):
-    let bitmap = SKBitmap.Decode("cat.jpg")
-    let resized = SkiaTransform.resize 256 256 bitmap
+// Bitmap preprocessing (CPU, no tensor allocation):
+let bitmap = SKBitmap.Decode("cat.jpg")
+let resized = SkiaTransform.resize 256 256 bitmap
 
-    // Convert to tensor and apply tensor transforms:
-    let! tensor = Image.toTensor resized Cpu
-    let! cropped = (CenterCrop.create 224 224).apply tensor
-    let! normalized = Normalize.imageNet.apply cropped
+// Convert to tensor and apply tensor transforms:
+let tensor = Image.toTensor resized Cpu
+let cropped = (CenterCrop.create 224 224).apply tensor
+let normalized = Normalize.imageNet.apply cropped
 
-    // Feed to model...
-}
+// Feed to model...
 ```

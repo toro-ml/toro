@@ -17,7 +17,7 @@ module Encode =
     let attentionMask (tokens: Tensor) (padId: int) : Tensor = tokens.neScalar (float padId)
 
     /// Encode a single text to a 1-D token ID tensor of length maxLen.
-    let toTensor (tokenizer: Tokenizer) (text: string) (maxLen: int) (padId: int) (device: Device) : Result<Tensor, ToroError> =
+    let toTensor (tokenizer: Tokenizer) (text: string) (maxLen: int) (padId: int) (device: Device) : Tensor =
         let ids = tokenizer.encode text |> padOrTruncate maxLen padId
         let data = ids |> List.map int64 |> List.toArray
         Tensor.ofArray (data, device)
@@ -29,7 +29,7 @@ module Encode =
         (maxLen: int)
         (padId: int)
         (device: Device)
-        : Result<struct (Tensor * Tensor), ToroError> =
+        : struct (Tensor * Tensor) =
         let encoded =
             texts
             |> List.map (fun t -> tokenizer.encode t |> padOrTruncate maxLen padId)
@@ -40,8 +40,6 @@ module Encode =
             |> List.toArray
             |> array2D
 
-        result {
-            let! ids = Tensor.ofArray (data, device)
-            let mask = attentionMask ids padId
-            return struct (ids, mask)
-        }
+        let ids = Tensor.ofArray (data, device)
+        let mask = attentionMask ids padId
+        struct (ids, mask)

@@ -18,38 +18,36 @@ type KvCache(dim: int) =
         vData <- None
         currentSeqLen <- 0
 
-    member _.append(k: Tensor, v: Tensor) : Result<Tensor * Tensor, ToroError> =
-        result {
-            let seqLen = k.Shape[dim]
+    member _.append(k: Tensor, v: Tensor) : Tensor * Tensor =
+        let seqLen = k.Shape[dim]
 
-            let! newK =
-                match kData with
-                | None -> Ok k
-                | Some prev -> Tensor.cat ([ prev; k ], dim)
+        let newK =
+            match kData with
+            | None -> k
+            | Some prev -> Tensor.cat ([ prev; k ], dim)
 
-            let! newV =
-                match vData with
-                | None -> Ok v
-                | Some prev -> Tensor.cat ([ prev; v ], dim)
+        let newV =
+            match vData with
+            | None -> v
+            | Some prev -> Tensor.cat ([ prev; v ], dim)
 
-            let oldK = kData
-            let oldV = vData
-            kData <- Some newK
-            vData <- Some newV
-            currentSeqLen <- currentSeqLen + seqLen
+        let oldK = kData
+        let oldV = vData
+        kData <- Some newK
+        vData <- Some newV
+        currentSeqLen <- currentSeqLen + seqLen
 
-            oldK
-            |> Option.iter (fun t ->
-                if not (obj.ReferenceEquals(t, newK)) then
-                    t.Dispose())
+        oldK
+        |> Option.iter (fun t ->
+            if not (obj.ReferenceEquals(t, newK)) then
+                t.Dispose())
 
-            oldV
-            |> Option.iter (fun t ->
-                if not (obj.ReferenceEquals(t, newV)) then
-                    t.Dispose())
+        oldV
+        |> Option.iter (fun t ->
+            if not (obj.ReferenceEquals(t, newV)) then
+                t.Dispose())
 
-            return Tensor.keep newK, Tensor.keep newV
-        }
+        Tensor.keep newK, Tensor.keep newV
 
     member _.currentData() : (Tensor * Tensor) option =
         match kData, vData with

@@ -20,7 +20,7 @@ let ``toTensor produces [3, H, W] from SKBitmap`` () =
             System.Runtime.InteropServices.Marshal.WriteByte(pixels + offset + 2n, 0uy)
             System.Runtime.InteropServices.Marshal.WriteByte(pixels + offset + 3n, 255uy)
 
-    let t = Image.toTensor bmp Cpu |> unwrap
+    let t = Image.toTensor bmp Cpu
     t.Shape |> should equal [ 3; 3; 4 ]
 
     t.at [ I 0; I 0; I 0 ]
@@ -49,8 +49,8 @@ let ``fromTensor roundtrips correctly`` () =
         System.Runtime.InteropServices.Marshal.WriteByte(pixels + offset + 2n, 50uy)
         System.Runtime.InteropServices.Marshal.WriteByte(pixels + offset + 3n, 255uy)
 
-    let t = Image.toTensor bmp Cpu |> unwrap
-    let bmp2 = Image.fromTensor t |> unwrap
+    let t = Image.toTensor bmp Cpu
+    let bmp2 = Image.fromTensor t
 
     bmp2.Width |> should equal 2
     bmp2.Height |> should equal 2
@@ -81,7 +81,7 @@ let ``SkiaTransform resize produces correct dimensions`` () =
 [<Fact>]
 let ``SkiaTransform centerCrop produces correct dimensions`` () =
     let bmp = new SKBitmap(100, 80, SKColorType.Rgba8888, SKAlphaType.Unpremul)
-    let cropped = SkiaTransform.centerCrop 50 40 bmp |> unwrap
+    let cropped = SkiaTransform.centerCrop 50 40 bmp
     cropped.Width |> should equal 50
     cropped.Height |> should equal 40
     bmp.Dispose()
@@ -90,11 +90,12 @@ let ``SkiaTransform centerCrop produces correct dimensions`` () =
 [<Fact>]
 let ``SkiaTransform centerCrop rejects too-small input`` () =
     let bmp = new SKBitmap(30, 30, SKColorType.Rgba8888, SKAlphaType.Unpremul)
-    let result = SkiaTransform.centerCrop 50 40 bmp
 
-    match result with
-    | Error _ -> ()
-    | Ok _ -> failwith "Expected error"
+    try
+        SkiaTransform.centerCrop 50 40 bmp |> ignore
+        failwith "Expected exception"
+    with _ ->
+        ()
 
     bmp.Dispose()
 
@@ -114,20 +115,20 @@ let ``SkiaTransform pipeline composes and produces tensor`` () =
     let result =
         SkiaTransform.pipeline [ SkiaTransform.resize 50 50; SkiaTransform.flipH ] bmp Cpu
 
-    let t = result |> unwrap
+    let t = result
     t.Shape |> should equal [ 3; 50; 50 ]
     bmp.Dispose()
 
 [<Fact>]
 let ``Normalize direct member call works without cast`` () =
-    let x = Tensor.ones ([ 3; 4; 4 ], F32, Cpu) |> unwrap
+    let x = Tensor.ones ([ 3; 4; 4 ], F32, Cpu)
     let norm = Normalize.imageNet
-    let out = norm.apply x |> unwrap
+    let out = norm.apply x
     out.Shape |> should equal [ 3; 4; 4 ]
 
 [<Fact>]
 let ``Resize direct member call works without cast`` () =
-    let x = Tensor.randn ([ 3; 32; 32 ], F32, Cpu) |> unwrap
+    let x = Tensor.randn ([ 3; 32; 32 ], F32, Cpu)
     let r = Resize.create 16 16
-    let out = r.apply x |> unwrap
+    let out = r.apply x
     out.Shape |> should equal [ 3; 16; 16 ]

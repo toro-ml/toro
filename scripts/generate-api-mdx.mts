@@ -53,14 +53,6 @@ const filePages: FilePage[] = [
   {
     subdir: "toro",
     namespace: "Toro",
-    slug: "api-error",
-    title: "Error",
-    description: "Error type for Toro operations.",
-    sources: [{ html: "toro-toroerror.html", heading: "ToroError" }],
-  },
-  {
-    subdir: "toro",
-    namespace: "Toro",
     slug: "api-device",
     title: "Device",
     description: "Device selection (CPU / CUDA).",
@@ -93,18 +85,6 @@ const filePages: FilePage[] = [
       { html: "toro-tidx.html", heading: "TIdx" },
     ],
   },
-  {
-    subdir: "toro",
-    namespace: "Toro",
-    slug: "api-tensorop",
-    title: "Tensor operations",
-    description: "Result-returning operators and pipeable functions.",
-    sources: [
-      { html: "toro-tensorop.html", heading: "TensorOp" },
-      { html: "toro-tensorr.html", heading: "TensorR" },
-    ],
-  },
-
   // ── Toro.NN ── (fsproj compile order)
   {
     subdir: "toro-nn",

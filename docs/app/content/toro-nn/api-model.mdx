@@ -33,7 +33,7 @@ Load tensors from a dictionary into the model, matching by parameter name.
 - `nameMap` : `Map<string, string> option`
 - `mode` : `LoadMode`
 
-**Returns** `Result<LoadReport, ToroError>`
+**Returns** `LoadReport`
 
 ---
 
@@ -53,7 +53,7 @@ Load tensors from a .safetensors file into the model in place.
 - `filePath` : `string`
 - `mode` : `LoadMode`
 
-**Returns** `Result<LoadReport, ToroError>`
+**Returns** `LoadReport`
 
 ---
 
@@ -85,8 +85,6 @@ Save all model tensors to a .safetensors file.
 
 - `model` : `'T`
 - `filePath` : `string`
-
-**Returns** `Result<unit, ToroError>`
 
 ---
 

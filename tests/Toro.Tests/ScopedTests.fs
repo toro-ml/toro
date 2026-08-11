@@ -30,11 +30,11 @@ type LayerOutput =
 let ``A1 scoped keeps single tensor`` () =
     let r =
         scoped {
-            let! t = Tensor.randn ([ 4 ], F32, Cpu)
+            let t = Tensor.randn ([ 4 ], F32, Cpu)
             return t
         }
 
-    let t = unwrap r
+    let t = r
     t.Shape |> should equal [ 4 ]
     t.Inner.IsInvalid |> should equal false
 
@@ -45,11 +45,11 @@ let ``A2 scoped with unit return`` () =
 
     let r =
         scoped {
-            let! _ = Tensor.ones ([ 2 ], F32, Cpu)
+            let _ = Tensor.ones ([ 2 ], F32, Cpu)
             flag <- true
         }
 
-    unwrap r |> ignore
+    r |> ignore
     flag |> should equal true
 
 // A3
@@ -57,12 +57,12 @@ let ``A2 scoped with unit return`` () =
 let ``A3 scoped keeps 2-tuple of tensors`` () =
     let r =
         scoped {
-            let! a = Tensor.zeros ([ 3 ], F32, Cpu)
-            let! b = Tensor.ones ([ 3 ], F32, Cpu)
+            let a = Tensor.zeros ([ 3 ], F32, Cpu)
+            let b = Tensor.ones ([ 3 ], F32, Cpu)
             return a, b
         }
 
-    let a, b = unwrap r
+    let a, b = r
     a.Inner.IsInvalid |> should equal false
     b.Inner.IsInvalid |> should equal false
     scalarF32 a |> should (equalWithin 1e-5f) 0.0f
@@ -73,13 +73,13 @@ let ``A3 scoped keeps 2-tuple of tensors`` () =
 let ``A4 scoped keeps 3-tuple of tensors`` () =
     let r =
         scoped {
-            let! a = Tensor.zeros ([ 2 ], F32, Cpu)
-            let! b = Tensor.ones ([ 2 ], F32, Cpu)
-            let! c = a.add b
+            let a = Tensor.zeros ([ 2 ], F32, Cpu)
+            let b = Tensor.ones ([ 2 ], F32, Cpu)
+            let c = a.add b
             return a, b, c
         }
 
-    let a, b, c = unwrap r
+    let a, b, c = r
     a.Inner.IsInvalid |> should equal false
     b.Inner.IsInvalid |> should equal false
     c.Inner.IsInvalid |> should equal false
@@ -90,11 +90,11 @@ let ``A4 scoped keeps 3-tuple of tensors`` () =
 let ``A5 scoped keeps mixed tuple`` () =
     let r =
         scoped {
-            let! t = Tensor.ones ([ 3 ], F32, Cpu)
+            let t = Tensor.ones ([ 3 ], F32, Cpu)
             return t, 42
         }
 
-    let tensor, n = unwrap r
+    let tensor, n = r
     tensor.Inner.IsInvalid |> should equal false
     scalarF32 tensor |> should (equalWithin 1e-5f) 3.0f
     n |> should equal 42
@@ -106,14 +106,14 @@ let ``A6 scoped keeps record`` () =
 
     let r =
         scoped {
-            let! a = Tensor.ones ([ 2; 3 ], F32, Cpu)
-            let! w = Tensor.zeros ([ 2; 2 ], F32, Cpu)
-            let! tmp = Tensor.ones ([ 1 ], F32, Cpu)
+            let a = Tensor.ones ([ 2; 3 ], F32, Cpu)
+            let w = Tensor.zeros ([ 2; 2 ], F32, Cpu)
+            let tmp = Tensor.ones ([ 1 ], F32, Cpu)
             intermediate <- tmp.Inner
             return { Attn = a; Weights = w }
         }
 
-    let out = unwrap r
+    let out = r
     out.Attn.Inner.IsInvalid |> should equal false
     out.Weights.Inner.IsInvalid |> should equal false
     intermediate.IsInvalid |> should equal true
@@ -123,9 +123,9 @@ let ``A6 scoped keeps record`` () =
 let ``A7 scoped keeps nested record`` () =
     let r =
         scoped {
-            let! a = Tensor.ones ([ 2 ], F32, Cpu)
-            let! w = Tensor.zeros ([ 2 ], F32, Cpu)
-            let! l = Tensor.ones ([ 1 ], F32, Cpu)
+            let a = Tensor.ones ([ 2 ], F32, Cpu)
+            let w = Tensor.zeros ([ 2 ], F32, Cpu)
+            let l = Tensor.ones ([ 1 ], F32, Cpu)
 
             return {
                 Output = { Attn = a; Weights = w }
@@ -133,7 +133,7 @@ let ``A7 scoped keeps nested record`` () =
             }
         }
 
-    let out = unwrap r
+    let out = r
     out.Output.Attn.Inner.IsInvalid |> should equal false
     out.Output.Weights.Inner.IsInvalid |> should equal false
     out.Loss.Inner.IsInvalid |> should equal false
@@ -143,12 +143,12 @@ let ``A7 scoped keeps nested record`` () =
 let ``A8 scoped keeps tensor list`` () =
     let r =
         scoped {
-            let! a = Tensor.zeros ([ 2 ], F32, Cpu)
-            let! b = Tensor.ones ([ 2 ], F32, Cpu)
+            let a = Tensor.zeros ([ 2 ], F32, Cpu)
+            let b = Tensor.ones ([ 2 ], F32, Cpu)
             return [ a; b ]
         }
 
-    let ts = unwrap r
+    let ts = r
     ts |> List.length |> should equal 2
 
     ts
@@ -161,12 +161,12 @@ let ``A8 scoped keeps tensor list`` () =
 let ``A9 scoped keeps tensor array`` () =
     let r =
         scoped {
-            let! a = Tensor.ones ([ 2 ], F32, Cpu)
-            let! b = Tensor.ones ([ 2 ], F32, Cpu)
+            let a = Tensor.ones ([ 2 ], F32, Cpu)
+            let b = Tensor.ones ([ 2 ], F32, Cpu)
             return [| a; b |]
         }
 
-    let ts = unwrap r
+    let ts = r
     ts |> Array.length |> should equal 2
 
     ts
@@ -177,11 +177,11 @@ let ``A9 scoped keeps tensor array`` () =
 let ``A10 scoped keeps Some tensor`` () =
     let r =
         scoped {
-            let! t = Tensor.ones ([ 3 ], F32, Cpu)
+            let t = Tensor.ones ([ 3 ], F32, Cpu)
             return Some t
         }
 
-    let v = unwrap r
+    let v = r
     v.IsSome |> should equal true
     v.Value.Inner.IsInvalid |> should equal false
     scalarF32 v.Value |> should (equalWithin 1e-5f) 3.0f
@@ -193,12 +193,12 @@ let ``A11 scoped keeps None without error`` () =
 
     let r =
         scoped {
-            let! tmp = Tensor.ones ([ 2 ], F32, Cpu)
+            let tmp = Tensor.ones ([ 2 ], F32, Cpu)
             intermediate <- tmp.Inner
             return (None: Tensor option)
         }
 
-    let v = unwrap r
+    let v = r
     v |> should equal None
     intermediate.IsInvalid |> should equal true
 
@@ -207,11 +207,11 @@ let ``A11 scoped keeps None without error`` () =
 let ``A12 scoped keeps custom DU with tensor`` () =
     let r =
         scoped {
-            let! t = Tensor.ones ([ 4 ], F32, Cpu)
+            let t = Tensor.ones ([ 4 ], F32, Cpu)
             return Logits t
         }
 
-    match unwrap r with
+    match r with
     | Logits t ->
         t.Inner.IsInvalid |> should equal false
         scalarF32 t |> should (equalWithin 1e-5f) 4.0f
@@ -221,12 +221,12 @@ let ``A12 scoped keeps custom DU with tensor`` () =
 let ``A12b scoped keeps custom DU with multiple tensor fields`` () =
     let r =
         scoped {
-            let! k = Tensor.ones ([ 2 ], F32, Cpu)
-            let! v = Tensor.zeros ([ 2 ], F32, Cpu)
+            let k = Tensor.ones ([ 2 ], F32, Cpu)
+            let v = Tensor.zeros ([ 2 ], F32, Cpu)
             return Features(k, v)
         }
 
-    match unwrap r with
+    match r with
     | Features(k, v) ->
         k.Inner.IsInvalid |> should equal false
         v.Inner.IsInvalid |> should equal false
@@ -239,12 +239,12 @@ let ``A12b scoped keeps custom DU with multiple tensor fields`` () =
 let ``A13 scoped keeps record with option tensor field`` () =
     let r =
         scoped {
-            let! t = Tensor.ones ([ 2 ], F32, Cpu)
-            let! m = Tensor.zeros ([ 2 ], F32, Cpu)
+            let t = Tensor.ones ([ 2 ], F32, Cpu)
+            let m = Tensor.zeros ([ 2 ], F32, Cpu)
             return { Value = t; Mask = Some m }
         }
 
-    let out = unwrap r
+    let out = r
     out.Value.Inner.IsInvalid |> should equal false
     out.Mask.IsSome |> should equal true
     out.Mask.Value.Inner.IsInvalid |> should equal false
@@ -253,11 +253,11 @@ let ``A13 scoped keeps record with option tensor field`` () =
 let ``A13b scoped keeps record with None tensor field`` () =
     let r =
         scoped {
-            let! t = Tensor.ones ([ 2 ], F32, Cpu)
+            let t = Tensor.ones ([ 2 ], F32, Cpu)
             return { Value = t; Mask = None }
         }
 
-    let out = unwrap r
+    let out = r
     out.Value.Inner.IsInvalid |> should equal false
     out.Mask |> should equal None
 
@@ -266,14 +266,14 @@ let ``A13b scoped keeps record with None tensor field`` () =
 let ``A14 scoped keeps list of tensor tuples`` () =
     let r =
         scoped {
-            let! a = Tensor.ones ([ 2 ], F32, Cpu)
-            let! b = Tensor.zeros ([ 2 ], F32, Cpu)
-            let! c = Tensor.ones ([ 2 ], F32, Cpu)
-            let! d = Tensor.zeros ([ 2 ], F32, Cpu)
+            let a = Tensor.ones ([ 2 ], F32, Cpu)
+            let b = Tensor.zeros ([ 2 ], F32, Cpu)
+            let c = Tensor.ones ([ 2 ], F32, Cpu)
+            let d = Tensor.zeros ([ 2 ], F32, Cpu)
             return [ (a, b); (c, d) ]
         }
 
-    let pairs = unwrap r
+    let pairs = r
     pairs |> List.length |> should equal 2
 
     for a, b in pairs do
@@ -287,14 +287,14 @@ let ``A15 scoped with non-tensor scalar return`` () =
 
     let r =
         scoped {
-            let! t = Tensor.ones ([ 2 ], F32, Cpu)
+            let t = Tensor.ones ([ 2 ], F32, Cpu)
             intermediate <- t.Inner
-            let! s = t.sumAll ()
-            let! v = s.toFloat32Scalar ()
+            let s = t.sumAll ()
+            let v = s.toFloat32Scalar ()
             return v
         }
 
-    let v = unwrap r
+    let v = r
     v |> should (equalWithin 1e-5f) 2.0f
     intermediate.IsInvalid |> should equal true
 
@@ -310,14 +310,14 @@ let ``B1 scoped disposes intermediate tensors`` () =
 
     let t =
         scoped {
-            let! a = Tensor.ones ([ 2; 3 ], F32, Cpu)
-            let! b = Tensor.ones ([ 2; 3 ], F32, Cpu)
+            let a = Tensor.ones ([ 2; 3 ], F32, Cpu)
+            let b = Tensor.ones ([ 2; 3 ], F32, Cpu)
             aInner <- a.Inner
             bInner <- b.Inner
-            let! c = a.add b
+            let c = a.add b
             return c
         }
-        |> unwrap
+
 
     t.Inner.IsInvalid |> should equal false
     scalarF32 t |> should (equalWithin 1e-5f) 12.0f
@@ -331,19 +331,19 @@ let ``B2 nested scoped disposes inner without affecting outer`` () =
 
     let a, b =
         scoped {
-            let! a = Tensor.ones ([ 2 ], F32, Cpu)
+            let a = Tensor.ones ([ 2 ], F32, Cpu)
 
-            let! b =
+            let b =
                 scoped {
-                    let! tmp = Tensor.ones ([ 2 ], F32, Cpu)
+                    let tmp = Tensor.ones ([ 2 ], F32, Cpu)
                     innerIntermediate <- tmp.Inner
-                    let! doubled = tmp.add tmp
+                    let doubled = tmp.add tmp
                     return doubled
                 }
 
             return a, b
         }
-        |> unwrap
+
 
     a.Inner.IsInvalid |> should equal false
     b.Inner.IsInvalid |> should equal false
@@ -355,34 +355,32 @@ let ``B2 nested scoped disposes inner without affecting outer`` () =
 let ``B3 error disposes all created tensors`` () =
     let mutable createdInner = Unchecked.defaultof<torch.Tensor>
 
-    let r =
+    try
         scoped {
-            let! t = Tensor.ones ([ 2 ], F32, Cpu)
+            let t = Tensor.ones ([ 2 ], F32, Cpu)
             createdInner <- t.Inner
-            return! Error(ToroError.TorchSharpError(System.InvalidOperationException "fail"))
+            failwith "fail"
         }
+        |> ignore
 
-    r |> Result.isError |> should equal true
+        failwith "Expected exception"
+    with _ ->
+        ()
+
     createdInner.IsInvalid |> should equal true
 
 // B4
 [<Fact>]
-let ``B4 loop with do! scoped disposes each iteration`` () =
+let ``B4 loop with scoped disposes each iteration`` () =
     let intermediates = System.Collections.Generic.List<torch.Tensor>()
 
-    let r =
-        result {
-            for _ in 0..2 do
-                do!
-                    scoped {
-                        let! t = Tensor.ones ([ 3 ], F32, Cpu)
-                        intermediates.Add(t.Inner)
-                        let! _ = t.add t
-                        return ()
-                    }
+    for _ in 0..2 do
+        scoped {
+            let t = Tensor.ones ([ 3 ], F32, Cpu)
+            intermediates.Add(t.Inner)
+            t.add t |> ignore
         }
 
-    unwrap r |> ignore
     intermediates.Count |> should equal 3
 
     intermediates
@@ -393,12 +391,12 @@ let ``B4 loop with do! scoped disposes each iteration`` () =
 let ``B5 explicit keep and auto-keep on same tensor`` () =
     let r =
         scoped {
-            let! t = Tensor.ones ([ 2 ], F32, Cpu)
+            let t = Tensor.ones ([ 2 ], F32, Cpu)
             let _ = Tensor.keep t
             return t
         }
 
-    let t = unwrap r
+    let t = r
     t.Inner.IsInvalid |> should equal false
     scalarF32 t |> should (equalWithin 1e-5f) 2.0f
 
@@ -409,7 +407,7 @@ let ``B6 exception in scoped disposes tensors via scope`` () =
 
     let r =
         scoped {
-            let! t = Tensor.ones ([ 2 ], F32, Cpu)
+            let t = Tensor.ones ([ 2 ], F32, Cpu)
             createdInner <- t.Inner
 
             try
@@ -419,7 +417,7 @@ let ``B6 exception in scoped disposes tensors via scope`` () =
                 return ()
         }
 
-    unwrap r |> ignore
+    r |> ignore
     createdInner.IsInvalid |> should equal true
 
 // B7
@@ -432,15 +430,15 @@ let ``B7 for loop inside scoped accumulates in scope`` () =
             let mutable acc = 0.0f
 
             for _ in 0..4 do
-                let! t = Tensor.ones ([ 1 ], F32, Cpu)
+                let t = Tensor.ones ([ 1 ], F32, Cpu)
                 created.Add(t.Inner)
-                let! s = t.toFloat32Scalar ()
+                let s = t.toFloat32Scalar ()
                 acc <- acc + s
 
             return acc
         }
 
-    let total = unwrap r
+    let total = r
     total |> should (equalWithin 1e-5f) 5.0f
     created.Count |> should equal 5
 
@@ -459,12 +457,12 @@ let ``B8 use binding inside scoped disposes resource`` () =
                     member _.Dispose() = disposed <- true
                 }
 
-            let! t = Tensor.ones ([ 2 ], F32, Cpu)
-            let! _ = t.add t
+            let t = Tensor.ones ([ 2 ], F32, Cpu)
+            let _ = t.add t
             return ()
         }
 
-    unwrap r |> ignore
+    r |> ignore
     disposed |> should equal true
 
 // ═══════════════════════════════════════════════════════════════
@@ -475,7 +473,7 @@ let ``B8 use binding inside scoped disposes resource`` () =
 [<Fact>]
 let ``C1 keep moves tensor out of dispose scope`` () =
     use _scope = torch.NewDisposeScope()
-    let t = Tensor.ones ([ 3 ], F32, Cpu) |> unwrap
+    let t = Tensor.ones ([ 3 ], F32, Cpu)
     let kept = Tensor.keep t
     kept.Inner.IsInvalid |> should equal false
     kept.Shape |> should equal [ 3 ]
@@ -488,8 +486,8 @@ let ``C2 keep preserves tensor after scope exits`` () =
 
     do
         use _scope = torch.NewDisposeScope()
-        let a = Tensor.ones ([ 2 ], F32, Cpu) |> unwrap
-        let b = Tensor.ones ([ 2 ], F32, Cpu) |> unwrap
+        let a = Tensor.ones ([ 2 ], F32, Cpu)
+        let b = Tensor.ones ([ 2 ], F32, Cpu)
         droppedInner <- b.Inner
         keptRef <- Tensor.keep a
 
@@ -501,7 +499,7 @@ let ``C2 keep preserves tensor after scope exits`` () =
 [<Fact>]
 let ``C3 keep is idempotent`` () =
     use _scope = torch.NewDisposeScope()
-    let t = Tensor.ones ([ 2 ], F32, Cpu) |> unwrap
+    let t = Tensor.ones ([ 2 ], F32, Cpu)
     let t1 = Tensor.keep t
     let t2 = Tensor.keep t1
     obj.ReferenceEquals(t, t2) |> should equal true
@@ -510,7 +508,7 @@ let ``C3 keep is idempotent`` () =
 // C4
 [<Fact>]
 let ``C4 keep without active scope is safe`` () =
-    let t = Tensor.ones ([ 2 ], F32, Cpu) |> unwrap
+    let t = Tensor.ones ([ 2 ], F32, Cpu)
     let kept = Tensor.keep t
     kept.Inner.IsInvalid |> should equal false
     scalarF32 kept |> should (equalWithin 1e-5f) 2.0f
@@ -524,27 +522,21 @@ let ``C4 keep without active scope is safe`` () =
 let ``D1 train step pattern: forward-loss-backward-step`` () =
     let intermediates = System.Collections.Generic.List<torch.Tensor>()
 
-    let r =
-        result {
-            let! w = Tensor.randn ([ 3; 1 ], F32, Cpu)
-            let! w = w.requiresGrad ()
-            let! x = Tensor.randn ([ 4; 3 ], F32, Cpu)
-            let! y = Tensor.randn ([ 4; 1 ], F32, Cpu)
+    let w = Tensor.randn ([ 3; 1 ], F32, Cpu)
+    let w = w.requiresGrad ()
+    let x = Tensor.randn ([ 4; 3 ], F32, Cpu)
+    let y = Tensor.randn ([ 4; 1 ], F32, Cpu)
 
-            for _ in 1..3 do
-                do!
-                    scoped {
-                        let! pred = x.matmul w
-                        intermediates.Add(pred.Inner)
-                        let! diff = pred.sub y
-                        let! sq = diff.mul diff
-                        let! loss = sq.meanAll ()
-                        do! loss.backward ()
-                        return ()
-                    }
+    for _ in 1..3 do
+        scoped {
+            let pred = x.matmul w
+            intermediates.Add(pred.Inner)
+            let diff = pred.sub y
+            let sq = diff.mul diff
+            let loss = sq.meanAll ()
+            loss.backward ()
         }
 
-    unwrap r |> ignore
     intermediates.Count |> should equal 3
 
     intermediates
@@ -557,92 +549,66 @@ let ``D2 noGrad combined with scoped`` () =
 
     let r =
         scoped {
-            let! w = Tensor.ones ([ 2; 2 ], F32, Cpu)
-            let! x = Tensor.ones ([ 2; 2 ], F32, Cpu)
+            let w = Tensor.ones ([ 2; 2 ], F32, Cpu)
+            let x = Tensor.ones ([ 2; 2 ], F32, Cpu)
 
-            let! pred =
+            let pred =
                 Toro.noGrad (fun () ->
                     scoped {
-                        let! tmp = x.add w
+                        let tmp = x.add w
                         intermediate <- tmp.Inner
-                        let! result = tmp.matmul w
+                        let result = tmp.matmul w
                         return result
                     })
 
             return pred
         }
 
-    let pred = unwrap r
+    let pred = r
     pred.Inner.IsInvalid |> should equal false
     intermediate.IsInvalid |> should equal true
 
 // ═══════════════════════════════════════════════════════════════
-// E. disposeScope
+// E. scoped side-effect disposal (no return auto-keep)
 // ═══════════════════════════════════════════════════════════════
 
 // E1
 [<Fact>]
-let ``E1 disposeScope disposes intermediate tensors`` () =
+let ``E1 scoped disposes intermediate tensors`` () =
     let mutable aInner = Unchecked.defaultof<torch.Tensor>
 
-    let r =
-        result {
-            use! _s = disposeScope ()
-            let! t = Tensor.ones ([ 3 ], F32, Cpu)
-            aInner <- t.Inner
-            let! _ = t.add t
-            return ()
-        }
+    scoped {
+        let t = Tensor.ones ([ 3 ], F32, Cpu)
+        aInner <- t.Inner
+        t.add t |> ignore
+    }
 
-    unwrap r |> ignore
     aInner.IsInvalid |> should equal true
-
-// E2
-[<Fact>]
-let ``E2 disposeScope does NOT auto-keep return tensors`` () =
-    let mutable tInner = Unchecked.defaultof<torch.Tensor>
-
-    let r =
-        result {
-            use! _s = disposeScope ()
-            let! t = Tensor.ones ([ 2 ], F32, Cpu)
-            tInner <- t.Inner
-        }
-
-    unwrap r |> ignore
-    tInner.IsInvalid |> should equal true
 
 // E3
 [<Fact>]
-let ``E3 disposeScope with Tensor.keep preserves tensor`` () =
-    let r =
-        result {
-            use! _s = disposeScope ()
-            let! t = Tensor.ones ([ 2 ], F32, Cpu)
-            let kept = Tensor.keep t
-            return kept
+let ``E3 scoped with Tensor.keep preserves tensor`` () =
+    let t =
+        scoped {
+            let t = Tensor.ones ([ 2 ], F32, Cpu)
+            return Tensor.keep t
         }
 
-    let t = unwrap r
     t.Inner.IsInvalid |> should equal false
     scalarF32 t |> should (equalWithin 1e-5f) 2.0f
 
 // E4
 [<Fact>]
-let ``E4 disposeScope in loop disposes each iteration`` () =
+let ``E4 scoped in loop disposes each iteration`` () =
     let intermediates = System.Collections.Generic.List<torch.Tensor>()
 
-    let r =
-        result {
-            for _ in 0..2 do
-                use! _s = disposeScope ()
-                let! t = Tensor.ones ([ 3 ], F32, Cpu)
-                intermediates.Add(t.Inner)
-                let! _ = t.add t
-                ()
+    for _ in 0..2 do
+        scoped {
+            let t = Tensor.ones ([ 3 ], F32, Cpu)
+            intermediates.Add(t.Inner)
+            t.add t |> ignore
         }
 
-    unwrap r |> ignore
     intermediates.Count |> should equal 3
 
     intermediates
@@ -657,11 +623,11 @@ let ``E4 disposeScope in loop disposes each iteration`` () =
 let ``F1 scoped keeps empty list`` () =
     let r =
         scoped {
-            let! _ = Tensor.ones ([ 1 ], F32, Cpu)
+            let _ = Tensor.ones ([ 1 ], F32, Cpu)
             return ([]: Tensor list)
         }
 
-    let ts = unwrap r
+    let ts = r
     ts |> should be Empty
 
 // F2
@@ -669,27 +635,30 @@ let ``F1 scoped keeps empty list`` () =
 let ``F2 scoped keeps empty array`` () =
     let r =
         scoped {
-            let! _ = Tensor.ones ([ 1 ], F32, Cpu)
+            let _ = Tensor.ones ([ 1 ], F32, Cpu)
             return ([||]: Tensor array)
         }
 
-    let ts = unwrap r
+    let ts = r
     ts |> should be Empty
 
 // F3
 [<Fact>]
-let ``F3 let! error mid-computation disposes earlier tensors`` () =
+let ``F3 error mid-computation disposes earlier tensors`` () =
     let mutable createdInner = Unchecked.defaultof<torch.Tensor>
 
-    let r =
+    try
         scoped {
-            let! t = Tensor.ones ([ 2; 3 ], F32, Cpu)
+            let t = Tensor.ones ([ 2; 3 ], F32, Cpu)
             createdInner <- t.Inner
-            let! _bad = t.reshape [ 7; 7 ]
-            return ()
+            t.reshape [ 7; 7 ] |> ignore
         }
+        |> ignore
 
-    r |> Result.isError |> should equal true
+        failwith "Expected exception"
+    with _ ->
+        ()
+
     createdInner.IsInvalid |> should equal true
 
 // F4
@@ -700,13 +669,13 @@ let ``F4 keep inside scoped for side-effect retention`` () =
 
     let r =
         scoped {
-            let! a = Tensor.ones ([ 2 ], F32, Cpu)
-            let! b = Tensor.ones ([ 2 ], F32, Cpu)
+            let a = Tensor.ones ([ 2 ], F32, Cpu)
+            let b = Tensor.ones ([ 2 ], F32, Cpu)
             retained <- Tensor.keep a
             droppedInner <- b.Inner
         }
 
-    unwrap r |> ignore
+    r |> ignore
     retained.Inner.IsInvalid |> should equal false
     droppedInner.IsInvalid |> should equal true
 
@@ -719,11 +688,11 @@ let ``F4 keep inside scoped for side-effect retention`` () =
 let ``G1 same tensor in two tuple slots does not double-move`` () =
     let r =
         scoped {
-            let! t = Tensor.ones ([ 2 ], F32, Cpu)
+            let t = Tensor.ones ([ 2 ], F32, Cpu)
             return t, t
         }
 
-    let a, b = unwrap r
+    let a, b = r
     obj.ReferenceEquals(a, b) |> should equal true
     a.Inner.IsInvalid |> should equal false
     scalarF32 a |> should (equalWithin 1e-5f) 2.0f
@@ -733,19 +702,19 @@ let ``G1 same tensor in two tuple slots does not double-move`` () =
 let ``G2 outer tensor returned from inner scoped stays in outer scope`` () =
     let r =
         scoped {
-            let! outer = Tensor.ones ([ 2 ], F32, Cpu)
+            let outer = Tensor.ones ([ 2 ], F32, Cpu)
 
-            let! inner =
+            let inner =
                 scoped {
-                    let! tmp = Tensor.ones ([ 2 ], F32, Cpu)
-                    let! sum = outer.add tmp
+                    let tmp = Tensor.ones ([ 2 ], F32, Cpu)
+                    let sum = outer.add tmp
                     return sum
                 }
 
             return outer, inner
         }
 
-    let outer, inner = unwrap r
+    let outer, inner = r
     outer.Inner.IsInvalid |> should equal false
     inner.Inner.IsInvalid |> should equal false
     scalarF32 outer |> should (equalWithin 1e-5f) 2.0f
@@ -761,15 +730,15 @@ let ``G3 outer tensor returned from inner scoped is not moved past outer`` () =
 
         let r =
             scoped {
-                let! outer = Tensor.ones ([ 2 ], F32, Cpu)
+                let outer = Tensor.ones ([ 2 ], F32, Cpu)
                 outerInner <- outer.Inner
 
-                let! passed = scoped { return outer }
+                let passed = scoped { return outer }
 
                 return passed
             }
 
-        let t = unwrap r
+        let t = r
         t.Inner.IsInvalid |> should equal false
         _outermost.Contains(outerInner) |> should equal true
 
@@ -777,21 +746,19 @@ let ``G3 outer tensor returned from inner scoped is not moved past outer`` () =
 
 // G4
 [<Fact>]
-let ``G4 scoped with return! keeps result tensors`` () =
-    let helperOp () : Result<Tensor * Tensor, ToroError> =
-        result {
-            let! a = Tensor.ones ([ 3 ], F32, Cpu)
-            let! b = Tensor.zeros ([ 3 ], F32, Cpu)
-            return a, b
-        }
+let ``G4 scoped with nested helper keeps result tensors`` () =
+    let helperOp () : Tensor * Tensor =
+        let a = Tensor.ones ([ 3 ], F32, Cpu)
+        let b = Tensor.zeros ([ 3 ], F32, Cpu)
+        a, b
 
     let r =
         scoped {
-            let! _ = Tensor.ones ([ 1 ], F32, Cpu)
-            return! helperOp ()
+            let _ = Tensor.ones ([ 1 ], F32, Cpu)
+            return helperOp ()
         }
 
-    let a, b = unwrap r
+    let a, b = r
     a.Inner.IsInvalid |> should equal false
     b.Inner.IsInvalid |> should equal false
     scalarF32 a |> should (equalWithin 1e-5f) 3.0f
@@ -804,14 +771,14 @@ let ``G5 scoped keeps Map of tensors`` () =
 
     let r =
         scoped {
-            let! a = Tensor.ones ([ 2 ], F32, Cpu)
-            let! b = Tensor.zeros ([ 2 ], F32, Cpu)
-            let! tmp = Tensor.ones ([ 1 ], F32, Cpu)
+            let a = Tensor.ones ([ 2 ], F32, Cpu)
+            let b = Tensor.zeros ([ 2 ], F32, Cpu)
+            let tmp = Tensor.ones ([ 1 ], F32, Cpu)
             intermediateInner <- tmp.Inner
             return Map [ "a", a; "b", b ]
         }
 
-    let m = unwrap r
+    let m = r
     m.Count |> should equal 2
     m["a"].Inner.IsInvalid |> should equal false
     m["b"].Inner.IsInvalid |> should equal false
@@ -823,7 +790,7 @@ let ``G5 scoped keeps Map of tensors`` () =
 [<Fact>]
 let ``G6 keep is idempotent within same scope`` () =
     use _scope = torch.NewDisposeScope()
-    let t = Tensor.ones ([ 2 ], F32, Cpu) |> unwrap
+    let t = Tensor.ones ([ 2 ], F32, Cpu)
     let _ = Tensor.keep t
     let _ = Tensor.keep t
     t.Inner.IsInvalid |> should equal false
@@ -839,7 +806,7 @@ let ``G7 keep in nested scope does not move past outer`` () =
 
         do
             use _inner = torch.NewDisposeScope()
-            let t = Tensor.ones ([ 2 ], F32, Cpu) |> unwrap
+            let t = Tensor.ones ([ 2 ], F32, Cpu)
             keptRef <- Tensor.keep t
 
         keptRef.Inner.IsInvalid |> should equal false
@@ -860,7 +827,7 @@ let ``G8 double keep in nested scopes does not move two levels`` () =
 
             do
                 use _inner = torch.NewDisposeScope()
-                let t = Tensor.ones ([ 2 ], F32, Cpu) |> unwrap
+                let t = Tensor.ones ([ 2 ], F32, Cpu)
                 keptRef <- Tensor.keep t
                 let _ = Tensor.keep keptRef
                 ()

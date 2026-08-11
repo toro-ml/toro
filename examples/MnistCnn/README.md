@@ -1,6 +1,6 @@
 # MnistCnn
 
-Train a CNN on MNIST with BatchNorm, Dropout, and Kleisli composition (`>=>`).
+Train a CNN on MNIST with BatchNorm and Dropout.
 
 ## Run
 
@@ -12,6 +12,6 @@ MNIST is downloaded automatically on first run.
 
 ## Concepts
 
-- Kleisli composition (`>=>`) for composing layers and train-aware functions
+- `pipeline { }` CE for composing layers and train-aware functions
 - `BatchNorm`, `Dropout`, `MaxPool2d`
-- Partial application: `drop.forwardT train` yields `Tensor -> Result<Tensor, ToroError>`
+- Partial application: `drop.forwardT train` yields `Tensor -> Tensor`

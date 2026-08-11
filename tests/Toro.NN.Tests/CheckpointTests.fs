@@ -16,38 +16,37 @@ let private withTempDir f =
         if Directory.Exists dir then
             Directory.Delete(dir, true)
 
-let private tensorSum (t: Tensor) =
-    (t.sumAll () |> unwrap).toFloat32Scalar () |> unwrap
+let private tensorSum (t: Tensor) = (t.sumAll ()).toFloat32Scalar ()
 
 [<Fact>]
 let ``Checkpoint round-trip with SGD`` () =
     withTempDir (fun dir ->
-        let linear = Linear.init 4 2 F32 Cpu |> unwrap
+        let linear = Linear.init 4 2 F32 Cpu
         let vars = Model.trainableVars linear
         let opt = SGD.create 0.05 vars
 
-        let x = Tensor.randn ([ 8; 4 ], F32, Cpu) |> unwrap
-        let target = Tensor.randn ([ 8; 2 ], F32, Cpu) |> unwrap
+        let x = Tensor.randn ([ 8; 4 ], F32, Cpu)
+        let target = Tensor.randn ([ 8; 2 ], F32, Cpu)
 
         for _ in 1..5 do
             opt.zeroGrad ()
 
             let loss =
                 linear.forward x
-                |> unwrap
-                |> fun p -> Loss.mse p target |> unwrap
 
-            loss.backward () |> unwrap
-            opt.step () |> unwrap
+                |> fun p -> Loss.mse p target
+
+            loss.backward ()
+            opt.step ()
 
         let weightBefore = Model.namedParams linear |> List.head |> snd |> tensorSum
 
-        Checkpoint.save linear (opt.toOps ()) 5 dir |> unwrap
+        Checkpoint.save linear (opt.toOps ()) 5 dir
 
-        let linear2 = Linear.init 4 2 F32 Cpu |> unwrap
+        let linear2 = Linear.init 4 2 F32 Cpu
         let opt2 = SGD.create 0.01 (Model.trainableVars linear2)
 
-        let epoch = Checkpoint.load linear2 (opt2.toOps ()) dir |> unwrap
+        let epoch = Checkpoint.load linear2 (opt2.toOps ()) dir
         epoch |> should equal 5
 
         let weightAfter = Model.namedParams linear2 |> List.head |> snd |> tensorSum
@@ -57,33 +56,32 @@ let ``Checkpoint round-trip with SGD`` () =
 [<Fact>]
 let ``Checkpoint round-trip with AdamW`` () =
     withTempDir (fun dir ->
-        let linear = Linear.init 4 2 F32 Cpu |> unwrap
+        let linear = Linear.init 4 2 F32 Cpu
         let vars = Model.trainableVars linear
-        let opt = AdamW.createWithLr 0.01 vars |> unwrap
+        let opt = AdamW.createWithLr 0.01 vars
 
-        let x = Tensor.randn ([ 8; 4 ], F32, Cpu) |> unwrap
-        let target = Tensor.randn ([ 8; 2 ], F32, Cpu) |> unwrap
+        let x = Tensor.randn ([ 8; 4 ], F32, Cpu)
+        let target = Tensor.randn ([ 8; 2 ], F32, Cpu)
 
         for _ in 1..10 do
             opt.zeroGrad ()
 
             let loss =
                 linear.forward x
-                |> unwrap
-                |> fun p -> Loss.mse p target |> unwrap
 
-            loss.backward () |> unwrap
-            opt.step () |> unwrap
+                |> fun p -> Loss.mse p target
 
-        Checkpoint.save linear (opt.toOps ()) 10 dir |> unwrap
+            loss.backward ()
+            opt.step ()
 
-        let linear2 = Linear.init 4 2 F32 Cpu |> unwrap
+        Checkpoint.save linear (opt.toOps ()) 10 dir
 
-        let opt2 =
-            AdamW.createWithLr 0.001 (Model.trainableVars linear2)
-            |> unwrap
+        let linear2 = Linear.init 4 2 F32 Cpu
 
-        let epoch = Checkpoint.load linear2 (opt2.toOps ()) dir |> unwrap
+        let opt2 = AdamW.createWithLr 0.001 (Model.trainableVars linear2)
+
+
+        let epoch = Checkpoint.load linear2 (opt2.toOps ()) dir
         epoch |> should equal 10
         opt2.learningRate () |> should (equalWithin 1e-9) 0.01
 
@@ -94,10 +92,10 @@ let ``Checkpoint round-trip with AdamW`` () =
 [<Fact>]
 let ``Checkpoint creates expected directory structure`` () =
     withTempDir (fun dir ->
-        let linear = Linear.init 2 1 F32 Cpu |> unwrap
+        let linear = Linear.init 2 1 F32 Cpu
         let opt = SGD.create 0.1 (Model.trainableVars linear)
 
-        Checkpoint.save linear (opt.toOps ()) 1 dir |> unwrap
+        Checkpoint.save linear (opt.toOps ()) 1 dir
 
         File.Exists(Path.Combine(dir, "meta.json"))
         |> should equal true
@@ -108,34 +106,33 @@ let ``Checkpoint creates expected directory structure`` () =
 [<Fact>]
 let ``AdamW optimizer state survives checkpoint`` () =
     withTempDir (fun dir ->
-        let linear = Linear.init 4 2 F32 Cpu |> unwrap
+        let linear = Linear.init 4 2 F32 Cpu
         let vars = Model.trainableVars linear
-        let opt = AdamW.createWithLr 0.01 vars |> unwrap
+        let opt = AdamW.createWithLr 0.01 vars
 
-        let x = Tensor.randn ([ 8; 4 ], F32, Cpu) |> unwrap
-        let target = Tensor.randn ([ 8; 2 ], F32, Cpu) |> unwrap
+        let x = Tensor.randn ([ 8; 4 ], F32, Cpu)
+        let target = Tensor.randn ([ 8; 2 ], F32, Cpu)
 
         for _ in 1..5 do
             opt.zeroGrad ()
 
             let loss =
                 linear.forward x
-                |> unwrap
-                |> fun p -> Loss.mse p target |> unwrap
 
-            loss.backward () |> unwrap
-            opt.step () |> unwrap
+                |> fun p -> Loss.mse p target
 
-        Checkpoint.save linear (opt.toOps ()) 5 dir |> unwrap
+            loss.backward ()
+            opt.step ()
 
-        let linear2 = Linear.init 4 2 F32 Cpu |> unwrap
+        Checkpoint.save linear (opt.toOps ()) 5 dir
 
-        let opt2 =
-            AdamW.createWithLr 0.01 (Model.trainableVars linear2)
-            |> unwrap
+        let linear2 = Linear.init 4 2 F32 Cpu
+
+        let opt2 = AdamW.createWithLr 0.01 (Model.trainableVars linear2)
+
 
         Checkpoint.load linear2 (opt2.toOps ()) dir
-        |> unwrap
+
         |> ignore
 
         for _ in 6..10 do
@@ -143,22 +140,22 @@ let ``AdamW optimizer state survives checkpoint`` () =
 
             let loss =
                 linear.forward x
-                |> unwrap
-                |> fun p -> Loss.mse p target |> unwrap
 
-            loss.backward () |> unwrap
-            opt.step () |> unwrap
+                |> fun p -> Loss.mse p target
+
+            loss.backward ()
+            opt.step ()
 
         for _ in 6..10 do
             opt2.zeroGrad ()
 
             let loss =
                 linear2.forward x
-                |> unwrap
-                |> fun p -> Loss.mse p target |> unwrap
 
-            loss.backward () |> unwrap
-            opt2.step () |> unwrap
+                |> fun p -> Loss.mse p target
+
+            loss.backward ()
+            opt2.step ()
 
         let w1 = Model.namedParams linear |> List.head |> snd |> tensorSum
         let w2 = Model.namedParams linear2 |> List.head |> snd |> tensorSum

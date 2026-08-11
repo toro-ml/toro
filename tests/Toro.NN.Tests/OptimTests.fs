@@ -8,56 +8,49 @@ open TestHelper
 
 [<Fact>]
 let ``SGD step reduces loss`` () =
-    let linear = Linear.init 4 2 F32 Cpu |> unwrap
+    let linear = Linear.init 4 2 F32 Cpu
 
-    let x = Tensor.randn ([ 8; 4 ], F32, Cpu) |> unwrap
-    let target = Tensor.randn ([ 8; 2 ], F32, Cpu) |> unwrap
+    let x = Tensor.randn ([ 8; 4 ], F32, Cpu)
+    let target = Tensor.randn ([ 8; 2 ], F32, Cpu)
 
     let opt = SGD.create 0.01 (Model.trainableVars linear)
 
     let getLoss () =
-        result {
-            let! y = linear.forward x
-            return! Loss.mse y target
-        }
-        |> unwrap
+        let y = linear.forward x
+        Loss.mse y target
 
-    let loss0 = (getLoss ()).toFloat32Scalar () |> unwrap
+    let loss0 = (getLoss ()).toFloat32Scalar ()
 
     for _ in 1..20 do
         let loss = getLoss ()
         opt.zeroGrad ()
-        loss.backward () |> unwrap
-        opt.step () |> unwrap
+        loss.backward ()
+        opt.step ()
 
-    let lossN = (getLoss ()).toFloat32Scalar () |> unwrap
+    let lossN = (getLoss ()).toFloat32Scalar ()
     lossN |> should be (lessThan loss0)
 
 [<Fact>]
 let ``AdamW step reduces loss`` () =
-    let linear = Linear.init 4 2 F32 Cpu |> unwrap
+    let linear = Linear.init 4 2 F32 Cpu
 
-    let x = Tensor.randn ([ 8; 4 ], F32, Cpu) |> unwrap
-    let target = Tensor.randn ([ 8; 2 ], F32, Cpu) |> unwrap
+    let x = Tensor.randn ([ 8; 4 ], F32, Cpu)
+    let target = Tensor.randn ([ 8; 2 ], F32, Cpu)
 
-    let opt =
-        AdamW.createWithLr 0.01 (Model.trainableVars linear)
-        |> unwrap
+    let opt = AdamW.createWithLr 0.01 (Model.trainableVars linear)
+
 
     let getLoss () =
-        result {
-            let! y = linear.forward x
-            return! Loss.mse y target
-        }
-        |> unwrap
+        let y = linear.forward x
+        Loss.mse y target
 
-    let loss0 = (getLoss ()).toFloat32Scalar () |> unwrap
+    let loss0 = (getLoss ()).toFloat32Scalar ()
 
     for _ in 1..20 do
         let loss = getLoss ()
         opt.zeroGrad ()
-        loss.backward () |> unwrap
-        opt.step () |> unwrap
+        loss.backward ()
+        opt.step ()
 
-    let lossN = (getLoss ()).toFloat32Scalar () |> unwrap
+    let lossN = (getLoss ()).toFloat32Scalar ()
     lossN |> should be (lessThan loss0)

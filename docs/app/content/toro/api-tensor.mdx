@@ -7,8 +7,8 @@ showTitle: false
 
 # Tensor
 
-Wrapper around TorchSharp tensor. Most methods return `Result<'T, ToroError>`;
- arithmetic operators throw on failure for ergonomic use in expressions.
+Wrapper around TorchSharp tensor. Methods throw on failure;
+ use `scoped { }` for automatic disposal of intermediate tensors.
 
 ## Instance members
 

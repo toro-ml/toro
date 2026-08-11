@@ -15,10 +15,10 @@ open Toro.NN
 
 Toro defines a generic interface for composable layers:
 
-- **`IModule<'In, 'Out>`** -- `forward: 'In -> Result<'Out, ToroError>`. The general-purpose module interface, Kleisli-composable via the `>=>` operator and the `pipeline { }` CE.
+- **`IModule<'In, 'Out>`** -- `forward: 'In -> 'Out`. The general-purpose module interface, composable via the `pipeline { }` CE.
 - **`IModule`** -- inherits `IModule<Tensor, Tensor>`. A shortcut for the most common case. Most layers implement this interface.
 
-Layers with richer signatures (e.g. Dropout, BatchNorm) expose typed member methods like `forwardT` instead of implementing `IModule`. Use partial application (`drop.forwardT train`) to get a `Tensor -> Result<Tensor, ToroError>` function for Kleisli composition.
+Layers with richer signatures (e.g. Dropout, BatchNorm) expose typed member methods like `forwardT` instead of implementing `IModule`. Use partial application (`drop.forwardT train`) to get a `Tensor -> Tensor` function for pipeline composition.
 
 ## Layers
 
@@ -27,10 +27,8 @@ Layers with richer signatures (e.g. Dropout, BatchNorm) expose typed member meth
 A fully connected layer. Implements `IModule`:
 
 ```fsharp
-result {
-    let! l = Linear.init 784 256 F32 Cpu
-    let! out = l.forward input
-}
+let l = Linear.init 784 256 F32 Cpu
+let out = l.forward input
 ```
 
 `Linear.initNoBias` creates a linear layer without a bias term.
@@ -40,18 +38,14 @@ result {
 A 1D convolution layer. Implements `IModule`:
 
 ```fsharp
-result {
-    let! conv = Conv1d.initDefault 3 16 5 F32 Cpu  // inCh=3, outCh=16, kernel=5
-    let! out = conv.forward input
-}
+let conv = Conv1d.initDefault 3 16 5 F32 Cpu  // inCh=3, outCh=16, kernel=5
+let out = conv.forward input
 ```
 
 Configure with `Conv1dConfig`:
 
 ```fsharp
-result {
-    let! conv = Conv1d.init 3 16 5 { Conv1dConfig.defaultConfig with Padding = 2; Stride = 2 } F32 Cpu
-}
+let conv = Conv1d.init 3 16 5 { Conv1dConfig.defaultConfig with Padding = 2; Stride = 2 } F32 Cpu
 ```
 
 `Conv1d.initNoBias` creates a layer without a bias term.
@@ -61,18 +55,14 @@ result {
 A 2D convolution layer. Implements `IModule`:
 
 ```fsharp
-result {
-    let! conv = Conv2d.initDefault 1 32 3 F32 Cpu  // inCh=1, outCh=32, kernel=3
-    let! out = conv.forward input
-}
+let conv = Conv2d.initDefault 1 32 3 F32 Cpu  // inCh=1, outCh=32, kernel=3
+let out = conv.forward input
 ```
 
 Configure with `Conv2dConfig` (same fields as `Conv1dConfig`: `Padding`, `Stride`, `Dilation`, `Groups`):
 
 ```fsharp
-result {
-    let! conv = Conv2d.init 1 32 3 { Conv2dConfig.defaultConfig with Padding = 1 } F32 Cpu
-}
+let conv = Conv2d.init 1 32 3 { Conv2dConfig.defaultConfig with Padding = 1 } F32 Cpu
 ```
 
 ### Pooling
@@ -92,10 +82,8 @@ See the [Pooling API reference](/api-pooling) for all variants.
 A lookup table that maps integer indices to dense vectors. Implements `IModule`:
 
 ```fsharp
-result {
-    let! emb = Embedding.init 10000 128 F32 Cpu
-    let! out = emb.forward indices  // indices: int64 tensor
-}
+let emb = Embedding.init 10000 128 F32 Cpu
+let out = emb.forward indices  // indices: int64 tensor
 ```
 
 ### Normalization
@@ -105,10 +93,8 @@ result {
 Layer normalization. Implements `IModule`:
 
 ```fsharp
-result {
-    let! ln = LayerNorm.initDefault 128 F32 Cpu
-    let! out = ln.forward input
-}
+let ln = LayerNorm.initDefault 128 F32 Cpu
+let out = ln.forward input
 ```
 
 Configure with `LayerNormConfig` (fields: `Eps`, `RemoveMean`, `Affine`).
@@ -118,10 +104,8 @@ Configure with `LayerNormConfig` (fields: `Eps`, `RemoveMean`, `Affine`).
 Root mean square normalization. Implements `IModule`:
 
 ```fsharp
-result {
-    let! rn = RmsNorm.init 128 1e-5 F32 Cpu
-    let! out = rn.forward input
-}
+let rn = RmsNorm.init 128 1e-5 F32 Cpu
+let out = rn.forward input
 ```
 
 #### BatchNorm
@@ -129,11 +113,9 @@ result {
 Batch normalization. Behavior differs between training and inference:
 
 ```fsharp
-result {
-    let! bn = BatchNorm.initDefault 64 F32 Cpu
-    let! out = bn.forwardT true input   // training
-    let! out = bn.forwardT false input  // inference
-}
+let bn = BatchNorm.initDefault 64 F32 Cpu
+let out = bn.forwardT true input   // training
+let out = bn.forwardT false input  // inference
 ```
 
 Configure with `BatchNormConfig` (fields: `Eps`, `Momentum`, `Affine`).
@@ -143,10 +125,8 @@ Configure with `BatchNormConfig` (fields: `Eps`, `Momentum`, `Affine`).
 Group normalization. Implements `IModule`:
 
 ```fsharp
-result {
-    let! gn = GroupNorm.initDefault 8 64 F32 Cpu  // 8 groups, 64 channels
-    let! out = gn.forward input
-}
+let gn = GroupNorm.initDefault 8 64 F32 Cpu  // 8 groups, 64 channels
+let out = gn.forward input
 ```
 
 ### Dropout
@@ -163,7 +143,7 @@ let drop = Dropout.create 0.5
 Use them in a sequential model or call `forward` directly:
 
 ```fsharp
-let! out = Relu.forward input
+let out = Relu.forward input
 ```
 
 See the [Activation API reference](/api-activation) for all cases.
@@ -186,14 +166,14 @@ let skip = Func.Identity
 
 Recurrent layers expose two primitive members:
 
-- `zeroState: int -> Result<'State, ToroError>` -- creates the initial state for a given batch size.
-- `step: Tensor -> 'State -> Result<'State, ToroError>` -- applies one time step.
+- `zeroState: int -> 'State` -- creates the initial state for a given batch size.
+- `step: Tensor -> 'State -> 'State` -- applies one time step.
 
 Use `RNN.scan` to fold `step` over a full sequence:
 
 ```fsharp
-let! states = RNN.scan lstm.zeroState lstm.step inputSequence
-let! output = Tensor.stack (states |> List.map _.H, 1)
+let states = RNN.scan lstm.zeroState lstm.step inputSequence
+let output = Tensor.stack (states |> List.map _.H, 1)
 ```
 
 ### LSTM
@@ -201,13 +181,11 @@ let! output = Tensor.stack (states |> List.map _.H, 1)
 Long Short-Term Memory. State type: `LSTMState = { H: Tensor; C: Tensor }`:
 
 ```fsharp
-result {
-    let! lstm = LSTM.initDefault 128 256 F32 Cpu
-    let! state0 = lstm.zeroState batchSize
-    let! state1 = lstm.step input state0                      // one step
-    let! states = RNN.scan lstm.zeroState lstm.step sequence            // full sequence
-    let! output = Tensor.stack (states |> List.map _.H, 1)   // [batch; seqLen; hidden]
-}
+let lstm = LSTM.initDefault 128 256 F32 Cpu
+let state0 = lstm.zeroState batchSize
+let state1 = lstm.step input state0                      // one step
+let states = RNN.scan lstm.zeroState lstm.step sequence   // full sequence
+let output = Tensor.stack (states |> List.map _.H, 1)    // [batch; seqLen; hidden]
 ```
 
 Configure with `LSTMConfig` for custom weight initialization.
@@ -217,11 +195,9 @@ Configure with `LSTMConfig` for custom weight initialization.
 Gated Recurrent Unit. State type: `GRUState = { H: Tensor }`:
 
 ```fsharp
-result {
-    let! gru = GRU.initDefault 128 256 F32 Cpu
-    let! state0 = gru.zeroState batchSize
-    let! states = RNN.scan gru.zeroState gru.step sequence
-}
+let gru = GRU.initDefault 128 256 F32 Cpu
+let state0 = gru.zeroState batchSize
+let states = RNN.scan gru.zeroState gru.step sequence
 ```
 
 ## Attention and Transformer
@@ -231,10 +207,8 @@ result {
 Multi-head self-attention:
 
 ```fsharp
-result {
-    let! attn = MultiHeadAttention.init 128 4 F32 Cpu  // dim=128, 4 heads
-    let! out = attn.forward (input, ?mask = mask)
-}
+let attn = MultiHeadAttention.init 128 4 F32 Cpu  // dim=128, 4 heads
+let out = attn.forward (input, ?mask = mask)
 ```
 
 Supports an optional `KvCache` for autoregressive generation.
@@ -244,10 +218,8 @@ Supports an optional `KvCache` for autoregressive generation.
 A pre-norm transformer block with multi-head attention and a feed-forward network:
 
 ```fsharp
-result {
-    let! block = TransformerBlock.init 128 4 512 F32 Cpu  // dim=128, 4 heads, ffDim=512
-    let! out = block.forward (input, ?mask = mask)
-}
+let block = TransformerBlock.init 128 4 512 F32 Cpu  // dim=128, 4 heads, ffDim=512
+let out = block.forward (input, ?mask = mask)
 ```
 
 ### KvCache
@@ -257,7 +229,7 @@ Key-value cache for autoregressive inference.
 
 ```fsharp
 use cache = KvCache.create 2  // cache dim (typically the sequence dimension)
-let! k, v = cache.append (newK, newV)
+let k, v = cache.append (newK, newV)
 cache.reset ()  // disposes cached tensors and resets the sequence length
 ```
 
@@ -268,8 +240,8 @@ cache.reset ()  // disposes cached tensors and resets the sequence length
 Use the `sequential { }` computation expression to compose `IModule` layers:
 
 ```fsharp
-let! l1 = Linear.init 784 256 F32 Cpu
-let! l2 = Linear.init 256 10 F32 Cpu
+let l1 = Linear.init 784 256 F32 Cpu
+let l2 = Linear.init 256 10 F32 Cpu
 
 let model = sequential {
     l1
@@ -277,17 +249,17 @@ let model = sequential {
     l2
 }
 
-let! output = model.forward input
+let output = model.forward input
 ```
 
 ### pipeline
 
-Use `pipeline { }` when you need to compose layers and functions with heterogeneous signatures (e.g. train-aware layers, custom functions). It performs Kleisli composition at compile time:
+Use `pipeline { }` when you need to compose layers and functions with heterogeneous signatures (e.g. train-aware layers, custom functions):
 
 ```fsharp
-let! l1 = Linear.init 784 256 F32 Cpu
+let l1 = Linear.init 784 256 F32 Cpu
 let drop = Dropout.create 0.5
-let! l2 = Linear.init 256 10 F32 Cpu
+let l2 = Linear.init 256 10 F32 Cpu
 
 let forward train = pipeline {
     l1
@@ -296,15 +268,8 @@ let forward train = pipeline {
     l2
 }
 
-let! trainOut = forward true input
-let! evalOut = forward false input
-```
-
-You can also use the `>=>` operator directly for Kleisli composition:
-
-```fsharp
-let forward train =
-    l1.forward >=> _.relu() >=> drop.forwardT train >=> l2.forward
+let trainOut = forward true input
+let evalOut = forward false input
 ```
 
 ## Weight Initialization
@@ -314,9 +279,7 @@ Most layers default to `KaimingNormal`. Other cases include `Const`, `Randn`, an
 Use `Init.toTensor` to create a tensor, or `Init.toParam` to create a tensor with `requiresGrad`:
 
 ```fsharp
-result {
-    let! w = Init.toParam [ 256; 128 ] F32 Cpu KaimingNormal
-}
+let w = Init.toParam [ 256; 128 ] F32 Cpu KaimingNormal
 ```
 
 See the [Init API reference](/api-init) for all cases.
@@ -332,7 +295,7 @@ type MyModel = {
 }
 
 let vars = Model.trainableVars myModel
-let! opt = AdamW.createWithLr 0.001 vars
+let opt = AdamW.createWithLr 0.001 vars
 ```
 
 `Model.trainableVars` uses reflection to find all `Tensor` values in the record.
@@ -350,10 +313,8 @@ let namedVars = Model.namedParams myModel
 Save and load model parameters as SafeTensors:
 
 ```fsharp
-result {
-    do! Model.save myModel "checkpoints/epoch10.safetensors"
-    let! report = Model.loadInto myModel "checkpoints/epoch10.safetensors" Strict
-}
+Model.save myModel "checkpoints/epoch10.safetensors"
+let report = Model.loadInto myModel "checkpoints/epoch10.safetensors" Strict
 ```
 
 `Model.save` writes all parameters to a single `.safetensors` file.

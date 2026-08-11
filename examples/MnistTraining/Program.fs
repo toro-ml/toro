@@ -11,17 +11,15 @@ type MnistModel = {
     Fc2: Linear
 } with
 
-    member this.forward(x: Tensor) : Result<Tensor, ToroError> =
-        result {
-            let! x = this.Conv1.forward x
-            let! x = x.relu ()
-            let! x = this.Conv2.forward x
-            let! x = x.relu ()
-            let! x = x.flatten (1, -1)
-            let! x = this.Fc1.forward x
-            let! x = x.relu ()
-            return! this.Fc2.forward x
-        }
+    member this.forward(x: Tensor) : Tensor =
+        let x = this.Conv1.forward x
+        let x = x.relu ()
+        let x = this.Conv2.forward x
+        let x = x.relu ()
+        let x = x.flatten (1, -1)
+        let x = this.Fc1.forward x
+        let x = x.relu ()
+        this.Fc2.forward x
 
     interface IModule with
         member this.forward x = this.forward x
@@ -32,127 +30,112 @@ let createModel () =
             Stride = 2
     }
 
-    result {
-        let! conv1 = Conv2d.init 1 8 5 stride2 F32 Cpu
-        let! conv2 = Conv2d.init 8 16 5 stride2 F32 Cpu
-        let! fc1 = Linear.init 256 64 F32 Cpu
-        let! fc2 = Linear.init 64 10 F32 Cpu
+    let conv1 = Conv2d.init 1 8 5 stride2 F32 Cpu
+    let conv2 = Conv2d.init 8 16 5 stride2 F32 Cpu
+    let fc1 = Linear.init 256 64 F32 Cpu
+    let fc2 = Linear.init 64 10 F32 Cpu
 
-        return {
-            Conv1 = conv1
-            Conv2 = conv2
-            Fc1 = fc1
-            Fc2 = fc2
-        }
+    {
+        Conv1 = conv1
+        Conv2 = conv2
+        Fc1 = fc1
+        Fc2 = fc2
     }
 
 [<EntryPoint>]
 let main _argv =
+    let batchSize = 64
+    let epochs = 5
+    let lr = 1e-3
 
-    result {
-        let batchSize = 64
-        let epochs = 5
-        let lr = 1e-3
+    let dataPath =
+        IO.Path.Combine(Environment.GetFolderPath Environment.SpecialFolder.LocalApplicationData, "toro-mnist")
 
-        let dataPath =
-            IO.Path.Combine(Environment.GetFolderPath Environment.SpecialFolder.LocalApplicationData, "toro-mnist")
+    printfn "Loading MNIST dataset..."
 
-        printfn "Loading MNIST dataset..."
+    let mnistNorm: Normalize = { Mean = [ 0.1307 ]; Std = [ 0.3081 ] }
 
-        let mnistNorm: Normalize = { Mean = [ 0.1307 ]; Std = [ 0.3081 ] }
+    use trainDataset: torch.utils.data.Dataset =
+        TorchSharp.torchvision.datasets.MNIST(dataPath, true, download = true)
 
-        use trainDataset: torch.utils.data.Dataset =
-            TorchSharp.torchvision.datasets.MNIST(dataPath, true, download = true)
+    use testDataset: torch.utils.data.Dataset =
+        TorchSharp.torchvision.datasets.MNIST(dataPath, false, download = true)
 
-        use testDataset: torch.utils.data.Dataset =
-            TorchSharp.torchvision.datasets.MNIST(dataPath, false, download = true)
+    printfn "  Train samples: %d" trainDataset.Count
+    printfn "  Test samples:  %d" testDataset.Count
 
-        printfn "  Train samples: %d" trainDataset.Count
-        printfn "  Test samples:  %d" testDataset.Count
+    let model = createModel ()
+    let opt = AdamW.createWithLr lr (Model.trainableVars model)
 
-        let! model = createModel ()
-        let! opt = AdamW.createWithLr lr (Model.trainableVars model)
+    printfn ""
+    printfn "Model: Conv2d(1->8, 5, s2) -> Conv2d(8->16, 5, s2) -> Linear(256->64) -> Linear(64->10)"
+    printfn "Optimizer: AdamW (lr=%.0e)" lr
+    printfn ""
 
-        printfn ""
-        printfn "Model: Conv2d(1->8, 5, s2) -> Conv2d(8->16, 5, s2) -> Linear(256->64) -> Linear(64->10)"
-        printfn "Optimizer: AdamW (lr=%.0e)" lr
-        printfn ""
+    use trainLoader =
+        torch.utils.data.DataLoader(trainDataset, batchSize, shuffle = true, device = torch.CPU)
 
-        use trainLoader =
-            torch.utils.data.DataLoader(trainDataset, batchSize, shuffle = true, device = torch.CPU)
+    use testLoader = torch.utils.data.DataLoader(testDataset, 256, device = torch.CPU)
 
-        use testLoader = torch.utils.data.DataLoader(testDataset, 256, device = torch.CPU)
+    for epoch in 1..epochs do
+        let mutable totalLoss = 0.0
+        let mutable totalCorrect = 0L
+        let mutable totalSamples = 0L
 
-        for epoch in 1..epochs do
-            let mutable totalLoss = 0.0
-            let mutable totalCorrect = 0L
-            let mutable totalSamples = 0L
+        for batch in trainLoader do
+            scoped {
+                let images = batch["data"]
+                let labels = batch["label"]
 
-            for batch in trainLoader do
-                do!
-                    scoped {
-                        let images = batch["data"]
-                        let labels = batch["label"]
+                let x = Tensor.ofTorchTensor images
+                let x = mnistNorm.apply x
+                let target = Tensor.ofTorchTensor labels
+                opt.zeroGrad ()
+                let logits = model.forward x
+                let loss = Loss.crossEntropy logits target
+                loss.backward ()
+                opt.step ()
 
-                        let! x = Tensor.ofTorchTensor images
-                        let! x = mnistNorm.apply x
-                        let! target = Tensor.ofTorchTensor labels
-                        opt.zeroGrad ()
-                        let! logits = model.forward x
-                        let! loss = Loss.crossEntropy logits target
-                        do! loss.backward ()
-                        do! opt.step ()
+                let lossVal = loss.item ()
+                let predicted = logits.argmax 1
+                let eqSum = predicted.eq(target).sumAll ()
+                let correct = eqSum.item () |> int64
+                let n = images.shape[0]
 
-                        let lossVal = loss.item ()
-                        let! predicted = logits.argmax 1
-                        let! eqSum = predicted.eq(target).sumAll ()
-                        let correct = eqSum.item () |> int64
-                        let n = images.shape[0]
+                totalLoss <- totalLoss + float lossVal * float n
+                totalCorrect <- totalCorrect + correct
+                totalSamples <- totalSamples + n
+            }
 
-                        totalLoss <- totalLoss + float lossVal * float n
-                        totalCorrect <- totalCorrect + correct
-                        totalSamples <- totalSamples + n
-                    }
+        let avgLoss = totalLoss / float totalSamples
+        let accuracy = float totalCorrect / float totalSamples * 100.0
+        printf "Epoch %d/%d  train loss=%.4f  acc=%.1f%%" epoch epochs avgLoss accuracy
 
-            let avgLoss = totalLoss / float totalSamples
-            let accuracy = float totalCorrect / float totalSamples * 100.0
-            printf "Epoch %d/%d  train loss=%.4f  acc=%.1f%%" epoch epochs avgLoss accuracy
+        let mutable testCorrect = 0L
+        let mutable testTotal = 0L
 
-            let mutable testCorrect = 0L
-            let mutable testTotal = 0L
+        Toro.noGrad (fun () ->
+            for batch in testLoader do
+                scoped {
+                    let images = batch["data"]
+                    let labels = batch["label"]
 
-            do!
-                Toro.noGrad (fun () ->
-                    result {
-                        for batch in testLoader do
-                            do!
-                                scoped {
-                                    let images = batch["data"]
-                                    let labels = batch["label"]
+                    let x = Tensor.ofTorchTensor images
+                    let x = mnistNorm.apply x
+                    let target = Tensor.ofTorchTensor labels
+                    let logits = model.forward x
+                    let predicted = logits.argmax 1
+                    let eqSum = predicted.eq(target).sumAll ()
+                    let correct = eqSum.item () |> int64
+                    let n = images.shape[0]
 
-                                    let! x = Tensor.ofTorchTensor images
-                                    let! x = mnistNorm.apply x
-                                    let! target = Tensor.ofTorchTensor labels
-                                    let! logits = model.forward x
-                                    let! predicted = logits.argmax 1
-                                    let! eqSum = predicted.eq(target).sumAll ()
-                                    let correct = eqSum.item () |> int64
-                                    let n = images.shape[0]
+                    testCorrect <- testCorrect + correct
+                    testTotal <- testTotal + n
+                })
 
-                                    testCorrect <- testCorrect + correct
-                                    testTotal <- testTotal + n
-                                }
-                    })
+        let testAcc = float testCorrect / float testTotal * 100.0
+        printfn "  test acc=%.1f%%" testAcc
 
-            let testAcc = float testCorrect / float testTotal * 100.0
-            printfn "  test acc=%.1f%%" testAcc
-
-        printfn ""
-        printfn "Done."
-    }
-
-    |> function
-        | Ok() -> 0
-        | Error e ->
-            eprintfn "%A" e
-            1
+    printfn ""
+    printfn "Done."
+    0

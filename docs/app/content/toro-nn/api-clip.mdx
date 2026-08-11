@@ -24,7 +24,7 @@ Clip gradients by global L2 norm. Return the total norm before clipping.
 - `maxNorm` : `float`
 - `vars` : `Tensor list`
 
-**Returns** `Result<float, ToroError>`
+**Returns** `float`
 
 ---
 
@@ -40,6 +40,4 @@ Clip each gradient element to [-value, +value].
 
 - `value` : `float`
 - `vars` : `Tensor list`
-
-**Returns** `Result<unit, ToroError>`
 

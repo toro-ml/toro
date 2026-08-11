@@ -2,9 +2,9 @@ namespace Toro.NN
 
 open Toro
 
-/// A composable layer. Kleisli-composable via the >=> operator and the pipeline CE.
+/// A composable layer with typed input and output.
 type IModule<'In, 'Out> =
-    abstract forward: 'In -> Result<'Out, ToroError>
+    abstract forward: 'In -> 'Out
 
 /// Shortcut for IModule<Tensor, Tensor>.
 /// Most layers implement this interface directly.

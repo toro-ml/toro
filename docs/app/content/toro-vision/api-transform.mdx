@@ -23,7 +23,7 @@ Compose multiple transforms into a single pipeline.
 
 | Function | Description |
 | --- | --- |
-| `apply transforms x` | Apply transforms sequentially, short-circuiting on the first error. |
+| `apply transforms x` | Apply transforms sequentially. |
 
 ## apply
 
@@ -31,14 +31,14 @@ Compose multiple transforms into a single pipeline.
 apply transforms x
 ```
 
-Apply transforms sequentially, short-circuiting on the first error.
+Apply transforms sequentially.
 
 **Parameters**
 
 - `transforms` : `ITransform list`
 - `x` : `Tensor`
 
-**Returns** `Result<Tensor, ToroError>`
+**Returns** `Tensor`
 
 ---
 

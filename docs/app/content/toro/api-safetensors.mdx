@@ -27,7 +27,7 @@ Load all tensors from a .safetensors file.
 
 - `filePath` : `string`
 
-**Returns** `Result<Map<string, Tensor>, ToroError>`
+**Returns** `Map<string, Tensor>`
 
 ---
 
@@ -43,7 +43,7 @@ Load only the header metadata from a .safetensors file.
 
 - `filePath` : `string`
 
-**Returns** `Result<Map<string, TensorMeta>, ToroError>`
+**Returns** `Map<string, TensorMeta>`
 
 ---
 
@@ -60,7 +60,7 @@ Parse the SafeTensors header from an open stream.
 
 - `stream` : `Stream`
 
-**Returns** `Result<(int64 * Map<string, TensorMeta>), ToroError>`
+**Returns** `int64 * Map<string, TensorMeta>`
 
 ---
 
@@ -77,7 +77,7 @@ Load only the tensors whose names are in the given set.
 - `filePath` : `string`
 - `names` : `Set<string>`
 
-**Returns** `Result<(Map<string, TensorMeta> * Map<string, Tensor>), ToroError>`
+**Returns** `Map<string, TensorMeta> * Map<string, Tensor>`
 
 ---
 
@@ -93,6 +93,4 @@ Save tensors to a .safetensors file.
 
 - `tensors` : `Map<string, Tensor>`
 - `filePath` : `string`
-
-**Returns** `Result<unit, ToroError>`
 

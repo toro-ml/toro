@@ -3,47 +3,38 @@ title: Tensor
 description: Create tensors, do arithmetic, reshape, index, reduce, and manage autograd.
 ---
 
-A `Tensor` is a multi-dimensional array. Toro wraps TorchSharp tensors with a safe F# API.
-Most tensor methods return `Result<Tensor, ToroError>`.
-Arithmetic operators (`+`, `-`, `*`, `/`) throw exceptions directly and return `Tensor`.
-See [Core Concepts](/concepts) for the full operator return type rules and the [Tensor API reference](/api-tensor) for the complete method list.
+A `Tensor` is a multi-dimensional array. Toro wraps TorchSharp tensors with an F# API.
+All operations throw on failure for concise method chaining.
+See the [Tensor API reference](/api-tensor) for the complete method list.
 
 ## Factory Methods
-
-All factory methods return `Result<Tensor, ToroError>`.
 
 ```fsharp
 open Toro
 
-result {
-    let! z = Tensor.zeros ([ 2; 3 ], F32, Cpu)
-    let! o = Tensor.ones ([ 2; 3 ], F32, Cpu)
-    let! r = Tensor.rand ([ 2; 3 ], F32, Cpu)
-    let! n = Tensor.randn ([ 2; 3 ], F32, Cpu)
-    let! f = Tensor.full ([ 2; 3 ], 3.14, F32, Cpu)
-    let! a = Tensor.arange (1.0, 10.0, F32, Cpu)
-}
+let z = Tensor.zeros ([ 2; 3 ], F32, Cpu)
+let o = Tensor.ones ([ 2; 3 ], F32, Cpu)
+let r = Tensor.rand ([ 2; 3 ], F32, Cpu)
+let n = Tensor.randn ([ 2; 3 ], F32, Cpu)
+let f = Tensor.full ([ 2; 3 ], 3.14, F32, Cpu)
+let a = Tensor.arange (1.0, 10.0, F32, Cpu)
 ```
 
 Create tensors from F# collections with `ofArray` and `ofList`:
 
 ```fsharp
-result {
-    let! t = Tensor.ofArray ([| 1f; 2f; 3f |], Cpu)
-    let! t2 = Tensor.ofArray (array2D [| [| 1f; 2f |]; [| 3f; 4f |] |], Cpu)
-    let! t3 = Tensor.ofList ([ [ 0L; 1L ]; [ 1L; 0L ] ], Cpu)
-}
+let t = Tensor.ofArray ([| 1f; 2f; 3f |], Cpu)
+let t2 = Tensor.ofArray (array2D [| [| 1f; 2f |]; [| 3f; 4f |] |], Cpu)
+let t3 = Tensor.ofList ([ [ 0L; 1L ]; [ 1L; 0L ] ], Cpu)
 ```
 
 Combine tensors with `cat`, `stack`, and `where`:
 
 ```fsharp
-result {
-    let! a = Tensor.ones ([ 2; 3 ], F32, Cpu)
-    let! b = Tensor.zeros ([ 2; 3 ], F32, Cpu)
-    let! catted = Tensor.cat ([ a; b ], 0)     // shape: [4; 3]
-    let! stacked = Tensor.stack ([ a; b ], 0)  // shape: [2; 2; 3]
-}
+let a = Tensor.ones ([ 2; 3 ], F32, Cpu)
+let b = Tensor.zeros ([ 2; 3 ], F32, Cpu)
+let catted = Tensor.cat ([ a; b ], 0)     // shape: [4; 3]
+let stacked = Tensor.stack ([ a; b ], 0)  // shape: [2; 2; 3]
 ```
 
 ## Arithmetic
@@ -58,16 +49,14 @@ let e = -a
 
 ## Shape Operations
 
-Methods like `reshape`, `view`, `flatten`, `squeeze`, `unsqueeze`, `transpose`, `permute`, `expand`, and `pad` all return `Result`:
+Methods like `reshape`, `view`, `flatten`, `squeeze`, `unsqueeze`, `transpose`, `permute`, `expand`, and `pad` return `Tensor`:
 
 ```fsharp
-result {
-    let! t = Tensor.randn ([ 2; 3; 4 ], F32, Cpu)
-    let! reshaped = t.reshape [ 6; 4 ]
-    let! transposed = t.transpose (0, 2)
-    let! permuted = t.permute [ 2; 0; 1 ]
-    let! flat = t.flatten (1, -1)
-}
+let t = Tensor.randn ([ 2; 3; 4 ], F32, Cpu)
+let reshaped = t.reshape [ 6; 4 ]
+let transposed = t.transpose (0, 2)
+let permuted = t.permute [ 2; 0; 1 ]
+let flat = t.flatten (1, -1)
 ```
 
 See the [Tensor API reference](/api-tensor) for the full list of shape operations.
@@ -88,7 +77,7 @@ For complex patterns, use the `at` method with `TIdx` cases (`I`, `S`, `Sf`, `St
 let result = t.at [ I 1; S(0, 3) ]
 ```
 
-Methods like `indexSelect`, `gather`, `narrow`, `chunk`, `maskedFill`, and `oneHot` return `Result`.
+Methods like `indexSelect`, `gather`, `narrow`, `chunk`, `maskedFill`, and `oneHot` also return `Tensor`.
 See the [Tensor API reference](/api-tensor) for details.
 
 ## Comparison
@@ -106,34 +95,30 @@ let le = a .<=. b
 
 ## Math and Reduction
 
-Math methods (`matmul`, `exp`, `log`, `sqrt`, `pow`, `clamp`, ...) and reduction methods (`sumAll`, `meanAll`, `sum`, `argmax`, ...) all return `Result`.
+Math methods (`matmul`, `exp`, `log`, `sqrt`, `pow`, `clamp`, ...) and reduction methods (`sumAll`, `meanAll`, `sum`, `argmax`, ...) return `Tensor`.
 Activation functions are also available as tensor methods (`relu`, `gelu`, `softmax`, ...):
 
 ```fsharp
-result {
-    let! x = Tensor.randn ([ 4; 3 ], F32, Cpu)
-    let! y = x.matmul w
-    let! activated = y.relu ()
-    let! probs = activated.softmax 1
-    let! mean = probs.meanAll ()
-    let! idx = probs.argmax 1
-}
+let x = Tensor.randn ([ 4; 3 ], F32, Cpu)
+let y = x.matmul w
+let activated = y.relu ()
+let probs = activated.softmax 1
+let mean = probs.meanAll ()
+let idx = probs.argmax 1
 ```
 
-See the [Tensor](/api-tensor) and [TensorOp](/api-tensorop) API references for the complete method list.
+See the [Tensor API reference](/api-tensor) for the complete method list.
 
 ## Conversion
 
 Extract scalar values with `item()`, move tensors between devices with `toDevice`, and cast types with `toDType`:
 
 ```fsharp
-result {
-    let! t = Tensor.randn ([ 2; 3 ], F32, Cpu)
-    let value = t[0, 0].item ()           // float (throws)
-    let! f16 = t.toDType F16              // Result
-    let! gpu = t.toDevice (Cuda 0)        // Result
-    let! detached = t.detach ()           // Result
-}
+let t = Tensor.randn ([ 2; 3 ], F32, Cpu)
+let value = t[0, 0].item ()
+let f16 = t.toDType F16
+let gpu = t.toDevice (Cuda 0)
+let detached = t.detach ()
 ```
 
 ## Autograd
@@ -141,13 +126,11 @@ result {
 Enable gradient tracking with `requiresGrad`, compute gradients with `backward`, and read them with `grad`:
 
 ```fsharp
-result {
-    let! w = Tensor.randn ([ 3; 1 ], F32, Cpu)
-    let! w = w.requiresGrad ()
-    // ... forward pass and loss computation ...
-    do! loss.backward ()
-    let! g = w.grad ()
-}
+let w = Tensor.randn ([ 3; 1 ], F32, Cpu)
+let w = w.requiresGrad ()
+// ... forward pass and loss computation ...
+loss.backward ()
+let g = w.grad ()
 ```
 
 ## Persistence
@@ -155,11 +138,9 @@ result {
 Save and load individual tensors:
 
 ```fsharp
-result {
-    let! t = Tensor.randn ([ 3; 4 ], F32, Cpu)
-    do! t.save "weights.pt"
-    let! loaded = Tensor.load "weights.pt"
-}
+let t = Tensor.randn ([ 3; 4 ], F32, Cpu)
+t.save "weights.pt"
+let loaded = Tensor.load "weights.pt"
 ```
 
 For saving entire models, see [Model Persistence](/nn#model-persistence) and [Hub](/hub).

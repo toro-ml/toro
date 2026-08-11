@@ -1,96 +1,47 @@
 ---
 title: Core Concepts
-description: Error model, the result CE, operator return types, records as models, gradient control, memory management, DType, and Device.
+description: Direct API, ownership management with scoped, records as models, gradient control, DType, and Device.
 ---
 
-Toro's API is shaped by one central decision: operations that can fail return `Result<'T, ToroError>` instead of throwing exceptions.
-This page covers the design choices that follow from that decision.
+Toro's API is designed for concise method chaining. Operations throw exceptions on failure, just like PyTorch.
+This page covers the design choices that shape the API.
 
-## Error Model
+## Direct API
 
-Most Toro operations return `Result<'T, ToroError>`.
-Shape mismatches, dtype incompatibilities, and device errors surface as values rather than exceptions, so the compiler helps you handle them.
-See the [ToroError API reference](/api-error) for the full list of error cases.
-
-## The `result { }` Computation Expression
-
-The `result { }` CE chains operations that return `Result<'T, ToroError>`.
-Use `let!` to unwrap `Result` values. Use `do!` for `Result<unit, ToroError>`.
-Use `let` for values that are not wrapped in `Result`.
+Toro operations throw exceptions on failure. Shape mismatches, dtype incompatibilities, and device errors surface as .NET exceptions.
+This enables concise method chaining without `Result` unwrapping:
 
 ```fsharp
-let r = result {
-    let! x = Tensor.randn ([ 4; 2 ], F32, Cpu)    // Result -> let!
-    let! w = Tensor.randn ([ 2; 1 ], F32, Cpu)    // Result -> let!
-    let! pred = x.matmul w                        // Result -> let!
-    let shifted = pred + 1.0                      // Tensor -> let
-    let! loss = shifted.meanAll ()                // Result -> let!
-    do! loss.backward ()                          // Result<unit> -> do!
-}
-
-match r with
-| Ok () -> printfn "Success"
-| Error e -> eprintfn "Error: %A" e
+let x = Tensor.randn ([ 4; 2 ], F32, Cpu)
+let w = Tensor.randn ([ 2; 1 ], F32, Cpu)
+let pred = x.matmul w
+let shifted = pred + 1.0
+let loss = shifted.meanAll ()
+loss.backward ()
 ```
-
-## Operator Return Types
-
-Toro has two categories of operations:
-
-**Operators that return `Tensor` directly** (throw on error):
-
-- Arithmetic: `+`, `-`, `*`, `/`, unary `-`
-- Comparison: `.=.`, `.<>.`, `.>.`, `.<.`, `.>=.`, `.<=.`
-- Indexing: `t[i]`, `t[s..e]`
-
-**Methods that return `Result<Tensor, ToroError>`**:
-
-- Factory methods: `Tensor.zeros`, `Tensor.randn`, `Tensor.cat`, etc.
-- Shape operations: `reshape`, `view`, `squeeze`, `unsqueeze`, etc.
-- Math operations: `matmul`, `softmax`, `exp`, `log`, etc.
-- Reduction: `sumAll`, `meanAll`, `sum`, `mean`, etc.
-- Module forward: `model.forward`, `model.forwardT`
-
-This split keeps common arithmetic concise while preserving safety for operations that can fail in non-obvious ways.
-
-## Result-Based Operators
-
-The `~` operators (`+~`, `-~`, `*~`, `/~` and their scalar variants `+~.`, `-~.`, `*~.`, `/~.`) accept both `Tensor` and `Result<Tensor, ToroError>` as operands.
-`TensorR` provides pipe-friendly equivalents for the same purpose.
-
-```fsharp
-result {
-    let! a = Tensor.randn ([ 2; 3 ], F32, Cpu)
-    let! b = Tensor.randn ([ 3; 2 ], F32, Cpu)
-    let! c = a.matmul b +~ a.sumAll ()    // ~ operators
-    let! loss = inp.sub target |> TensorR.sqr |> TensorR.meanAll  // TensorR pipes
-}
-```
-
-See the [TensorOp API reference](/api-tensorop) for the full operator and function list.
 
 ## Records as Models
 
 Toro models are plain F# records. There is no base class to inherit.
-Each record defines a `forward` member that composes its layers with the `>=>` operator (Kleisli composition):
+Each record defines a `forward` member that composes its layers:
 
 ```fsharp
 type Features = {
     Conv1: Conv2d; Bn1: BatchNorm; Pool: MaxPool2d
 } with
-    member this.forward(train) =
-        this.Conv1.forward >=> this.Bn1.forwardT train >=> _.relu() >=> this.Pool.forward
+    member this.forward(train, x) =
+        x |> this.Conv1.forward |> this.Bn1.forwardT train |> _.relu() |> this.Pool.forward
 
 type MyModel = { Features: Features; Fc: Linear } with
-    member this.forward(train) =
-        this.Features.forward train >=> _.flatten(1, -1) >=> this.Fc.forward
+    member this.forward(train, x) =
+        x |> this.Features.forward(train) |> _.flatten(1, -1) |> this.Fc.forward
 ```
 
 Records nest naturally. `Model.trainableVars` walks the entire structure by reflection and collects every `Tensor` with `RequiresGrad = true`:
 
 ```fsharp
 let vars = Model.trainableVars myModel
-let! opt = AdamW.createWithLr 0.001 vars
+let opt = AdamW.createWithLr 0.001 vars
 ```
 
 See [Neural Networks](/nn) for the full model composition guide.
@@ -101,15 +52,9 @@ Use `Toro.noGrad` to disable gradient tracking during evaluation:
 
 ```fsharp
 Toro.noGrad (fun () ->
-    let r = result {
-        let! pred = model.forward testX
-        let! loss = Loss.crossEntropy pred testY
-        printfn "Test loss: %.4f" (loss.item ())
-    }
-
-    match r with
-    | Ok () -> ()
-    | Error e -> eprintfn "%A" e
+    let pred = model.forward testX
+    let loss = Loss.crossEntropy pred testY
+    printfn "Test loss: %.4f" (loss.item ())
 )
 ```
 
@@ -121,19 +66,18 @@ This reduces memory use and speeds up inference.
 TorchSharp tensors hold native memory that the .NET garbage collector cannot see.
 In training loops, intermediate tensors accumulate and can cause out-of-memory errors.
 
-The `scoped { }` CE solves this. It works like `result { }` but wraps the block in a `torch.NewDisposeScope()`.
+The `scoped { }` CE solves this. It wraps the block in a `torch.NewDisposeScope()`.
 All intermediate tensors created inside the block are disposed when the scope exits:
 
 ```fsharp
 for batch in trainLoader do
-    do!
-        scoped {
-            let! x = Tensor.ofTorchTensor images
-            let! logits = model.forward x
-            let! loss = Loss.crossEntropy logits target
-            do! loss.backward ()
-            do! opt.step ()
-        }
+    scoped {
+        let x, y = batch
+        let logits = model.forward x
+        let loss = Loss.crossEntropy logits y
+        loss.backward ()
+        opt.step ()
+    }
     // All intermediate tensors (x, logits, loss, ...) are freed here
 ```
 
@@ -144,19 +88,19 @@ This works for single tensors, tuples, records, discriminated unions (including 
 
 ```fsharp
 // Single Tensor
-let! mask = scoped {
+let mask = scoped {
     // ... intermediate work ...
-    return Tensor(filled.masked_fill (mask, negInf))
+    Tensor(filled.masked_fill (mask, negInf))
 }
 
 // Tuple
-let! k, v = scoped { return newK, newV }
+let k, v = scoped { newK, newV }
 
 // Option
-let! maybeT = scoped { return Some tensor }
+let maybeT = scoped { Some tensor }
 
 // Record
-let! out = scoped { return { Attn = a; Weights = w } }
+let out = scoped { { Attn = a; Weights = w } }
 ```
 
 ### `Tensor.keep`
@@ -169,22 +113,6 @@ let cached = Tensor.keep newK  // survives the caller's dispose scope
 ```
 
 `scoped { }` return values are auto-kept, so `Tensor.keep` is not needed for return values.
-
-### `disposeScope`
-
-For cases where `do! scoped { }` nesting is not desired, `disposeScope` starts a dispose scope with `use!` inside `result { }`:
-
-```fsharp
-result {
-    for batch in trainLoader do
-        use! _s = disposeScope ()
-        let! x = Tensor.ofTorchTensor images
-        let! logits = model.forward x
-        // tensors are disposed when _s goes out of scope
-}
-```
-
-Unlike `scoped { }`, return values are **not** auto-kept. Use `Tensor.keep` to preserve tensors past the scope.
 
 ### Guidelines
 

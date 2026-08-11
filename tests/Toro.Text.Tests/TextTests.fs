@@ -135,7 +135,7 @@ let ``Encode.toTensor produces correct shape`` () =
                     SpecialTokens = [ "[UNK]", 4 ]
             }
 
-        let t = Encode.toTensor tok "a b" 5 0 Cpu |> unwrap
+        let t = Encode.toTensor tok "a b" 5 0 Cpu
         t.Shape |> should equal [ 5 ]
     finally
         System.IO.File.Delete(path)
@@ -151,7 +151,7 @@ let ``Encode.batch produces correct shapes`` () =
                     SpecialTokens = [ "[UNK]", 4 ]
             }
 
-        let struct (ids, mask) = Encode.batch tok [ "a b"; "c" ] 4 0 Cpu |> unwrap
+        let struct (ids, mask) = Encode.batch tok [ "a b"; "c" ] 4 0 Cpu
         ids.Shape |> should equal [ 2; 4 ]
         mask.Shape |> should equal [ 2; 4 ]
     finally
@@ -160,7 +160,7 @@ let ``Encode.batch produces correct shapes`` () =
 [<Fact>]
 let ``Encode.attentionMask marks pad positions as zero`` () =
     let data: int64 array = [| 1L; 2L; 0L; 0L |]
-    let t = Tensor.ofArray (data, Cpu) |> unwrap
+    let t = Tensor.ofArray (data, Cpu)
 
     let mask = Encode.attentionMask t 0
     let m0 = mask.at [ I 0 ] |> scalarF32

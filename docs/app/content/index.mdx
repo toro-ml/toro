@@ -4,11 +4,12 @@ description: PyTorch semantics, idiomatic F#. Powered by TorchSharp.
 ---
 
 Toro wraps [TorchSharp](https://github.com/dotnet/TorchSharp) with an F#-idiomatic API.
-It keeps PyTorch's tensor semantics while using `Result` and computation expressions to make errors explicit and composable.
+It keeps PyTorch's tensor semantics while using records, computation expressions, and direct method chaining.
 
-- **Result-based safety** -- operations that can fail return `Result<'T, ToroError>`. The `result { }` CE chains them with `let!` and `do!`.
+- **Direct API** -- operations throw on failure for concise method chaining, just like PyTorch.
 - **Records as models** -- models are plain F# records. `Model.trainableVars` collects parameters by reflection, so there is no base class to inherit.
-- **Computation expressions for composition** -- `sequential { }` composes layers; `pipeline { }` and the `>=>` operator enable Kleisli composition for heterogeneous signatures.
+- **Ownership management** -- `scoped { }` CE automatically disposes intermediate tensors. Return values are kept alive past the scope.
+- **Computation expressions for composition** -- `sequential { }` composes layers; `pipeline { }` enables composition for heterogeneous signatures.
 - **PyTorch-compatible surface** -- tensor operations, neural network layers, and training utilities mirror PyTorch naming and behavior.
 
 | Package | Purpose |
@@ -39,58 +40,58 @@ dotnet add package Toro.Text     # Tokenization and text preprocessing
 open Toro
 open Toro.NN
 
-let r = result {
-    let! x = Tensor.ofList ([ [0f;0f]; [0f;1f]; [1f;0f]; [1f;1f] ], Cpu)
-    let! y = Tensor.ofList ([ [0f]; [1f]; [1f]; [0f] ], Cpu)
+let x = Tensor.ofList ([ [0f;0f]; [0f;1f]; [1f;0f]; [1f;1f] ], Cpu)
+let y = Tensor.ofList ([ [0f]; [1f]; [1f]; [0f] ], Cpu)
 
-    let! l1 = Linear.init 2 16 F32 Cpu
-    let! l2 = Linear.init 16 1 F32 Cpu
-    let model = sequential { l1; Relu; l2 }
+let l1 = Linear.init 2 16 F32 Cpu
+let l2 = Linear.init 16 1 F32 Cpu
+let model = sequential { l1; Relu; l2 }
 
-    let! opt = AdamW.createWithLr 0.01 (Model.trainableVars model)
-    for _ in 1..500 do
+let opt = AdamW.createWithLr 0.01 (Model.trainableVars model)
+for _ in 1..500 do
+    scoped {
         opt.zeroGrad ()
-        let! pred = model.forward x
-        let! loss = Loss.mse pred y
-        do! loss.backward ()
-        do! opt.step ()
-}
+        let pred = model.forward x
+        let loss = Loss.mse pred y
+        loss.backward ()
+        opt.step ()
+    }
 ```
 
-Every operation that can fail returns `Result<'T, ToroError>`.
-The `result { }` CE chains them with `let!` and `do!`.
+Operations throw on failure. `scoped { }` disposes intermediate tensors at the end of each iteration.
 
 ## Define a CNN with records
 
-Models are plain F# records. Each part defines a `forward` member using `>=>` (Kleisli composition):
+Models are plain F# records. Each part defines a `forward` member:
 
 ```fsharp
 type Features = {
     Conv1: Conv2d; Bn1: BatchNorm; Pool1: MaxPool2d
     Conv2: Conv2d; Bn2: BatchNorm; Pool2: MaxPool2d
 } with
-    member this.forward(train) =
-        this.Conv1.forward 
-        >=> this.Bn1.forwardT train 
-        >=> _.relu() 
-        >=> this.Pool1.forward
-        >=> this.Conv2.forward
-        >=> this.Bn2.forwardT train 
-        >=> _.relu()
-        >=> this.Pool2.forward
+    member this.forward(train, x) =
+        x
+        |> this.Conv1.forward
+        |> this.Bn1.forwardT train
+        |> _.relu()
+        |> this.Pool1.forward
+        |> this.Conv2.forward
+        |> this.Bn2.forwardT train
+        |> _.relu()
+        |> this.Pool2.forward
 
 type Classifier = { Fc1: Linear; Drop: Dropout; Fc2: Linear } with
-    member this.forward(train) =
-        _.flatten(1, -1) 
-        >=> this.Fc1.forward 
-        >=> _.relu()
-        >=> this.Drop.forwardT train 
-        >=> this.Fc2.forward
+    member this.forward(train, x) =
+        x
+        |> _.flatten(1, -1)
+        |> this.Fc1.forward
+        |> _.relu()
+        |> this.Drop.forwardT train
+        |> this.Fc2.forward
 
 type CnnModel = { Features: Features; Classifier: Classifier } with
-    member this.forward(train) =
-        this.Features.forward train 
-        >=> this.Classifier.forward train
+    member this.forward(train, x) =
+        x |> this.Features.forward(train) |> this.Classifier.forward(train)
 ```
 
 Nested records compose naturally. `Model.trainableVars` walks the entire structure by reflection.
@@ -99,14 +100,11 @@ Nested records compose naturally. `Model.trainableVars` walks the entire structu
 
 ```fsharp
 Toro.noGrad (fun () ->
-    let r = result {
-        let! pred = model.forward testX
-        let! argmax = pred.argmax 1
-        let! eq = (argmax .=. testY).toDType F32
-        let! acc = eq.meanAll ()
-        printfn "Accuracy: %.1f%%" (acc.item () * 100.0)
-    }
-    match r with Ok () -> () | Error e -> eprintfn "%A" e
+    let pred = model.forward testX
+    let argmax = pred.argmax 1
+    let eq = (argmax .=. testY).toDType F32
+    let acc = eq.meanAll ()
+    printfn "Accuracy: %.1f%%" (acc.item () * 100.0)
 )
 ```
 
@@ -117,7 +115,7 @@ Toro.noGrad (fun () ->
 | [LinearRegression](https://github.com/toro-ml/toro/tree/main/examples/LinearRegression) | Gradient descent with raw tensors                            |
 | [SimpleTraining](https://github.com/toro-ml/toro/tree/main/examples/SimpleTraining)     | XOR with `sequential { }` CE                                 |
 | [MnistTraining](https://github.com/toro-ml/toro/tree/main/examples/MnistTraining)       | CNN image classification                                     |
-| [MnistCnn](https://github.com/toro-ml/toro/tree/main/examples/MnistCnn)                 | CNN with BatchNorm, Dropout, Kleisli composition             |
+| [MnistCnn](https://github.com/toro-ml/toro/tree/main/examples/MnistCnn)                 | CNN with BatchNorm, Dropout                                  |
 | [MnistAutoencoder](https://github.com/toro-ml/toro/tree/main/examples/MnistAutoencoder) | Autoencoder with image output                                |
 | [MnistGan](https://github.com/toro-ml/toro/tree/main/examples/MnistGan)                 | GAN image generation                                         |
 | [CharRnn](https://github.com/toro-ml/toro/tree/main/examples/CharRnn)                   | Character-level text generation with LSTM                    |
