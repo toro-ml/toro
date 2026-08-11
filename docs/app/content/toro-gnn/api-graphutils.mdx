@@ -20,7 +20,7 @@ Add self-loops to edge index. Returns (newEdgeIndex, numNodes).
 **Parameters**
 
 - `edgeIndex` : `Tensor`
-- `numNodes` : `int`
+- `numNodes` : `int64`
 
 **Returns** `Tensor`
 
@@ -37,8 +37,8 @@ Compute node degree from an index vector (one row of edge_index).
 **Parameters**
 
 - `index` : `Tensor`
-- `numNodes` : `int`
-- `dtype` : `DType`
+- `numNodes` : `int64`
+- `dtype` : `ScalarType`
 - `device` : `Device`
 
 **Returns** `Tensor`

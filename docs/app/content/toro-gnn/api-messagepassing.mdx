@@ -26,8 +26,8 @@ Scatter messages [E, F] to target nodes [N, F] using the given aggregation.
 - `aggr` : `Aggregation`
 - `msg` : `Tensor`
 - `targetIdx` : `Tensor`
-- `numNodes` : `int`
-- `features` : `int`
+- `numNodes` : `int64`
+- `features` : `int64`
 
 **Returns** `Tensor`
 
@@ -47,7 +47,7 @@ Edge-wise softmax: softmax of scores grouped by target node index.
 
 - `scores` : `Tensor`
 - `targetIdx` : `Tensor`
-- `numNodes` : `int`
+- `numNodes` : `int64`
 
 **Returns** `Tensor`
 

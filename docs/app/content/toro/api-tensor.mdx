@@ -7,248 +7,56 @@ showTitle: false
 
 # Tensor
 
-Wrapper around TorchSharp tensor. Methods throw on failure;
- use `scoped { }` for automatic disposal of intermediate tensors.
+Type alias exposing TorchSharp tensor under the shorter Toro name.
 
 ## Instance members
 
 | Name | Description |
 | --- | --- |
-| `this.DType` | Data type of the elements. |
-| `this.Device` | Device where the tensor resides. |
-| `this.Dispose` |  |
-| `this.ElemCount` | Total number of elements. |
-| `this.GetSlice` | Slice the first dimension. |
-| `this.Inner` | Underlying TorchSharp tensor. |
-| `this.IsContiguous` | True if the tensor is contiguous in memory. |
-| `this[idx]` | Index by a tensor. |
-| `this[i]` | Get element at index i. |
-| `this.Rank` | Number of dimensions. |
-| `this.RequiresGrad` | True if gradient tracking is enabled. |
-| `this.Shape` | Shape of the tensor. |
-| `this.abs ()` | $\lvert x \rvert$ |
-| `this.acos ()` | $\arccos x$ |
-| `this.adaptiveAvgPool1d outputSize` | Adaptive 1-D average pooling to a fixed output length. |
-| `this.adaptiveAvgPool2d outputSize` | Adaptive 2-D average pooling to a fixed output size. |
-| `this.add other` | Elementwise addition. |
-| `this.addScalar s` | Add a scalar to each element. |
-| `this.affine (mul, add)` | $ax + b$ |
-| `this.all (dim, ?keepDim)` | All along a dimension. |
-| `this.allAll ()` | True if all elements are true (bool tensor) or non-zero. |
-| `this.any (dim, ?keepDim)` | Any along a dimension. |
-| `this.anyAll ()` | True if any element is true (bool tensor) or non-zero. |
-| `this.argmax (dim, ?keepDim)` | Index of the maximum along a dimension. |
-| `this.argmin (dim, ?keepDim)` | Index of the minimum along a dimension. |
-| `this.argsort (dim, ?descending)` | Return sorted indices along a dimension. |
-| `this.asin ()` | $\arcsin x$ |
-| `this.at indices` | Index by a list of TIdx specifiers. |
-| `this.atan ()` | $\arctan x$ |
-| `this.atan2 other` | $\arctan(y/x)$ with correct quadrant. |
-| `this.avgPool1d (kernelSize, ?stride, ?padding)` | Apply 1-D average pooling. |
-| `this.avgPool2d (kernelSize, ?stride, ?padding)` | Apply 2-D average pooling. |
-| `this.backward ()` | Compute gradients by backpropagation. |
-| `this.batchNorm (weight, bias, runningMean, runningVar, train, momentum, eps)` | Apply batch normalization. |
-| `this.bmm other` | Batched matrix-matrix product. |
-| `this.broadcastLeft shape` | Broadcast to the given shape (left-aligned). |
-| `this.ceil ()` | $\lceil x \rceil$ |
-| `this.celu ?alpha` | $\text{CELU}(x) = \max(0,x) + \min(0, \alpha(e^{x/\alpha} - 1))$ |
-| `this.cholesky ()` | Cholesky decomposition. |
-| `this.chunk (chunks, dim)` | Split into chunks along a dimension. |
-| `this.clamp (min, max)` | Clamp elements to [min, max]. |
-| `this.clone ()` | Return a deep copy. |
-| `this.contiguous ()` | Return a contiguous copy. |
-| `this.conv1d (weight, ?bias, ?stride, ?padding, ?dilation, ?groups)` | Apply 1-D convolution. |
-| `this.conv2d (weight, ?bias, ?stride, ?padding, ?dilation, ?groups)` | Apply 2-D convolution. |
-| `this.convTranspose1d (weight, ?bias, ?stride, ?padding, ?outputPadding, ?dilation, ?groups)` | Apply 1-D transposed convolution. |
-| `this.convTranspose2d (weight, ?bias, ?stride, ?padding, ?outputPadding, ?dilation, ?groups)` | Apply 2-D transposed convolution. |
-| `this.copyInPlace src` | Copy data from src without gradient tracking. |
-| `this.cos ()` | $\cos x$ |
-| `this.countNonzero ?dim` | Count non-zero elements. |
-| `this.cumprod dim` | Cumulative product along a dimension. |
-| `this.cumsum dim` | Cumulative sum along a dimension. |
-| `this.det ()` | Determinant. |
-| `this.detach ()` | Detach from the computation graph. |
-| `this.diag ?offset` | Return a diagonal or construct a diagonal matrix. |
-| `this.diagonal (?offset, ?dim1, ?dim2)` | Return the diagonal of a 2-D tensor. |
-| `this.dim d` | Return the size of dimension d. |
-| `this.div other` | Elementwise division. |
-| `this.divScalar s` | Divide each element by a scalar. |
-| `this.dot other` | Dot product of two 1-D tensors. |
-| `this.dropout (p, train)` | Randomly zero elements with probability p. |
-| `this.eigh ()` | Eigenvalues and eigenvectors of a symmetric/Hermitian matrix. Returns (eigenvalues, eigenvectors). |
-| `this.elu alpha` | $\text{ELU}(x) = \max(0,x) + \min(0, \alpha(e^x - 1))$ |
-| `this.eq other` | Elementwise equal. |
-| `this.eqScalar s` | Elementwise equal to a scalar. |
-| `this.erf ()` | Gauss error function. |
-| `this.erfc ()` | Complementary error function. |
-| `this.erfinv ()` | Inverse error function. |
-| `this.exp ()` | $e^x$ |
-| `this.exp2 ()` | $2^x$ |
-| `this.expand shape` | Broadcast to the given shape. |
-| `this.expm1 ()` | $e^x - 1$ |
-| `this.flatten (startDim, endDim)` | Flatten dimensions [startDim, endDim]. |
-| `this.flattenAll ()` | Flatten all dimensions to 1-D. |
-| `this.flip dims` | Reverse elements along the given dimensions. |
-| `this.floor ()` | $\lfloor x \rfloor$ |
-| `this.frac ()` | Fractional part: $x - \lfloor x \rfloor$. |
-| `this.gather (dim, index)` | Gather elements along a dimension by index. |
-| `this.ge other` | Elementwise greater-or-equal. |
-| `this.geScalar s` | Elementwise greater-or-equal to a scalar. |
-| `this.gelu ()` | $\text{GELU}(x) = x \cdot \Phi(x)$ |
-| `this.glu ?dim` | $\text{GLU}(x) = a \otimes \sigma(b)$ where $x$ is split in half along dim. |
-| `this.grad ()` | Return the accumulated gradient. |
-| `this.groupNorm (numGroups, ?weight, ?bias, ?eps)` | Apply group normalization. |
-| `this.gt other` | Elementwise greater-than. |
-| `this.gtScalar s` | Elementwise greater-than a scalar. |
-| `this.hardsigmoid ()` | $\text{Hardsigmoid}(x) = \text{relu6}(x + 3)/6$ |
-| `this.hardswish ()` | $\text{Hardswish}(x) = x \cdot \text{relu6}(x + 3)/6$ |
-| `this.indexAdd (dim, index, src)` | Add src into self along dim at positions given by index. |
-| `this.indexSelect (dim, index)` | Select slices along a dimension by index. |
-| `this.instanceNorm (?runningMean, ?runningVar, ?weight, ?bias, ?useInputStats, ?momentum, ?eps)` | Apply instance normalization. |
-| `this.interpolate (size, mode)` | Resize a 4-D tensor $[B, C, H, W]$ to the target spatial size. |
-| `this.inverse ()` | Matrix inverse. |
-| `this.item ()` | Extract as float64 (throw on error). |
-| `this.itemF32 ()` | Extract as float32 (throw on error). |
-| `this.itemI32 ()` | Extract as int32 (throw on error). |
-| `this.itemI64 ()` | Extract as int64 (throw on error). |
-| `this.layerNorm (normalizedShape, ?weight, ?bias, ?eps)` | Apply layer normalization. |
-| `this.le other` | Elementwise less-or-equal. |
-| `this.leScalar s` | Elementwise less-or-equal to a scalar. |
-| `this.leakyRelu negativeSlope` | $\max(\alpha x, x)$ |
-| `this.linalgNorm (?ord, ?dim, ?keepDim)` | Matrix or vector norm (via torch.linalg). |
-| `this.log ()` | $\ln x$ |
-| `this.log10 ()` | $\log_{10} x$ |
-| `this.log1p ()` | $\ln(1 + x)$ |
-| `this.log2 ()` | $\log_2 x$ |
-| `this.logSoftmax dim` | $\log\text{softmax}(x_i) = x_i - \log\sum_j e^{x_j}$ |
-| `this.logsumexp (dim, ?keepDim)` | $\log\sum e^{x_i}$ along a dimension, numerically stable. |
-| `this.lt other` | Elementwise less-than. |
-| `this.ltScalar s` | Elementwise less-than a scalar. |
-| `this.maskedFill (mask, value)` | Fill positions where mask is true with a value. |
-| `this.matmul other` | Matrix multiplication. |
-| `this.matrixExp ()` | Matrix exponential. |
-| `this.max (dim, ?keepDim)` | Maximum values and indices along a dimension. |
-| `this.maxPool1d (kernelSize, ?stride, ?padding)` | Apply 1-D max pooling. |
-| `this.maxPool2d (kernelSize, ?stride, ?padding)` | Apply 2-D max pooling. |
-| `this.mean (dim, ?keepDim)` | Mean along a dimension. |
-| `this.meanAll ()` | Mean of all elements. |
-| `this.min (dim, ?keepDim)` | Minimum values and indices along a dimension. |
-| `this.mish ()` | $x \cdot \tanh(\text{softplus}(x))$ |
-| `this.mm other` | Matrix-matrix product $A \times B$. |
-| `this.mul other` | Elementwise multiplication. |
-| `this.mulScalar s` | Multiply each element by a scalar. |
-| `this.mv vec` | Matrix-vector product. |
-| `this.narrow (dim, start, length)` | Narrow a dimension to [start, start+length). |
-| `this.ne other` | Elementwise not-equal. |
-| `this.neScalar s` | Elementwise not-equal to a scalar. |
-| `this.neg ()` | $-x$ |
-| `this.nonzero ()` | Indices of non-zero elements. |
-| `this.norm (?ord, ?dim, ?keepDim)` | Vector/matrix norm. |
-| `this.oneHot numClasses` | One-hot encode along numClasses. |
-| `this.outer other` | Outer product of two 1-D tensors. |
-| `this.pad (padding, value)` | Pad with a constant value. |
-| `this.permute dims` | Reorder dimensions. |
-| `this.pow exponent` | $x^n$ |
-| `this.prod (dim, ?keepDim)` | Product along a dimension. |
-| `this.prodAll ()` | Product of all elements. |
-| `this.qr ()` | QR decomposition. Returns (Q, R). |
-| `this.reciprocal ()` | $1/x$ |
-| `this.relu ()` | $\max(0, x)$ |
-| `this.repeatInterleave (repeats, dim)` | Repeat elements along a dimension. |
-| `this.requiresGrad ?requiresGrad` | Enable or disable gradient tracking. |
-| `this.reshape shape` | Reshape to the given shape. |
-| `this.roll (shifts, dim)` | Roll elements along a dimension. |
-| `this.round ()` | Round to the nearest integer. |
-| `this.rsqrt ()` | $1/\sqrt{x}$ |
-| `this.save path` | Save to a file. |
-| `this.scaledDotProductAttention (key, value, ?attnMask, ?dropoutP, ?isCausal)` | $\text{Attention}(Q,K,V) = \text{softmax}(QK^\top / \sqrt{d_k})\,V$ |
-| `this.scatterAdd (dim, index, src)` | Scatter-add src into self along dim using index. |
-| `this.selu ()` | $\text{SELU}(x)$: self-normalizing activation. |
-| `this.sigmoid ()` | $\sigma(x) = 1 / (1+e^{-x})$ |
-| `this.sign ()` | Sign of each element: -1, 0, or 1. |
-| `this.silu ()` | $\text{SiLU}(x) = x \cdot \sigma(x)$ |
-| `this.sin ()` | $\sin x$ |
-| `this.softmax dim` | $\text{softmax}(x_i) = e^{x_i} / \sum_j e^{x_j}$ |
-| `this.solve b` | Solve $Ax = b$; returns $x$. |
-| `this.sort (dim, ?descending)` | Sort along a dimension. Returns (sorted, indices). |
-| `this.split (splitSizes, dim)` | Split into sections of given sizes along a dimension. |
-| `this.sqr ()` | $x^2$ |
-| `this.sqrt ()` | $\sqrt{x}$ |
-| `this.squeeze dim` | Remove a size-1 dimension. |
-| `this.std (dim, ?keepDim)` | Standard deviation along a dimension. |
-| `this.stdAll ()` | Standard deviation of all elements. |
-| `this.sub other` | Elementwise subtraction. |
-| `this.subScalar s` | Subtract a scalar from each element. |
-| `this.sum (dim, ?keepDim)` | Sum along a dimension. |
-| `this.sumAll ()` | Sum of all elements. |
-| `this.svd ()` | Singular value decomposition. Returns (U, S, Vh). |
-| `this.t ()` | Transpose a 2-D tensor. |
-| `this.tan ()` | $\tan x$ |
-| `this.tanh ()` | $\tanh(x)$ |
-| `this.tile dims` | Repeat along dimensions. |
-| `this.toDType dtype` | Cast to a data type. |
-| `this.toDevice device` | Move to a device. |
-| `this.toFloat32Scalar ()` | Extract a float32 scalar. |
-| `this.toFloat64Scalar ()` | Extract a float64 scalar. |
-| `this.toInt32Scalar ()` | Extract an int32 scalar. |
-| `this.toInt64Scalar ()` | Extract an int64 scalar. |
-| `this.topk (k, dim, ?largest, ?sorted)` | Return the k largest elements and their indices. |
-| `this.trace ()` | Trace of a matrix (sum of diagonal elements). |
-| `this.transpose (dim0, dim1)` | Swap two dimensions. |
-| `this.tril ?diagonal` | Lower-triangular part. |
-| `this.triu ?diagonal` | Upper-triangular part. |
-| `this.trunc ()` | Truncate toward zero. |
-| `this.unbind dim` | Remove a dimension, returning a list of tensors. |
-| `this.unique ()` | Return unique elements (sorted). |
-| `this.unsqueeze dim` | Insert a size-1 dimension. |
-| `this.var (dim, ?keepDim)` | Variance along a dimension. |
-| `this.varAll ()` | Variance of all elements. |
-| `this.view shape` | View with the given shape (must be contiguous). |
-| `this.zeroGrad ()` | Zero the accumulated gradient. |
+| `this.Dimensions` |  |
+| `this.ElementSize` |  |
+| `this.H` |  |
+| `this.Handle` |  |
+| `this.IsInvalid` |  |
+| `this.NumberOfElements` |  |
+| `this.SparseIndices` |  |
+| `this.SparseValues` |  |
+| `this.T` |  |
+| `this.TensorItems` |  |
+| `this.TensorItems` |  |
+| `this.TensorItems` |  |
+| `this.TensorItems` |  |
+| `this.TensorItems` |  |
+| `this.TensorItems` |  |
+| `this.TensorItems` |  |
+| `this.TensorItems` |  |
+| `this.TensorItems` |  |
+| `this.bytes` |  |
+| `this.device` |  |
+| `this.device_index` |  |
+| `this.device_type` |  |
+| `this.dtype` |  |
+| `this.grad` |  |
+| `this.imag` |  |
+| `this.is_cuda` |  |
+| `this.is_leaf` |  |
+| `this.is_meta` |  |
+| `this.is_sparse` |  |
+| `this.mH` |  |
+| `this.mT` |  |
+| `this.name` |  |
+| `this.names` |  |
+| `this.ndim` |  |
+| `this.real` |  |
+| `this.requires_grad` |  |
+| `this.shape` |  |
 
 ## Static members
 
 | Name | Description |
 | --- | --- |
-| `s * t` | $s \times t$ |
-| `t * s` | $t \times s$ |
-| `a * b` | $a \times b$ |
-| `s + t` | $s + t$ |
-| `t + s` | $t + s$ |
-| `a + b` | $a + b$ |
-| `s - t` | $s - t$ |
-| `t - s` | $t - s$ |
-| `a - b` | $a - b$ |
-| `a .<. b` | Elementwise $a < b$. |
-| `a .<=. b` | Elementwise $a \leq b$. |
-| `a .<>. b` | Elementwise $a \neq b$. |
-| `a .=. b` | Elementwise $a = b$. |
-| `a .>. b` | Elementwise $a > b$. |
-| `a .>=. b` | Elementwise $a \geq b$. |
-| `t / s` | $t / s$ |
-| `a / b` | $a / b$ |
-| `~-t` | $-t$ |
-| `Tensor.arange (start, stop, dtype, device)` | Create a 1-D tensor with values [start, stop). |
-| `Tensor.arange (stop, dtype, device)` | Create a 1-D tensor with values [0, stop). |
-| `Tensor.cat (tensors, dim)` | Concatenate tensors along a dimension. |
-| `Tensor.causalMask (seqLen, dtype, device)` | Create a causal attention mask. |
-| `Tensor.eye (n, dtype, device)` | Create a 2-D identity matrix. |
-| `Tensor.full (shape, value, dtype, device)` | Create a tensor filled with a scalar value. |
-| `Tensor.linspace (start, stop, steps, dtype, device)` | Create a 1-D tensor with n evenly spaced values from start to stop (inclusive). |
-| `Tensor.load path` | Load a tensor from a file. |
-| `Tensor.logspace (start, stop, steps, ?base, ?dtype, ?device)` | Create a 1-D tensor with n logarithmically spaced values. |
-| `Tensor.meshgrid tensors` | Create coordinate grids from 1-D tensors. |
-| `Tensor.ofArray (data, device)` | Create a tensor from an F# array (1-D through 4-D). |
-| `Tensor.ofList (data, device)` | Create a tensor from an F# list (1-D or 2-D). |
-| `Tensor.ofTorchTensor t` | Wrap a raw TorchSharp tensor. |
-| `Tensor.ones (shape, dtype, device)` | Create a tensor of ones with the given shape. |
-| `Tensor.rand (shape, dtype, device)` | Create a tensor with uniform random values in [0, 1). |
-| `Tensor.randint (high, shape, dtype, device)` | Create a tensor with random integers in [low, high). |
-| `Tensor.randn (shape, dtype, device)` | Create a tensor with standard-normal random values. |
-| `Tensor.randperm (n, dtype, device)` | Create a random permutation of integers [0, n). |
-| `Tensor.stack (tensors, dim)` | Stack tensors along a new dimension. |
-| `Tensor.where (condition, x, y)` | Select elements from x or y by condition. |
-| `Tensor.zeros (shape, dtype, device)` | Create a tensor of zeros with the given shape. |
+| `Tensor.PeakCount` |  |
+| `Tensor.TotalCount` |  |
 
 ---
 
