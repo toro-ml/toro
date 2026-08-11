@@ -1,6 +1,6 @@
 ---
 title: "Pooling layers"
-description: "Pooling layers (max and average)."
+description: "Pooling layers (max, average, and adaptive)."
 namespace: "Toro.NN"
 showTitle: false
 ---
@@ -41,6 +41,24 @@ showTitle: false
 
 ---
 
+# AvgPool1d
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `KernelSize` |  |
+| `Padding` |  |
+| `Stride` |  |
+
+## Instance members
+
+| Name | Description |
+| --- | --- |
+| `this.forward x` |  |
+
+---
+
 # AvgPool2d
 
 ## Record fields
@@ -50,6 +68,38 @@ showTitle: false
 | `KernelSize` |  |
 | `Padding` |  |
 | `Stride` |  |
+
+## Instance members
+
+| Name | Description |
+| --- | --- |
+| `this.forward x` |  |
+
+---
+
+# AdaptiveAvgPool1d
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `OutputSize` |  |
+
+## Instance members
+
+| Name | Description |
+| --- | --- |
+| `this.forward x` |  |
+
+---
+
+# AdaptiveAvgPool2d
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `OutputSize` |  |
 
 ## Instance members
 

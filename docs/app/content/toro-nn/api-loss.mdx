@@ -9,12 +9,16 @@ Loss functions. Each takes (input, target) and returns a scalar loss tensor.
 | Function | Description |
 | --- | --- |
 | `binaryCrossEntropyWithLogit inp target` | $\text{BCE} = \max(x,0) - x \cdot y + \ln(1 + e^{-\lvert x \rvert})$ |
+| `cosineEmbedding margin x1 x2 target` | Cosine embedding loss for similarity learning. |
 | `crossEntropy inp target` | $H(p,q) = -(1/n)\sum \log\text{softmax}(x)_{y_i}$ |
+| `ctc logProbs targets inputLengths targetLengths` | CTC loss for sequence-to-sequence alignment. |
+| `huber delta inp target` | Huber loss: smooth combination of L1 and L2. |
 | `klDiv inp target` | $\text{KL}(p \| q) = (1/n)\sum p_i (\log p_i - q_i)$. Expects log-probabilities as input and probabilities as target. |
 | `l1 inp target` | $\text{L1} = (1/n)\sum\|x_i - y_i\|$ |
 | `mse inp target` | $\text{MSE} = (1/n)\sum(x_i - y_i)^2$ |
 | `nll inp target` | $\text{NLL} = -(1/n)\sum x_{i,y_i}$ |
 | `smoothL1 beta inp target` | $\text{SmoothL1} = (1/n)\sum z_i$ where $z_i = 0.5 x_i^2/\beta$ if $\|x_i\| < \beta$, else $\|x_i\| - 0.5\beta$ |
+| `tripletMargin margin anchor positive negative` | Triplet margin loss for metric learning. |
 
 ## binaryCrossEntropyWithLogit
 
@@ -33,6 +37,25 @@ $\text{BCE} = \max(x,0) - x \cdot y + \ln(1 + e^{-\lvert x \rvert})$
 
 ---
 
+## cosineEmbedding
+
+```fsharp
+cosineEmbedding margin x1 x2 target
+```
+
+Cosine embedding loss for similarity learning.
+
+**Parameters**
+
+- `margin` : `float`
+- `x1` : `Tensor`
+- `x2` : `Tensor`
+- `target` : `Tensor`
+
+**Returns** `Result<Tensor, ToroError>`
+
+---
+
 ## crossEntropy
 
 ```fsharp
@@ -43,6 +66,43 @@ $H(p,q) = -(1/n)\sum \log\text{softmax}(x)_{y_i}$
 
 **Parameters**
 
+- `inp` : `Tensor`
+- `target` : `Tensor`
+
+**Returns** `Result<Tensor, ToroError>`
+
+---
+
+## ctc
+
+```fsharp
+ctc logProbs targets inputLengths targetLengths
+```
+
+CTC loss for sequence-to-sequence alignment.
+
+**Parameters**
+
+- `logProbs` : `Tensor`
+- `targets` : `Tensor`
+- `inputLengths` : `Tensor`
+- `targetLengths` : `Tensor`
+
+**Returns** `Result<Tensor, ToroError>`
+
+---
+
+## huber
+
+```fsharp
+huber delta inp target
+```
+
+Huber loss: smooth combination of L1 and L2.
+
+**Parameters**
+
+- `delta` : `float`
 - `inp` : `Tensor`
 - `target` : `Tensor`
 
@@ -131,6 +191,25 @@ $\text{SmoothL1} = (1/n)\sum z_i$ where $z_i = 0.5 x_i^2/\beta$ if $|x_i| < \bet
 - `beta` : `float`
 - `inp` : `Tensor`
 - `target` : `Tensor`
+
+**Returns** `Result<Tensor, ToroError>`
+
+---
+
+## tripletMargin
+
+```fsharp
+tripletMargin margin anchor positive negative
+```
+
+Triplet margin loss for metric learning.
+
+**Parameters**
+
+- `margin` : `float`
+- `anchor` : `Tensor`
+- `positive` : `Tensor`
+- `negative` : `Tensor`
 
 **Returns** `Result<Tensor, ToroError>`
 

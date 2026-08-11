@@ -10,25 +10,19 @@ All errors that Toro operations can produce.
 
 | Name | Description |
 | --- | --- |
-| `DTypeMismatch msg` |  |
-| `DeviceError msg` |  |
 | `Msg string` |  |
-| `ShapeMismatch(msg, expected, got)` |  |
 | `TensorNotFound path` |  |
+| `TorchSharpError exn` | A .NET exception caught at the TorchSharp boundary. |
 | `UnsupportedDType string` |  |
 | `UnsupportedDevice string` |  |
-| `Wrapped exn` | A .NET exception caught at the TorchSharp boundary. |
 
 ## Instance members
 
 | Name | Description |
 | --- | --- |
-| `this.IsDTypeMismatch` |  |
-| `this.IsDeviceError` |  |
 | `this.IsMsg` |  |
-| `this.IsShapeMismatch` |  |
 | `this.IsTensorNotFound` |  |
+| `this.IsTorchSharpError` |  |
 | `this.IsUnsupportedDType` |  |
 | `this.IsUnsupportedDevice` |  |
-| `this.IsWrapped` |  |
 

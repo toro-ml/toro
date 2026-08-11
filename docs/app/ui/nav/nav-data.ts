@@ -114,6 +114,7 @@ export const navSections: readonly NavSection[] = [
               { to: "/api-layernorm", label: "LayerNorm" },
               { to: "/api-batchnorm", label: "BatchNorm" },
               { to: "/api-groupnorm", label: "GroupNorm" },
+              { to: "/api-instancenorm", label: "InstanceNorm" },
               { to: "/api-activation", label: "Activation" },
               { to: "/api-pooling", label: "Pooling" },
             ],

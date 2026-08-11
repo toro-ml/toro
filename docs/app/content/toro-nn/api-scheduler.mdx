@@ -5,40 +5,41 @@ namespace: "Toro.NN"
 showTitle: false
 ---
 
-# StepLR
+# LrSchedule
 
-Step-decay scheduler: multiply LR by gamma every stepSize steps.
+Discriminated union describing learning-rate schedule shapes.
 
-## Record fields
+## Union cases
 
 | Name | Description |
 | --- | --- |
-| `BaseLr` |  |
-| `CurrentStep` |  |
-| `Gamma` |  |
-| `Optimizer` |  |
-| `StepSize` |  |
+| `CosineAnnealing(tMax, etaMin)` |  |
+| `CosineAnnealingWarmRestarts(t0, tMult, etaMin)` |  |
+| `CyclicLR(baseLr, maxLr, stepSizeUp, stepSizeDown)` |  |
+| `Exponential gamma` |  |
+| `LinearWarmup warmupSteps` |  |
+| `OneCycle(totalSteps, maxLr, divFactor, finalDivFactor, pctStart)` |  |
+| `Polynomial(totalSteps, power, endLr)` |  |
+| `StepDecay(stepSize, gamma)` |  |
+
+## Instance members
+
+| Name | Description |
+| --- | --- |
+| `this.IsCosineAnnealing` |  |
+| `this.IsCosineAnnealingWarmRestarts` |  |
+| `this.IsCyclicLR` |  |
+| `this.IsExponential` |  |
+| `this.IsLinearWarmup` |  |
+| `this.IsOneCycle` |  |
+| `this.IsPolynomial` |  |
+| `this.IsStepDecay` |  |
 
 ---
 
-# ExponentialLR
+# Scheduler
 
-Exponential-decay scheduler: multiply LR by gamma each step.
-
-## Record fields
-
-| Name | Description |
-| --- | --- |
-| `BaseLr` |  |
-| `CurrentStep` |  |
-| `Gamma` |  |
-| `Optimizer` |  |
-
----
-
-# CosineAnnealingLR
-
-Cosine-annealing scheduler: decay LR following a cosine curve to etaMin over tMax steps, then reset.
+Scheduler that pairs a schedule with mutable step counter and LR setter.
 
 ## Record fields
 
@@ -46,22 +47,6 @@ Cosine-annealing scheduler: decay LR following a cosine curve to etaMin over tMa
 | --- | --- |
 | `BaseLr` |  |
 | `CurrentStep` |  |
-| `EtaMin` |  |
-| `Optimizer` |  |
-| `TMax` |  |
-
----
-
-# LinearWarmup
-
-Linear warmup followed by a constant LR.
-
-## Record fields
-
-| Name | Description |
-| --- | --- |
-| `BaseLr` |  |
-| `CurrentStep` |  |
-| `Optimizer` |  |
-| `WarmupSteps` |  |
+| `Schedule` |  |
+| `SetLr` |  |
 

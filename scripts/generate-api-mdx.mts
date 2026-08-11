@@ -144,10 +144,12 @@ const filePages: FilePage[] = [
     namespace: "Toro.NN",
     slug: "api-conv",
     title: "Convolution layers",
-    description: "Convolutional layers (1-D and 2-D).",
+    description: "Convolutional and transposed convolutional layers (1-D and 2-D).",
     sources: [
       { html: "toro-nn-conv1d.html", heading: "Conv1d" },
       { html: "toro-nn-conv2d.html", heading: "Conv2d" },
+      { html: "toro-nn-convtranspose1d.html", heading: "ConvTranspose1d" },
+      { html: "toro-nn-convtranspose2d.html", heading: "ConvTranspose2d" },
     ],
   },
   {
@@ -188,6 +190,14 @@ const filePages: FilePage[] = [
   {
     subdir: "toro-nn",
     namespace: "Toro.NN",
+    slug: "api-instancenorm",
+    title: "InstanceNorm",
+    description: "Instance normalization.",
+    sources: [{ html: "toro-nn-instancenorm.html", heading: "InstanceNorm" }],
+  },
+  {
+    subdir: "toro-nn",
+    namespace: "Toro.NN",
     slug: "api-activation",
     title: "Activation",
     description: "Activation functions as module wrappers.",
@@ -198,11 +208,14 @@ const filePages: FilePage[] = [
     namespace: "Toro.NN",
     slug: "api-pooling",
     title: "Pooling layers",
-    description: "Pooling layers (max and average).",
+    description: "Pooling layers (max, average, and adaptive).",
     sources: [
       { html: "toro-nn-maxpool1d.html", heading: "MaxPool1d" },
       { html: "toro-nn-maxpool2d.html", heading: "MaxPool2d" },
+      { html: "toro-nn-avgpool1d.html", heading: "AvgPool1d" },
       { html: "toro-nn-avgpool2d.html", heading: "AvgPool2d" },
+      { html: "toro-nn-adaptiveavgpool1d.html", heading: "AdaptiveAvgPool1d" },
+      { html: "toro-nn-adaptiveavgpool2d.html", heading: "AdaptiveAvgPool2d" },
     ],
   },
   // Block/
@@ -278,10 +291,8 @@ const filePages: FilePage[] = [
     title: "Scheduler",
     description: "Learning rate schedulers.",
     sources: [
-      { html: "toro-nn-steplr.html", heading: "StepLR" },
-      { html: "toro-nn-exponentiallr.html", heading: "ExponentialLR" },
-      { html: "toro-nn-cosineannealinglr.html", heading: "CosineAnnealingLR" },
-      { html: "toro-nn-linearwarmup.html", heading: "LinearWarmup" },
+      { html: "toro-nn-lrschedule.html", heading: "LrSchedule" },
+      { html: "toro-nn-scheduler.html", heading: "Scheduler" },
     ],
   },
   {
