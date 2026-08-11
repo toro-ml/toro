@@ -16,15 +16,15 @@ type ImageFormat =
 module Image =
 
     let private ensureImager () =
-        match TorchSharp.torchvision.io.DefaultImager with
-        | :? TorchSharp.torchvision.io.SkiaImager -> ()
-        | _ -> TorchSharp.torchvision.io.DefaultImager <- TorchSharp.torchvision.io.SkiaImager()
+        match torchvision.io.DefaultImager with
+        | :? torchvision.io.SkiaImager -> ()
+        | _ -> torchvision.io.DefaultImager <- torchvision.io.SkiaImager()
 
     let private toTorchvisionFormat =
         function
-        | Jpeg -> TorchSharp.torchvision.ImageFormat.Jpeg
-        | Png -> TorchSharp.torchvision.ImageFormat.Png
-        | Webp -> TorchSharp.torchvision.ImageFormat.Png
+        | Jpeg -> torchvision.ImageFormat.Jpeg
+        | Png -> torchvision.ImageFormat.Png
+        | Webp -> torchvision.ImageFormat.Png
 
     let private toSkFormat =
         function
@@ -34,7 +34,7 @@ module Image =
 
     /// Convert an SKBitmap to a [3, H, W] float32 tensor in [0, 1].
     /// Alpha channel is discarded; output has 3 channels (RGB).
-    let toTensor (bitmap: SKBitmap) (device: Device) : Tensor =
+    let toTensor (bitmap: SKBitmap) (device: torch.Device) : Tensor =
         let w = bitmap.Width
         let h = bitmap.Height
 
@@ -62,12 +62,12 @@ module Image =
         if shouldDispose then
             rgba.Dispose()
 
-        Tensor.ofArray (data, device)
-        |> fun t -> t.reshape [ 3; h; w ]
+        torch.tensor (data, device = device)
+        |> fun t -> t.reshape [| 3L; int64 h; int64 w |]
 
     /// Convert a [3, H, W] float32 tensor in [0, 1] to an SKBitmap.
     let fromTensor (tensor: Tensor) : SKBitmap =
-        let t = tensor.Inner.cpu().contiguous ()
+        let t = tensor.cpu().contiguous ()
         let shape = t.shape
 
         if shape.Length <> 3 || shape[0] <> 3L then
@@ -96,17 +96,15 @@ module Image =
         bitmap
 
     /// Load an image file as a [3, H, W] float32 tensor in [0, 1].
-    let load (path: string) (device: Device) : Tensor =
+    let load (path: string) (device: torch.Device) : Tensor =
         ensureImager ()
 
-        let t =
-            TorchSharp.torchvision.io.read_image (path, TorchSharp.torchvision.io.ImageReadMode.RGB)
+        let t = torchvision.io.read_image (path, torchvision.io.ImageReadMode.RGB)
 
-        t.to_type(torch.float32).div(torch.tensor 255.0f).``to`` (Device.toTorch device)
-        |> Tensor.ofTorchTensor
+        t.to_type(torch.float32).div(torch.tensor 255.0f).``to`` device
 
     /// Load an image from a stream as a [3, H, W] float32 tensor in [0, 1].
-    let loadStream (stream: Stream) (device: Device) : Tensor =
+    let loadStream (stream: Stream) (device: torch.Device) : Tensor =
         ensureImager ()
         use ms = new MemoryStream()
         stream.CopyTo(ms)
@@ -119,12 +117,12 @@ module Image =
         ensureImager ()
 
         let t =
-            (tensor.Inner * torch.tensor 255.0f).clamp (torch.tensor 0.0f, torch.tensor 255.0f)
+            (tensor * torch.tensor 255.0f).clamp (torch.tensor 0.0f, torch.tensor 255.0f)
 
         let t = t.to_type (torch.uint8)
-        TorchSharp.torchvision.io.write_image (t, path, toTorchvisionFormat format)
+        torchvision.io.write_image (t, path, toTorchvisionFormat format)
 
     /// Save a batch tensor [N, C, H, W] as a grid image with nrow images per row.
     let saveGrid (tensor: Tensor) (path: string) (format: ImageFormat) (quality: int) (nrow: int) : unit =
         ensureImager ()
-        TorchSharp.torchvision.utils.save_image (tensor.Inner, path, toTorchvisionFormat format, nrow = int64 nrow)
+        torchvision.utils.save_image (tensor, path, toTorchvisionFormat format, nrow = int64 nrow)

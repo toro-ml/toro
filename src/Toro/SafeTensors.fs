@@ -8,8 +8,8 @@ open TorchSharp
 
 /// Metadata for a single tensor entry in a SafeTensors header.
 type TensorMeta = {
-    DType: DType
-    Shape: int list
+    DType: torch.ScalarType
+    Shape: int64[]
     StartOffset: int64
     EndOffset: int64
 }
@@ -19,48 +19,48 @@ module SafeTensors =
 
     let private maxHeaderSize = 100_000_000L
 
-    let private dtypeToString (dtype: DType) : string =
+    let private dtypeToString (dtype: torch.ScalarType) : string =
         match dtype with
-        | F16 -> "F16"
-        | BF16 -> "BF16"
-        | F32 -> "F32"
-        | F64 -> "F64"
-        | I32 -> "I32"
-        | I64 -> "I64"
-        | U8 -> "U8"
-        | Bool -> "BOOL"
+        | torch.ScalarType.Float16 -> "F16"
+        | torch.ScalarType.BFloat16 -> "BF16"
+        | torch.ScalarType.Float32 -> "F32"
+        | torch.ScalarType.Float64 -> "F64"
+        | torch.ScalarType.Int32 -> "I32"
+        | torch.ScalarType.Int64 -> "I64"
+        | torch.ScalarType.Byte -> "U8"
+        | torch.ScalarType.Bool -> "BOOL"
+        | other -> raise (NotSupportedException $"Unsupported dtype for SafeTensors: {other}")
 
-    let private stringToDType (s: string) : DType =
+    let private stringToDType (s: string) : torch.ScalarType =
         match s with
-        | "F16" -> F16
-        | "BF16" -> BF16
-        | "F32" -> F32
-        | "F64" -> F64
-        | "I32" -> I32
-        | "I64" -> I64
-        | "U8" -> U8
-        | "BOOL" -> Bool
+        | "F16" -> torch.ScalarType.Float16
+        | "BF16" -> torch.ScalarType.BFloat16
+        | "F32" -> torch.ScalarType.Float32
+        | "F64" -> torch.ScalarType.Float64
+        | "I32" -> torch.ScalarType.Int32
+        | "I64" -> torch.ScalarType.Int64
+        | "U8" -> torch.ScalarType.Byte
+        | "BOOL" -> torch.ScalarType.Bool
         | other -> raise (NotSupportedException $"Unsupported SafeTensors dtype: {other}")
 
-    let private dtypeByteSize (dtype: DType) : int =
+    let private dtypeByteSize (dtype: torch.ScalarType) : int =
         match dtype with
-        | F16
-        | BF16 -> 2
-        | F32
-        | I32 -> 4
-        | F64
-        | I64 -> 8
-        | U8
-        | Bool -> 1
+        | torch.ScalarType.Float16
+        | torch.ScalarType.BFloat16 -> 2
+        | torch.ScalarType.Float32
+        | torch.ScalarType.Int32 -> 4
+        | torch.ScalarType.Float64
+        | torch.ScalarType.Int64 -> 8
+        | torch.ScalarType.Byte
+        | torch.ScalarType.Bool -> 1
+        | other -> raise (NotSupportedException $"Unsupported dtype for SafeTensors: {other}")
 
     let private parseEntry (prop: JsonProperty) : string * TensorMeta =
         let dtype = stringToDType (prop.Value.GetProperty("dtype").GetString())
 
-        let shape = [
-            for s in prop.Value.GetProperty("shape").EnumerateArray() -> s.GetInt64() |> int
-        ]
+        let shape = [| for s in prop.Value.GetProperty("shape").EnumerateArray() -> s.GetInt64() |]
 
-        if shape |> List.exists (fun d -> d < 0) then
+        if shape |> Array.exists (fun d -> d < 0L) then
             invalidOp $"SafeTensors: tensor '%s{prop.Name}' has negative dimension in shape %A{shape}"
 
         let offsets =
@@ -73,7 +73,7 @@ module SafeTensors =
         if endOff < startOff then
             invalidOp $"SafeTensors: tensor '%s{prop.Name}' has invalid offsets: start=%d{startOff} > end=%d{endOff}"
 
-        let nelements = shape |> List.fold (fun acc d -> int64 d * acc) 1L
+        let nelements = shape |> Array.fold (fun acc d -> d * acc) 1L
         let expectedBytes = nelements * int64 (dtypeByteSize dtype)
         let actualBytes = endOff - startOff
 
@@ -148,20 +148,18 @@ module SafeTensors =
         let _, meta = loadMetaFromStream fs
         meta
 
-    let private readTensor (stream: Stream) (dataOffset: int64) (meta: TensorMeta) : Tensor =
-        let torchDtype = DType.toTorch meta.DType
-        let shape = meta.Shape |> List.map int64 |> Array.ofList
+    let private readTensor (stream: Stream) (dataOffset: int64) (meta: TensorMeta) : torch.Tensor =
         let byteLen = int (meta.EndOffset - meta.StartOffset)
 
         stream.Position <- dataOffset + meta.StartOffset
         let buf = Array.zeroCreate<byte> byteLen
         stream.ReadExactly(buf, 0, byteLen)
-        let t = torch.zeros (shape, dtype = torchDtype)
+        let t = torch.zeros (meta.Shape, dtype = meta.DType)
         buf.AsSpan().CopyTo(t.bytes)
-        Tensor.ofTorchTensor t
+        t
 
     /// Load all tensors from a .safetensors file.
-    let load (filePath: string) : Map<string, Tensor> =
+    let load (filePath: string) : Map<string, torch.Tensor> =
         use fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read)
         let headerSize, meta = loadMetaFromStream fs
         let dataOffset = 8L + headerSize
@@ -169,7 +167,7 @@ module SafeTensors =
         meta |> Map.map (fun _ m -> readTensor fs dataOffset m)
 
     /// Load only the tensors whose names are in the given set.
-    let loadSelected (filePath: string) (names: Set<string>) : Map<string, TensorMeta> * Map<string, Tensor> =
+    let loadSelected (filePath: string) (names: Set<string>) : Map<string, TensorMeta> * Map<string, torch.Tensor> =
         use fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read)
         let headerSize, meta = loadMetaFromStream fs
         let dataOffset = 8L + headerSize
@@ -182,7 +180,7 @@ module SafeTensors =
         meta, tensors
 
     /// Save tensors to a .safetensors file.
-    let save (tensors: Map<string, Tensor>) (filePath: string) : unit =
+    let save (tensors: Map<string, torch.Tensor>) (filePath: string) : unit =
         let dir = Path.GetDirectoryName filePath
 
         if not (String.IsNullOrEmpty dir) && not (Directory.Exists dir) then
@@ -191,15 +189,15 @@ module SafeTensors =
         let sortedEntries =
             tensors
             |> Map.toArray
-            |> Array.sortBy (fun (name, t: Tensor) -> -dtypeByteSize t.DType, name)
+            |> Array.sortBy (fun (name, t: torch.Tensor) -> -dtypeByteSize t.dtype, name)
 
         let entries, _ =
             sortedEntries
             |> Array.mapFold
-                (fun offset (name, (tensor: Tensor)) ->
-                    let inner = tensor.Inner.contiguous ()
+                (fun offset (name, (tensor: torch.Tensor)) ->
+                    let inner = tensor.contiguous ()
                     let byteLen = inner.NumberOfElements * inner.ElementSize
-                    let entry = (name, tensor.DType, tensor.Shape, offset, offset + byteLen)
+                    let entry = (name, tensor.dtype, tensor.shape, offset, offset + byteLen)
                     (inner, entry), offset + byteLen)
                 0L
 
@@ -214,7 +212,7 @@ module SafeTensors =
                 writer.WriteStartArray("shape")
 
                 for d in shape do
-                    writer.WriteNumberValue(int64 d)
+                    writer.WriteNumberValue(d)
 
                 writer.WriteEndArray()
                 writer.WriteStartArray("data_offsets")

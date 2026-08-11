@@ -1,3 +1,4 @@
+open TorchSharp
 open Toro
 
 // y = 3x + 2 by gradient descent
@@ -5,16 +6,16 @@ open Toro
 [<EntryPoint>]
 let main _argv =
     // --- data generation ---
-    let x = Tensor.randn ([ 100; 1 ], F32, Cpu)
-    let noise = Tensor.randn ([ 100; 1 ], F32, Cpu)
+    let x = torch.randn ([| 100L; 1L |], dtype = torch.float32, device = torch.CPU)
+    let noise = torch.randn ([| 100L; 1L |], dtype = torch.float32, device = torch.CPU)
     let noise = noise * 0.1
     let y = x * 3.0 + 2.0 + noise
 
     // --- parameter initialization ---
-    let w = Tensor.randn ([ 1; 1 ], F32, Cpu)
-    let w = w.requiresGrad ()
-    let b = Tensor.zeros ([ 1 ], F32, Cpu)
-    let b = b.requiresGrad ()
+    let w = torch.randn ([| 1L; 1L |], dtype = torch.float32, device = torch.CPU)
+    let w = w.requires_grad_ ()
+    let b = torch.zeros ([| 1L |], dtype = torch.float32, device = torch.CPU)
+    let b = b.requires_grad_ ()
 
     let lr = 0.1
 
@@ -29,7 +30,7 @@ let main _argv =
 
         // loss = mean((pred - y)^2)
         let diff = pred - y
-        let loss = (diff * diff).meanAll ()
+        let loss = (diff * diff).mean ()
 
         // backward
         loss.backward ()
@@ -44,14 +45,14 @@ let main _argv =
         b.zeroGrad ()
 
         if step % 50 = 0 || step = 1 then
-            let wVal = w.toFloat32Scalar ()
-            let bVal = b.toFloat32Scalar ()
-            printfn "  step %3d  loss=%.6f  w=%.4f  b=%.4f" step (loss.item ()) wVal bVal
+            let wVal = w.ToSingle()
+            let bVal = b.ToSingle()
+            printfn "  step %3d  loss=%.6f  w=%.4f  b=%.4f" step (loss.ToDouble()) wVal bVal
 
     printfn ""
 
-    let wFinal = w.toFloat32Scalar ()
-    let bFinal = b.toFloat32Scalar ()
+    let wFinal = w.ToSingle()
+    let bFinal = b.ToSingle()
     printfn "Learned:  y = %.4f * x + %.4f" wFinal bFinal
     printfn "Expected: y = 3.0000 * x + 2.0000"
     0

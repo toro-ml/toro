@@ -1,3 +1,4 @@
+open TorchSharp
 open Toro
 open Toro.NN
 
@@ -71,9 +72,9 @@ let numHeads = 4
 let ffDim = 128
 
 let createModel () =
-    let embed = Embedding.init vocabSize dim F32 Cpu
-    let block = TransformerBlock.init dim numHeads ffDim F32 Cpu
-    let head = Linear.init dim 2 F32 Cpu
+    let embed = Embedding.init vocabSize dim torch.float32 torch.CPU
+    let block = TransformerBlock.init dim numHeads ffDim torch.float32 torch.CPU
+    let head = Linear.init dim 2 torch.float32 torch.CPU
 
     {
         Embed = embed
@@ -84,7 +85,7 @@ let createModel () =
 let forward (model: TransformerClassifier) (input: Tensor) =
     let x = model.Embed.forward input
     let x = model.Block.forward x
-    let pooled = x.mean (1)
+    let pooled = x.mean [| 1L |]
     model.Head.forward pooled
 
 [<EntryPoint>]
@@ -99,9 +100,11 @@ let main _argv =
 
     let labelData = Array.append (Array.create nPos 0L) (Array.create nNeg 1L)
 
-    let input = Tensor.ofArray (inputData, Cpu)
-    let input = input.reshape [ nSamples; maxLen ]
-    let labels = Tensor.ofArray (labelData, Cpu)
+    let input =
+        torch.tensor (inputData, dtype = torch.int64, device = torch.CPU)
+        |> fun t -> t.reshape [| int64 nSamples; maxLen |]
+
+    let labels = torch.tensor (labelData, dtype = torch.int64, device = torch.CPU)
 
     printfn "Text classifier: positive vs negative words"
     printfn "Samples: %d (%d pos + %d neg), vocab: %d chars, maxLen: %d" nSamples nPos nNeg vocabSize maxLen
@@ -128,11 +131,11 @@ let main _argv =
             opt.step ()
 
             if epoch % 20 = 0 || epoch = 1 then
-                let predicted = logits.argmax 1
-                let eqSum = predicted.eq(labels).sumAll ()
-                let correct = eqSum.item () |> int
+                let predicted = logits.argmax (int64 1)
+                let eqSum = predicted.eq(labels).sum ()
+                let correct = eqSum.ToInt64() |> int
                 let acc = float correct / float nSamples * 100.0
-                printfn "Epoch %3d  loss=%.4f  acc=%.0f%% (%d/%d)" epoch (loss.item ()) acc correct nSamples
+                printfn "Epoch %3d  loss=%.4f  acc=%.0f%% (%d/%d)" epoch (loss.ToDouble()) acc correct nSamples
         }
 
     // Test on unseen words
@@ -144,13 +147,16 @@ let main _argv =
     let testInput =
         Toro.noGrad (fun () ->
             let testData = testWords |> Array.collect (fun w -> encodeWord w)
-            let t = Tensor.ofArray (testData, Cpu)
-            let t = t.reshape [ testWords.Length; maxLen ]
+
+            let t =
+                torch.tensor (testData, dtype = torch.int64, device = torch.CPU)
+                |> fun t -> t.reshape [| int64 testWords.Length; int64 maxLen |]
+
             let logits = forward model t
-            logits.argmax 1)
+            logits.argmax (int64 1))
 
     for i in 0 .. testWords.Length - 1 do
-        let v = testInput[i].toFloat32Scalar ()
+        let v = testInput[i].ToSingle()
         let label = if int v = 0 then "positive" else "negative"
         printfn "  %-10s -> %s" testWords[i] label
 

@@ -30,9 +30,9 @@ let embedDim = 32
 let hiddenDim = 128
 
 let createModel () =
-    let embed = Embedding.init vocabSize embedDim F32 Cpu
-    let lstm = LSTM.initDefault embedDim hiddenDim F32 Cpu
-    let output = Linear.init hiddenDim vocabSize F32 Cpu
+    let embed = Embedding.init vocabSize embedDim torch.float32 torch.CPU
+    let lstm = LSTM.initDefault embedDim hiddenDim torch.float32 torch.CPU
+    let output = Linear.init hiddenDim vocabSize torch.float32 torch.CPU
 
     {
         Embed = embed
@@ -43,9 +43,9 @@ let createModel () =
 let forward (model: CharRnnModel) (input: Tensor) =
     let embedded = model.Embed.forward input
     let states = RNN.scan model.Lstm.zeroState model.Lstm.step embedded
-    let hidden = Tensor.stack (states |> List.map _.H, 1)
-    let batchSeq = hidden.Shape[0] * hidden.Shape[1]
-    let flat = hidden.reshape [ batchSeq; hiddenDim ]
+    let hidden = torch.stack (states |> List.map _.H |> List.toArray, int64 1)
+    let batchSeq = int hidden.shape[0] * int hidden.shape[1]
+    let flat = hidden.reshape ([| int64 batchSeq; int64 hiddenDim |])
     model.Output.forward flat
 
 let generate (model: CharRnnModel) (seed: char) (length: int) =
@@ -56,16 +56,18 @@ let generate (model: CharRnnModel) (seed: char) (length: int) =
     buf.Append seed |> ignore
 
     for _ in 1..length do
-        let inputT = Tensor.ofArray ([| int64 idx |], Cpu)
-        let inputT = inputT.unsqueeze 0
+        let inputT =
+            torch.tensor ([| int64 idx |], dtype = torch.int64, device = torch.CPU)
+            |> fun t -> t.unsqueeze (int64 0)
+
         let embedded = model.Embed.forward inputT
         let step_input = embedded.at [ I 0; I 0 ]
         let newState = model.Lstm.step step_input state
         state <- newState
 
         let logits = model.Output.forward newState.H
-        let probs = logits.softmax -1
-        let sampled = torch.multinomial (probs.Inner, 1L)
+        let probs = torch.nn.functional.softmax (logits, int64 -1)
+        let sampled = torch.multinomial (probs, 1L)
         idx <- int (sampled.item<int64> ())
         buf.Append(idxToChar idx) |> ignore
 
@@ -98,9 +100,11 @@ let main _argv =
                 let inputArr = encoded[offset .. offset + seqLen - 1]
                 let targetArr = encoded[offset + 1 .. offset + seqLen]
 
-                let input = Tensor.ofArray (inputArr, Cpu)
-                let input = input.unsqueeze 0
-                let target = Tensor.ofArray (targetArr, Cpu)
+                let input =
+                    torch.tensor (inputArr, dtype = torch.int64, device = torch.CPU)
+                    |> fun t -> t.unsqueeze (int64 0)
+
+                let target = torch.tensor (targetArr, dtype = torch.int64, device = torch.CPU)
 
                 opt.zeroGrad ()
                 let logits = forward model input
@@ -108,7 +112,7 @@ let main _argv =
                 loss.backward ()
                 opt.step ()
 
-                totalLoss <- totalLoss + loss.item ()
+                totalLoss <- totalLoss + loss.ToDouble()
             }
 
         let avgLoss = totalLoss / float nChunks

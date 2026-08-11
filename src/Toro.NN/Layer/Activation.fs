@@ -1,5 +1,6 @@
 namespace Toro.NN
 
+open TorchSharp
 open Toro
 
 type Activation =
@@ -13,7 +14,7 @@ type Activation =
     | Mish
     | Celu of alpha: float
     | Selu
-    | Glu of dim: int
+    | Glu of dim: int64
     | Hardswish
     | Hardsigmoid
 
@@ -24,9 +25,9 @@ type Activation =
         | Silu -> x.silu ()
         | Tanh -> x.tanh ()
         | Sigmoid -> x.sigmoid ()
-        | LeakyRelu slope -> x.leakyRelu slope
+        | LeakyRelu slope -> torch.nn.functional.leaky_relu (x, slope)
         | Elu alpha -> x.elu alpha
-        | Mish -> x.mish ()
+        | Mish -> torch.nn.functional.mish x
         | Celu alpha -> x.celu alpha
         | Selu -> x.selu ()
         | Glu dim -> x.glu dim

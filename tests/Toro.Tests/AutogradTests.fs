@@ -3,15 +3,16 @@ module AutogradTests
 open Xunit
 open FsUnit.Xunit
 open Toro
+open TorchSharp
 open TestHelper
 
 [<Fact>]
 let ``backward computes gradients`` () =
-    let x = Tensor.ones ([ 3 ], F32, Cpu)
-    let x = x.requiresGrad ()
+    let x = torch.ones ([| 3L |], dtype = torch.float32, device = torch.CPU)
+    let x = x.requires_grad_ ()
 
-    let y = x.mulScalar 3.0
-    let loss = y.sumAll ()
+    let y = x.mul (scalar 3.0)
+    let loss = y.sum ()
 
     loss.backward ()
 
@@ -20,8 +21,8 @@ let ``backward computes gradients`` () =
 
 [<Fact>]
 let ``grad returns zero-like before backward`` () =
-    let x = Tensor.ones ([ 2 ], F32, Cpu)
-    let x = x.requiresGrad ()
+    let x = torch.ones ([| 2L |], dtype = torch.float32, device = torch.CPU)
+    let x = x.requires_grad_ ()
 
     x.zeroGrad ()
     let g = x.grad ()
@@ -29,19 +30,19 @@ let ``grad returns zero-like before backward`` () =
 
 [<Fact>]
 let ``detach removes gradient tracking`` () =
-    let x = Tensor.randn ([ 2; 3 ], F32, Cpu)
-    let x = x.requiresGrad ()
+    let x = torch.randn ([| 2L; 3L |], dtype = torch.float32, device = torch.CPU)
+    let x = x.requires_grad_ ()
     let d = x.detach ()
-    d.Shape |> should equal [ 2; 3 ]
+    d.shape |> should equal [| 2L; 3L |]
 
 [<Fact>]
 let ``noGrad disables gradient tracking`` () =
-    let t = Tensor.randn ([ 2; 3 ], F32, Cpu)
-    let t = t.requiresGrad ()
+    let t = torch.randn ([| 2L; 3L |], dtype = torch.float32, device = torch.CPU)
+    let t = t.requires_grad_ ()
 
     let y =
         Toro.noGrad (fun () ->
             let r = t.mul t
             r)
 
-    y.Shape |> should equal [ 2; 3 ]
+    y.shape |> should equal [| 2L; 3L |]

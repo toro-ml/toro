@@ -1,13 +1,14 @@
 namespace Toro.NN
 
+open TorchSharp
 open Toro
 
 module RNN =
     /// Scan a step function over the sequence dimension, collecting all states.
     /// Input shape: [batch; seqLen; features].
     let scan (zeroState: int -> 's) (step: Tensor -> 's -> 's) (input: Tensor) : 's list =
-        let seqLen = input.Shape[1]
-        let s0 = zeroState (input.Shape[0])
+        let seqLen = int input.shape[1]
+        let s0 = zeroState (int input.shape[0])
 
         [ 0 .. seqLen - 1 ]
         |> List.fold
@@ -49,12 +50,14 @@ type LSTM = {
     BIh: Tensor option
     BHh: Tensor option
     HiddenDim: int
-    DType: DType
-    Device: Device
+    DType: torch.ScalarType
+    Device: torch.Device
 } with
 
     member this.zeroState(batchDim: int) : LSTMState =
-        let zeros = Tensor.zeros ([ batchDim; this.HiddenDim ], this.DType, this.Device)
+        let zeros =
+            torch.zeros ([| int64 batchDim; int64 this.HiddenDim |], dtype = this.DType, device = this.Device)
+
         let zeros2 = zeros.clone ()
         { H = zeros; C = zeros2 }
 
@@ -88,17 +91,20 @@ type LSTM = {
         { H = nextH; C = nextC }
 
 module LSTM =
-    let init (inDim: int) (hiddenDim: int) (config: LSTMConfig) (dtype: DType) (device: Device) : LSTM =
-        let wIh = Init.toParam [ 4 * hiddenDim; inDim ] dtype device config.WIhInit
-        let wHh = Init.toParam [ 4 * hiddenDim; hiddenDim ] dtype device config.WHhInit
+    let init (inDim: int) (hiddenDim: int) (config: LSTMConfig) (dtype: torch.ScalarType) (device: torch.Device) : LSTM =
+        let wIh =
+            Init.toParam [| int64 (4 * hiddenDim); int64 inDim |] dtype device config.WIhInit
+
+        let wHh =
+            Init.toParam [| int64 (4 * hiddenDim); int64 hiddenDim |] dtype device config.WHhInit
 
         let bIh =
             config.BIhInit
-            |> Option.map (Init.toParam [ 4 * hiddenDim ] dtype device)
+            |> Option.map (Init.toParam [| int64 (4 * hiddenDim) |] dtype device)
 
         let bHh =
             config.BHhInit
-            |> Option.map (Init.toParam [ 4 * hiddenDim ] dtype device)
+            |> Option.map (Init.toParam [| int64 (4 * hiddenDim) |] dtype device)
 
         {
             WIh = wIh
@@ -110,7 +116,7 @@ module LSTM =
             Device = device
         }
 
-    let initDefault (inDim: int) (hiddenDim: int) (dtype: DType) (device: Device) : LSTM =
+    let initDefault (inDim: int) (hiddenDim: int) (dtype: torch.ScalarType) (device: torch.Device) : LSTM =
         init inDim hiddenDim LSTMConfig.defaultConfig dtype device
 
 // --- GRU ---
@@ -144,12 +150,14 @@ type GRU = {
     BIh: Tensor option
     BHh: Tensor option
     HiddenDim: int
-    DType: DType
-    Device: Device
+    DType: torch.ScalarType
+    Device: torch.Device
 } with
 
     member this.zeroState(batchDim: int) : GRUState =
-        let zeros = Tensor.zeros ([ batchDim; this.HiddenDim ], this.DType, this.Device)
+        let zeros =
+            torch.zeros ([| int64 batchDim; int64 this.HiddenDim |], dtype = this.DType, device = this.Device)
+
         { H = zeros }
 
     member this.step (input: Tensor) (state: GRUState) : GRUState =
@@ -182,17 +190,20 @@ type GRU = {
         { H = nextH }
 
 module GRU =
-    let init (inDim: int) (hiddenDim: int) (config: GRUConfig) (dtype: DType) (device: Device) : GRU =
-        let wIh = Init.toParam [ 3 * hiddenDim; inDim ] dtype device config.WIhInit
-        let wHh = Init.toParam [ 3 * hiddenDim; hiddenDim ] dtype device config.WHhInit
+    let init (inDim: int) (hiddenDim: int) (config: GRUConfig) (dtype: torch.ScalarType) (device: torch.Device) : GRU =
+        let wIh =
+            Init.toParam [| int64 (3 * hiddenDim); int64 inDim |] dtype device config.WIhInit
+
+        let wHh =
+            Init.toParam [| int64 (3 * hiddenDim); int64 hiddenDim |] dtype device config.WHhInit
 
         let bIh =
             config.BIhInit
-            |> Option.map (Init.toParam [ 3 * hiddenDim ] dtype device)
+            |> Option.map (Init.toParam [| int64 (3 * hiddenDim) |] dtype device)
 
         let bHh =
             config.BHhInit
-            |> Option.map (Init.toParam [ 3 * hiddenDim ] dtype device)
+            |> Option.map (Init.toParam [| int64 (3 * hiddenDim) |] dtype device)
 
         {
             WIh = wIh
@@ -204,5 +215,5 @@ module GRU =
             Device = device
         }
 
-    let initDefault (inDim: int) (hiddenDim: int) (dtype: DType) (device: Device) : GRU =
+    let initDefault (inDim: int) (hiddenDim: int) (dtype: torch.ScalarType) (device: torch.Device) : GRU =
         init inDim hiddenDim GRUConfig.defaultConfig dtype device

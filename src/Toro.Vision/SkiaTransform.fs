@@ -1,6 +1,7 @@
 namespace Toro.Vision
 
 open SkiaSharp
+open TorchSharp
 open Toro
 
 /// Spatial transforms operating directly on SKBitmap for CPU-optimized preprocessing.
@@ -60,7 +61,7 @@ module SkiaTransform =
         flipped
 
     /// Apply a list of bitmap transforms as a pipeline, then convert to a tensor.
-    let pipeline (transforms: (SKBitmap -> SKBitmap) list) (bitmap: SKBitmap) (device: Device) : Tensor =
+    let pipeline (transforms: (SKBitmap -> SKBitmap) list) (bitmap: SKBitmap) (device: torch.Device) : Tensor =
         let mutable current = bitmap
 
         for t in transforms do

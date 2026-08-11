@@ -1,6 +1,7 @@
 namespace Toro.NN
 
 open System.IO
+open TorchSharp
 open Toro
 
 /// Function record for checkpoint save/load operations.
@@ -20,7 +21,7 @@ type SGD = {
         for v in this.Vars do
             scoped {
                 let g = v.grad ()
-                let updated = v - g.mulScalar this.LearningRate
+                let updated = v - g * scalar this.LearningRate
                 v.copyInPlace updated
             }
 
@@ -71,26 +72,26 @@ type AdamW = {
     member this.step() =
         this.StepCount <- this.StepCount + 1
         let p = this.Params
-        let t = float this.StepCount
+        let t = this.StepCount
 
         for param, m, v in this.Vars do
             scoped {
                 let g = param.grad ()
 
-                let mNew = m.mulScalar p.Beta1 + g.mulScalar (1.0 - p.Beta1)
+                let mNew = m * scalar p.Beta1 + g * scalar (1.0 - p.Beta1)
                 m.copyInPlace mNew
 
-                let vNew = v.mulScalar p.Beta2 + g.sqr () * (1.0 - p.Beta2)
+                let vNew = v * scalar p.Beta2 + g.square () * scalar (1.0 - p.Beta2)
                 v.copyInPlace vNew
 
-                let mHatScale = 1.0 / (1.0 - pown p.Beta1 (int t))
-                let vHatScale = 1.0 / (1.0 - pown p.Beta2 (int t))
+                let mHatScale = 1.0 / (1.0 - pown p.Beta1 t)
+                let vHatScale = 1.0 / (1.0 - pown p.Beta2 t)
 
                 let mHat = mNew * mHatScale
                 let vHat = vNew * vHatScale
 
                 let updated =
-                    param.mulScalar (1.0 - p.Lr * p.WeightDecay)
+                    param * scalar (1.0 - p.Lr * p.WeightDecay)
                     - (mHat / (vHat.sqrt () + p.Eps) * p.Lr)
 
                 param.copyInPlace updated
@@ -108,7 +109,7 @@ type AdamW = {
     member this.saveState(dirPath: string) =
         Directory.CreateDirectory dirPath |> ignore
 
-        let stepTensor = Tensor.ofList ([ int64 this.StepCount ], Cpu)
+        let stepTensor = torch.tensor ([| this.StepCount |], device = torch.CPU)
 
         let mutable tensors = Map [ "step", stepTensor ]
 
@@ -126,9 +127,7 @@ type AdamW = {
                 let tensors = SafeTensors.load path
 
                 match tensors |> Map.tryFind "step" with
-                | Some stepTensor ->
-                    let stepVal = stepTensor.toInt64Scalar ()
-                    this.StepCount <- int stepVal
+                | Some stepTensor -> this.StepCount <- stepTensor.ToInt32()
                 | None -> ()
 
                 for i, (_, m, v) in this.Vars |> List.indexed do
@@ -153,8 +152,8 @@ module AdamW =
         let varTriples =
             vars
             |> List.map (fun param ->
-                let m = Tensor.zeros (param.Shape, param.DType, param.Device)
-                let v = Tensor.zeros (param.Shape, param.DType, param.Device)
+                let m = torch.zeros_like param
+                let v = torch.zeros_like param
                 param, m, v)
 
         {

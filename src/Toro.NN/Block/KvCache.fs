@@ -1,11 +1,12 @@
 namespace Toro.NN
 
+open TorchSharp
 open Toro
 
 type KvCache(dim: int) =
     let mutable kData: Tensor option = None
     let mutable vData: Tensor option = None
-    let mutable currentSeqLen: int = 0
+    let mutable currentSeqLen: int64 = 0L
 
     member _.Dim = dim
 
@@ -16,20 +17,20 @@ type KvCache(dim: int) =
         vData |> Option.iter _.Dispose()
         kData <- None
         vData <- None
-        currentSeqLen <- 0
+        currentSeqLen <- 0L
 
     member _.append(k: Tensor, v: Tensor) : Tensor * Tensor =
-        let seqLen = k.Shape[dim]
+        let seqLen = k.shape[dim]
 
         let newK =
             match kData with
             | None -> k
-            | Some prev -> Tensor.cat ([ prev; k ], dim)
+            | Some prev -> torch.cat ([| prev; k |], int64 dim)
 
         let newV =
             match vData with
             | None -> v
-            | Some prev -> Tensor.cat ([ prev; v ], dim)
+            | Some prev -> torch.cat ([| prev; v |], int64 dim)
 
         let oldK = kData
         let oldV = vData

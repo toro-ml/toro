@@ -1,24 +1,25 @@
 namespace Toro.NN
 
+open TorchSharp
 open Toro
 
 // --- Conv1d ---
 
 /// Configuration for 1-D convolution.
 type Conv1dConfig = {
-    Padding: int
-    Stride: int
-    Dilation: int
-    Groups: int
+    Padding: int64
+    Stride: int64
+    Dilation: int64
+    Groups: int64
 }
 
 module Conv1dConfig =
     /// Default configuration: no padding, stride 1, dilation 1, groups 1.
     let defaultConfig = {
-        Padding = 0
-        Stride = 1
-        Dilation = 1
-        Groups = 1
+        Padding = 0L
+        Stride = 1L
+        Dilation = 1L
+        Groups = 1L
     }
 
 /// 1-D convolution layer.
@@ -31,15 +32,12 @@ type Conv1d = {
     /// Apply 1-D convolution to the input.
     member this.forward(x: Tensor) : Tensor =
         let c = this.Config
-
-        x.conv1d (
-            this.Weight,
-            ?bias = this.Bias,
-            stride = c.Stride,
-            padding = c.Padding,
-            dilation = c.Dilation,
-            groups = c.Groups
-        )
+        let s = c.Stride
+        let p = c.Padding
+        let d = c.Dilation
+        let g = c.Groups
+        let b = this.Bias |> Option.defaultValue null
+        torch.nn.functional.conv1d (x, this.Weight, b, s, p, d, g)
 
     interface IModule with
         member this.forward x = this.forward x
@@ -47,20 +45,20 @@ type Conv1d = {
 module Conv1d =
     /// Create a Conv1d layer with bias.
     let init
-        (inChannels: int)
-        (outChannels: int)
-        (kernelSize: int)
+        (inChannels: int64)
+        (outChannels: int64)
+        (kernelSize: int64)
         (config: Conv1dConfig)
-        (dtype: DType)
-        (device: Device)
+        (dtype: torch.ScalarType)
+        (device: torch.Device)
         : Conv1d =
         let groupInC = inChannels / config.Groups
         let bound = 1.0 / sqrt (float (groupInC * kernelSize))
 
         let ws =
-            Init.toParam [ outChannels; groupInC; kernelSize ] dtype device Init.defaultKaimingNormal
+            Init.toParam [| outChannels; groupInC; kernelSize |] dtype device Init.defaultKaimingNormal
 
-        let bs = Init.toParam [ outChannels ] dtype device (Init.Uniform(-bound, bound))
+        let bs = Init.toParam [| outChannels |] dtype device (Init.Uniform(-bound, bound))
 
         {
             Weight = ws
@@ -69,22 +67,28 @@ module Conv1d =
         }
 
     /// Create a Conv1d layer with default configuration.
-    let initDefault (inChannels: int) (outChannels: int) (kernelSize: int) (dtype: DType) (device: Device) : Conv1d =
+    let initDefault
+        (inChannels: int)
+        (outChannels: int)
+        (kernelSize: int)
+        (dtype: torch.ScalarType)
+        (device: torch.Device)
+        : Conv1d =
         init inChannels outChannels kernelSize Conv1dConfig.defaultConfig dtype device
 
     /// Create a Conv1d layer without bias.
     let initNoBias
-        (inChannels: int)
-        (outChannels: int)
-        (kernelSize: int)
+        (inChannels: int64)
+        (outChannels: int64)
+        (kernelSize: int64)
         (config: Conv1dConfig)
-        (dtype: DType)
-        (device: Device)
+        (dtype: torch.ScalarType)
+        (device: torch.Device)
         : Conv1d =
         let groupInC = inChannels / config.Groups
 
         let ws =
-            Init.toParam [ outChannels; groupInC; kernelSize ] dtype device Init.defaultKaimingNormal
+            Init.toParam [| outChannels; groupInC; kernelSize |] dtype device Init.defaultKaimingNormal
 
         {
             Weight = ws
@@ -96,19 +100,19 @@ module Conv1d =
 
 /// Configuration for 2-D convolution.
 type Conv2dConfig = {
-    Padding: int
-    Stride: int
-    Dilation: int
-    Groups: int
+    Padding: int64
+    Stride: int64
+    Dilation: int64
+    Groups: int64
 }
 
 module Conv2dConfig =
     /// Default configuration: no padding, stride 1, dilation 1, groups 1.
     let defaultConfig = {
-        Padding = 0
-        Stride = 1
-        Dilation = 1
-        Groups = 1
+        Padding = 0L
+        Stride = 1L
+        Dilation = 1L
+        Groups = 1L
     }
 
 /// 2-D convolution layer.
@@ -121,15 +125,12 @@ type Conv2d = {
     /// Apply 2-D convolution to the input.
     member this.forward(x: Tensor) : Tensor =
         let c = this.Config
-
-        x.conv2d (
-            this.Weight,
-            ?bias = this.Bias,
-            stride = c.Stride,
-            padding = c.Padding,
-            dilation = c.Dilation,
-            groups = c.Groups
-        )
+        let s = c.Stride
+        let p = c.Padding
+        let d = c.Dilation
+        let g = c.Groups
+        let b = this.Bias |> Option.defaultValue null
+        torch.nn.functional.conv2d (x, this.Weight, b, [| s; s |], [| p; p |], [| d; d |], g)
 
     interface IModule with
         member this.forward x = this.forward x
@@ -137,20 +138,20 @@ type Conv2d = {
 module Conv2d =
     /// Create a Conv2d layer with bias.
     let init
-        (inChannels: int)
-        (outChannels: int)
-        (kernelSize: int)
+        (inChannels: int64)
+        (outChannels: int64)
+        (kernelSize: int64)
         (config: Conv2dConfig)
-        (dtype: DType)
-        (device: Device)
+        (dtype: torch.ScalarType)
+        (device: torch.Device)
         : Conv2d =
         let groupInC = inChannels / config.Groups
         let bound = 1.0 / sqrt (float (groupInC * kernelSize * kernelSize))
 
         let ws =
-            Init.toParam [ outChannels; groupInC; kernelSize; kernelSize ] dtype device Init.defaultKaimingNormal
+            Init.toParam [| outChannels; groupInC; kernelSize; kernelSize |] dtype device Init.defaultKaimingNormal
 
-        let bs = Init.toParam [ outChannels ] dtype device (Init.Uniform(-bound, bound))
+        let bs = Init.toParam [| outChannels |] dtype device (Init.Uniform(-bound, bound))
 
         {
             Weight = ws
@@ -159,22 +160,28 @@ module Conv2d =
         }
 
     /// Create a Conv2d layer with default configuration.
-    let initDefault (inChannels: int) (outChannels: int) (kernelSize: int) (dtype: DType) (device: Device) : Conv2d =
+    let initDefault
+        (inChannels: int64)
+        (outChannels: int64)
+        (kernelSize: int64)
+        (dtype: torch.ScalarType)
+        (device: torch.Device)
+        : Conv2d =
         init inChannels outChannels kernelSize Conv2dConfig.defaultConfig dtype device
 
     /// Create a Conv2d layer without bias.
     let initNoBias
-        (inChannels: int)
-        (outChannels: int)
-        (kernelSize: int)
+        (inChannels: int64)
+        (outChannels: int64)
+        (kernelSize: int64)
         (config: Conv2dConfig)
-        (dtype: DType)
-        (device: Device)
+        (dtype: torch.ScalarType)
+        (device: torch.Device)
         : Conv2d =
         let groupInC = inChannels / config.Groups
 
         let ws =
-            Init.toParam [ outChannels; groupInC; kernelSize; kernelSize ] dtype device Init.defaultKaimingNormal
+            Init.toParam [| outChannels; groupInC; kernelSize; kernelSize |] dtype device Init.defaultKaimingNormal
 
         {
             Weight = ws
@@ -186,20 +193,20 @@ module Conv2d =
 
 /// Configuration for 1-D transposed convolution.
 type ConvTranspose1dConfig = {
-    Padding: int
-    OutputPadding: int
-    Stride: int
-    Dilation: int
-    Groups: int
+    Padding: int64
+    OutputPadding: int64
+    Stride: int64
+    Dilation: int64
+    Groups: int64
 }
 
 module ConvTranspose1dConfig =
     let defaultConfig = {
-        Padding = 0
-        OutputPadding = 0
-        Stride = 1
-        Dilation = 1
-        Groups = 1
+        Padding = 0L
+        OutputPadding = 0L
+        Stride = 1L
+        Dilation = 1L
+        Groups = 1L
     }
 
 /// 1-D transposed convolution layer.
@@ -211,36 +218,33 @@ type ConvTranspose1d = {
 
     member this.forward(x: Tensor) : Tensor =
         let c = this.Config
-
-        x.convTranspose1d (
-            this.Weight,
-            ?bias = this.Bias,
-            stride = c.Stride,
-            padding = c.Padding,
-            outputPadding = c.OutputPadding,
-            dilation = c.Dilation,
-            groups = c.Groups
-        )
+        let s = c.Stride
+        let p = c.Padding
+        let op = c.OutputPadding
+        let d = c.Dilation
+        let g = c.Groups
+        let b = this.Bias |> Option.defaultValue null
+        torch.nn.functional.conv_transpose1d (x, this.Weight, b, s, p, op, g, d)
 
     interface IModule with
         member this.forward x = this.forward x
 
 module ConvTranspose1d =
     let init
-        (inChannels: int)
-        (outChannels: int)
-        (kernelSize: int)
+        (inChannels: int64)
+        (outChannels: int64)
+        (kernelSize: int64)
         (config: ConvTranspose1dConfig)
-        (dtype: DType)
-        (device: Device)
+        (dtype: torch.ScalarType)
+        (device: torch.Device)
         : ConvTranspose1d =
         let groupInC = inChannels / config.Groups
         let bound = 1.0 / sqrt (float (groupInC * kernelSize))
 
         let ws =
-            Init.toParam [ inChannels; outChannels / config.Groups; kernelSize ] dtype device Init.defaultKaimingNormal
+            Init.toParam [| inChannels; (outChannels / config.Groups); kernelSize |] dtype device Init.defaultKaimingNormal
 
-        let bs = Init.toParam [ outChannels ] dtype device (Init.Uniform(-bound, bound))
+        let bs = Init.toParam [| outChannels |] dtype device (Init.Uniform(-bound, bound))
 
         {
             Weight = ws
@@ -248,18 +252,24 @@ module ConvTranspose1d =
             Config = config
         }
 
-    let initDefault (inChannels: int) (outChannels: int) (kernelSize: int) (dtype: DType) (device: Device) : ConvTranspose1d =
+    let initDefault
+        (inChannels: int64)
+        (outChannels: int64)
+        (kernelSize: int64)
+        (dtype: torch.ScalarType)
+        (device: torch.Device)
+        : ConvTranspose1d =
         init inChannels outChannels kernelSize ConvTranspose1dConfig.defaultConfig dtype device
 
 // --- ConvTranspose2d ---
 
 /// Configuration for 2-D transposed convolution.
 type ConvTranspose2dConfig = {
-    Padding: int
-    OutputPadding: int
-    Stride: int
-    Dilation: int
-    Groups: int
+    Padding: int64
+    OutputPadding: int64
+    Stride: int64
+    Dilation: int64
+    Groups: int64
 }
 
 module ConvTranspose2dConfig =
@@ -280,40 +290,38 @@ type ConvTranspose2d = {
 
     member this.forward(x: Tensor) : Tensor =
         let c = this.Config
+        let s = int64 c.Stride
+        let p = int64 c.Padding
+        let op = int64 c.OutputPadding
+        let d = int64 c.Dilation
+        let g = int64 c.Groups
+        let b = this.Bias |> Option.defaultValue null
 
-        x.convTranspose2d (
-            this.Weight,
-            ?bias = this.Bias,
-            stride = c.Stride,
-            padding = c.Padding,
-            outputPadding = c.OutputPadding,
-            dilation = c.Dilation,
-            groups = c.Groups
-        )
+        torch.nn.functional.conv_transpose2d (x, this.Weight, b, [| s; s |], [| p; p |], [| op; op |], [| d; d |], g)
 
     interface IModule with
         member this.forward x = this.forward x
 
 module ConvTranspose2d =
     let init
-        (inChannels: int)
-        (outChannels: int)
-        (kernelSize: int)
+        (inChannels: int64)
+        (outChannels: int64)
+        (kernelSize: int64)
         (config: ConvTranspose2dConfig)
-        (dtype: DType)
-        (device: Device)
+        (dtype: torch.ScalarType)
+        (device: torch.Device)
         : ConvTranspose2d =
         let groupInC = inChannels / config.Groups
         let bound = 1.0 / sqrt (float (groupInC * kernelSize * kernelSize))
 
         let ws =
             Init.toParam
-                [ inChannels; outChannels / config.Groups; kernelSize; kernelSize ]
+                [| inChannels; outChannels / config.Groups; kernelSize; kernelSize |]
                 dtype
                 device
                 Init.defaultKaimingNormal
 
-        let bs = Init.toParam [ outChannels ] dtype device (Init.Uniform(-bound, bound))
+        let bs = Init.toParam [| outChannels |] dtype device (Init.Uniform(-bound, bound))
 
         {
             Weight = ws
@@ -321,5 +329,11 @@ module ConvTranspose2d =
             Config = config
         }
 
-    let initDefault (inChannels: int) (outChannels: int) (kernelSize: int) (dtype: DType) (device: Device) : ConvTranspose2d =
+    let initDefault
+        (inChannels: int64)
+        (outChannels: int64)
+        (kernelSize: int64)
+        (dtype: torch.ScalarType)
+        (device: torch.Device)
+        : ConvTranspose2d =
         init inChannels outChannels kernelSize ConvTranspose2dConfig.defaultConfig dtype device

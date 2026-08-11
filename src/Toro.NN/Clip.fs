@@ -1,5 +1,6 @@
 namespace Toro.NN
 
+open TorchSharp
 open Toro
 
 /// Gradient clipping utilities.
@@ -12,9 +13,8 @@ module Clip =
         for v in vars do
             let g = v.grad ()
             let sq = g.mul g
-            let s = sq.sumAll ()
-            let f = s.toFloat64Scalar ()
-            totalNormSq <- totalNormSq + f
+            let s = sq.sum ()
+            totalNormSq <- totalNormSq + s.ToDouble()
 
         let totalNorm = sqrt totalNormSq
 
@@ -24,7 +24,7 @@ module Clip =
             Toro.noGrad (fun () ->
                 for v in vars do
                     let g = v.grad ()
-                    let scaled = g.mulScalar scale
+                    let scaled = g * scalar scale
                     g.copyInPlace scaled)
 
         totalNorm
@@ -34,5 +34,5 @@ module Clip =
         Toro.noGrad (fun () ->
             for v in vars do
                 let g = v.grad ()
-                let clamped = g.clamp (-value, value)
+                let clamped = g.clamp (scalar (-value), scalar value)
                 g.copyInPlace clamped)

@@ -3,6 +3,7 @@ module VarTests
 open Xunit
 open FsUnit.Xunit
 open Toro
+open TorchSharp
 open Toro.NN
 open TestHelper
 
@@ -10,7 +11,7 @@ open TestHelper
 
 [<Fact>]
 let ``namedParams collects tensors from Linear`` () =
-    let linear = Linear.init 4 2 F32 Cpu
+    let linear = Linear.init 4 2 torch.float32 torch.CPU
     let ps = Model.namedParams linear
     ps.Length |> should equal 2
     ps |> List.map fst |> should contain "Weight"
@@ -18,18 +19,18 @@ let ``namedParams collects tensors from Linear`` () =
 
 [<Fact>]
 let ``namedParams skips None bias`` () =
-    let linear = Linear.initNoBias 4 2 F32 Cpu
+    let linear = Linear.initNoBias 4 2 torch.float32 torch.CPU
     let ps = Model.namedParams linear
     ps.Length |> should equal 1
     ps |> List.map fst |> should equal [ "Weight" ]
 
 [<Fact>]
 let ``namedParams recurses into nested records`` () =
-    let linear = Linear.init 4 2 F32 Cpu
+    let linear = Linear.init 4 2 torch.float32 torch.CPU
 
     let model = {|
         L1 = linear
-        L2 = Linear.init 2 1 F32 Cpu
+        L2 = Linear.init 2 1 torch.float32 torch.CPU
     |}
 
     let ps = Model.namedParams model
@@ -41,14 +42,14 @@ let ``namedParams recurses into nested records`` () =
 
 [<Fact>]
 let ``trainableVars returns only requiresGrad tensors`` () =
-    let bn = BatchNorm.initDefault 4 F32 Cpu
+    let bn = BatchNorm.initDefault 4 torch.float32 torch.CPU
     let all = Model.namedParams bn
     let trainable = Model.trainableVars bn
 
     all.Length |> should be (greaterThan trainable.Length)
 
     trainable
-    |> List.iter (fun t -> t.RequiresGrad |> should be True)
+    |> List.iter (fun t -> t.requires_grad |> should be True)
 
 // --- Model.save / loadInto tests ---
 
@@ -61,14 +62,14 @@ let ``Model save and loadInto round-trips`` () =
         System.IO.Directory.CreateDirectory dir |> ignore
         let path = System.IO.Path.Combine(dir, "model.safetensors")
 
-        let linear = Linear.init 3 2 F32 Cpu
+        let linear = Linear.init 3 2 torch.float32 torch.CPU
 
-        let wSum = (linear.Weight.sumAll ()).toFloat32Scalar ()
+        let wSum = (linear.Weight.sum ()).ToSingle()
 
 
         Model.save linear path
 
-        let linear2 = Linear.init 3 2 F32 Cpu
+        let linear2 = Linear.init 3 2 torch.float32 torch.CPU
         let report = Model.loadInto linear2 path Strict
 
         report.Loaded.Length |> should equal 2
@@ -77,7 +78,7 @@ let ``Model save and loadInto round-trips`` () =
         report.ShapeMismatches |> should be Empty
         report.DTypeMismatches |> should be Empty
 
-        let wSum2 = (linear2.Weight.sumAll ()).toFloat32Scalar ()
+        let wSum2 = (linear2.Weight.sum ()).ToSingle()
 
 
         wSum2 |> should (equalWithin 1e-5f) wSum
@@ -94,10 +95,10 @@ let ``Model loadInto Lenient reports shape mismatch`` () =
         System.IO.Directory.CreateDirectory dir |> ignore
         let path = System.IO.Path.Combine(dir, "model.safetensors")
 
-        let linear = Linear.init 3 2 F32 Cpu
+        let linear = Linear.init 3 2 torch.float32 torch.CPU
         Model.save linear path
 
-        let linear2 = Linear.init 5 2 F32 Cpu
+        let linear2 = Linear.init 5 2 torch.float32 torch.CPU
         let report = Model.loadInto linear2 path Lenient
 
         report.ShapeMismatches.Length |> should equal 1
@@ -116,14 +117,14 @@ let ``Model loadInto loads only required tensors`` () =
         System.IO.Directory.CreateDirectory dir |> ignore
         let path = System.IO.Path.Combine(dir, "model.safetensors")
 
-        let t1 = Tensor.randn ([ 1; 3 ], F32, Cpu)
-        let t2 = Tensor.randn ([ 1 ], F32, Cpu)
-        let t3 = Tensor.randn ([ 5 ], F32, Cpu)
+        let t1 = torch.randn ([| 1L; 3L |], dtype = torch.float32, device = torch.CPU)
+        let t2 = torch.randn ([| 1L |], dtype = torch.float32, device = torch.CPU)
+        let t3 = torch.randn ([| 5L |], dtype = torch.float32, device = torch.CPU)
 
         SafeTensors.save (Map [ "Weight", t1; "Bias", t2; "Extra", t3 ]) path
 
 
-        let linear = Linear.init 3 1 F32 Cpu
+        let linear = Linear.init 3 1 torch.float32 torch.CPU
         let report = Model.loadInto linear path Lenient
 
         report.Unexpected |> should contain "Extra"
@@ -138,27 +139,27 @@ let ``Model loadInto loads only required tensors`` () =
 let ``Uniform init produces values in range`` () =
     let lo, up = -1.0, 1.0
 
-    let t = Init.toTensor [ 10000 ] F64 Cpu (Init.Uniform(lo, up))
+    let t = Init.toTensor [| 10000L |] torch.float64 torch.CPU (Init.Uniform(lo, up))
 
 
-    let mean = (t.meanAll ()).toFloat64Scalar ()
+    let mean = (t.mean ()).ToDouble()
 
     mean |> should be (greaterThan (lo + 0.1))
     mean |> should be (lessThan (up - 0.1))
 
 [<Fact>]
 let ``KaimingNormal init has reasonable variance`` () =
-    let shape = [ 256; 128 ]
+    let shape = [| 256L; 128L |]
     let fanIn = 128
 
-    let t = Init.toTensor shape F32 Cpu Init.KaimingNormal
+    let t = Init.toTensor shape torch.float32 torch.CPU Init.KaimingNormal
 
     let expectedStd = sqrt (2.0 / float fanIn)
 
-    let mean = (t.meanAll ()).toFloat32Scalar ()
+    let mean = (t.mean ()).ToSingle()
 
-    let sqr = t.sqr ()
-    let meanSqr = (sqr.meanAll ()).toFloat32Scalar ()
+    let sqr = t.square ()
+    let meanSqr = (sqr.mean ()).ToSingle()
     let variance = float meanSqr - (float mean * float mean)
     let actualStd = sqrt variance
 
@@ -166,16 +167,16 @@ let ``KaimingNormal init has reasonable variance`` () =
 
 [<Fact>]
 let ``Init Const creates tensor with given value`` () =
-    let t = Init.toTensor [ 3; 2 ] F32 Cpu (Init.Const 5.0)
+    let t = Init.toTensor [| 3L; 2L |] torch.float32 torch.CPU (Init.Const 5.0)
 
-    t.Shape |> should equal [ 3; 2 ]
-    let sum = (t.sumAll ()).toFloat32Scalar ()
+    t.shape |> should equal [| 3L; 2L |]
+    let sum = (t.sum ()).ToSingle()
     sum |> should equal 30.0f
 
 [<Fact>]
 let ``Init Randn creates tensor with specified mean`` () =
-    let t = Init.toTensor [ 10000 ] F64 Cpu (Init.Randn(3.0, 0.01))
+    let t = Init.toTensor [| 10000L |] torch.float64 torch.CPU (Init.Randn(3.0, 0.01))
 
 
-    let mean = (t.meanAll ()).toFloat64Scalar ()
+    let mean = (t.mean ()).ToDouble()
     mean |> should (equalWithin 0.1) 3.0

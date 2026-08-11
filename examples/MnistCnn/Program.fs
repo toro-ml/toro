@@ -30,7 +30,7 @@ type Classifier = {
 } with
 
     member this.forward(train: bool) : Tensor -> Tensor =
-        _.flatten(1, -1)
+        _.flatten(1L, -1L)
         >> this.Fc1.forward
         >> _.relu()
         >> this.Drop.forwardT train
@@ -50,14 +50,14 @@ let createModel () =
             Padding = 1
     }
 
-    let conv1 = Conv2d.init 1 32 3 pad1 F32 Cpu
-    let bn1 = BatchNorm.initDefault 32 F32 Cpu
-    let conv2 = Conv2d.init 32 64 3 pad1 F32 Cpu
-    let bn2 = BatchNorm.initDefault 64 F32 Cpu
+    let conv1 = Conv2d.init 1 32 3 pad1 torch.float32 torch.CPU
+    let bn1 = BatchNorm.initDefault 32 torch.float32 torch.CPU
+    let conv2 = Conv2d.init 32 64 3 pad1 torch.float32 torch.CPU
+    let bn2 = BatchNorm.initDefault 64 torch.float32 torch.CPU
     let pool = MaxPool2d.createDefault 2
-    let fc1 = Linear.init (64 * 7 * 7) 128 F32 Cpu
+    let fc1 = Linear.init (64L * 7L * 7L) 128L torch.float32 torch.CPU
     let drop = Dropout.create 0.5
-    let fc2 = Linear.init 128 10 F32 Cpu
+    let fc2 = Linear.init 128 10 torch.float32 torch.CPU
 
     {
         Features = {
@@ -116,19 +116,18 @@ let main _argv =
                 let images = batch["data"]
                 let labels = batch["label"]
 
-                let x = Tensor.ofTorchTensor images
-                let x = mnistNorm.apply x
-                let target = Tensor.ofTorchTensor labels
+                let x = mnistNorm.apply images
+                let target = labels
                 opt.zeroGrad ()
                 let logits = model.forward true x
                 let loss = Loss.crossEntropy logits target
                 loss.backward ()
                 opt.step ()
 
-                let lossVal = loss.item ()
-                let predicted = logits.argmax 1
-                let eqSum = predicted.eq(target).sumAll ()
-                let correct = eqSum.item () |> int64
+                let lossVal = loss.item<float> ()
+                let predicted = logits.argmax 1L
+                let eqSum = predicted.eq(target).sum ()
+                let correct = eqSum.item<int64> ()
                 let n = images.shape[0]
 
                 totalLoss <- totalLoss + float lossVal * float n
@@ -149,13 +148,12 @@ let main _argv =
                     let images = batch["data"]
                     let labels = batch["label"]
 
-                    let x = Tensor.ofTorchTensor images
-                    let x = mnistNorm.apply x
-                    let target = Tensor.ofTorchTensor labels
+                    let x = mnistNorm.apply images
+                    let target = labels
                     let logits = model.forward false x
-                    let predicted = logits.argmax 1
-                    let eqSum = predicted.eq(target).sumAll ()
-                    let correct = eqSum.item () |> int64
+                    let predicted = logits.argmax 1L
+                    let eqSum = predicted.eq(target).sum ()
+                    let correct = eqSum.item<int64> ()
                     let n = images.shape[0]
 
                     testCorrect <- testCorrect + correct

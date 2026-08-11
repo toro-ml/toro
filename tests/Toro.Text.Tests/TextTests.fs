@@ -3,10 +3,11 @@ module TextTests
 open Xunit
 open FsUnit.Xunit
 open Toro
+open TorchSharp
 open Toro.Text
 open TestHelper
 
-// --- Tokenizer.wrap and .Inner ---
+// --- Tokenizer.wrap and  ---
 
 [<Fact>]
 let ``Tokenizer wrap exposes Inner`` () =
@@ -24,7 +25,7 @@ let ``Tokenizer wrap exposes Inner`` () =
 
     let mlTok = Microsoft.ML.Tokenizers.WordPieceTokenizer.Create(vocabStream, opts)
     let tok = Tokenizer.wrap mlTok
-    tok.Inner |> should not' (be null)
+    tok |> should not' (be null)
 
 [<Fact>]
 let ``Tokenizer encode and decode round-trip`` () =
@@ -135,8 +136,8 @@ let ``Encode.toTensor produces correct shape`` () =
                     SpecialTokens = [ "[UNK]", 4 ]
             }
 
-        let t = Encode.toTensor tok "a b" 5 0 Cpu
-        t.Shape |> should equal [ 5 ]
+        let t = Encode.toTensor tok "a b" 5 0 torch.CPU
+        t.shape |> should equal [| 5L |]
     finally
         System.IO.File.Delete(path)
 
@@ -151,16 +152,16 @@ let ``Encode.batch produces correct shapes`` () =
                     SpecialTokens = [ "[UNK]", 4 ]
             }
 
-        let struct (ids, mask) = Encode.batch tok [ "a b"; "c" ] 4 0 Cpu
-        ids.Shape |> should equal [ 2; 4 ]
-        mask.Shape |> should equal [ 2; 4 ]
+        let struct (ids, mask) = Encode.batch tok [ "a b"; "c" ] 4 0 torch.CPU
+        ids.shape |> should equal [| 2L; 4L |]
+        mask.shape |> should equal [| 2L; 4L |]
     finally
         System.IO.File.Delete(path)
 
 [<Fact>]
 let ``Encode.attentionMask marks pad positions as zero`` () =
     let data: int64 array = [| 1L; 2L; 0L; 0L |]
-    let t = Tensor.ofArray (data, Cpu)
+    let t = torch.tensor (data, device = torch.CPU)
 
     let mask = Encode.attentionMask t 0
     let m0 = mask.at [ I 0 ] |> scalarF32

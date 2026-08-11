@@ -1,5 +1,6 @@
 namespace Toro.GNN
 
+open TorchSharp
 open Toro
 open Toro.NN
 
@@ -13,8 +14,8 @@ type GCNConv = {
 } with
 
     member this.forward(x: Tensor, edgeIndex: Tensor) : Tensor =
-        let numNodes = x.Shape[0]
-        let outChannels = this.Weight.Shape[0]
+        let numNodes = x.shape[0]
+        let outChannels = this.Weight.shape[0]
 
         let edgeIndex = GraphUtils.addSelfLoops edgeIndex numNodes
 
@@ -27,10 +28,10 @@ type GCNConv = {
         let tgt = edgeIndex[1]
 
         // Symmetric normalization: D^{-1/2} A D^{-1/2}
-        let deg = GraphUtils.degree tgt numNodes h.DType h.Device
-        let degInvSqrt = deg.pow -0.5
-        let zero = Tensor.zeros ([ numNodes ], h.DType, h.Device)
-        let degInvSqrt = Tensor.where (degInvSqrt.eqScalar infinity, zero, degInvSqrt)
+        let deg = GraphUtils.degree tgt numNodes h.dtype h.device
+        let degInvSqrt = deg.pow (scalar -0.5)
+        let zero = torch.zeros ([| numNodes |], dtype = h.dtype, device = h.device)
+        let degInvSqrt = torch.where (degInvSqrt.eq (scalar infinity), zero, degInvSqrt)
 
         // Per-edge normalization coefficient
         let norm = degInvSqrt[src] * degInvSqrt[tgt]
@@ -45,17 +46,19 @@ type GCNConv = {
 
 module GCNConv =
     /// Create a GCNConv layer with bias.
-    let init (inChannels: int) (outChannels: int) (dtype: DType) (device: Device) : GCNConv =
+    let init (inChannels: int64) (outChannels: int64) (dtype: torch.ScalarType) (device: torch.Device) : GCNConv =
         let w =
-            Init.toParam [ outChannels; inChannels ] dtype device Init.defaultKaimingNormal
+            Init.toParam [| outChannels; inChannels |] dtype device Init.defaultKaimingNormal
 
         let bound = 1.0 / sqrt (float outChannels)
-        let b = Init.toParam [ outChannels ] dtype device (Init.Uniform(-bound, bound))
+
+        let b = Init.toParam [| outChannels |] dtype device (Init.Uniform(-bound, bound))
+
         { Weight = w; Bias = Some b }
 
     /// Create a GCNConv layer without bias.
-    let initNoBias (inChannels: int) (outChannels: int) (dtype: DType) (device: Device) : GCNConv =
+    let initNoBias (inChannels: int64) (outChannels: int64) (dtype: torch.ScalarType) (device: torch.Device) : GCNConv =
         let w =
-            Init.toParam [ outChannels; inChannels ] dtype device Init.defaultKaimingNormal
+            Init.toParam [| outChannels; inChannels |] dtype device Init.defaultKaimingNormal
 
         { Weight = w; Bias = None }

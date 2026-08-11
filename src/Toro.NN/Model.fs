@@ -3,6 +3,7 @@ namespace Toro.NN
 open System.IO
 open System.Reflection
 open Microsoft.FSharp.Reflection
+open TorchSharp
 open Toro
 
 /// Describes a shape or dtype mismatch between model and loaded tensor.
@@ -87,8 +88,8 @@ module Model =
         | [] -> ()
         | dupes -> failwith $"Duplicate parameter names: %A{dupes}"
 
-    let private formatShape (shape: int list) =
-        sprintf "[%s]" (shape |> List.map string |> String.concat ", ")
+    let private formatShape (shape: int64[]) =
+        sprintf "[%s]" (shape |> Array.map string |> String.concat ", ")
 
     type private ParamMatch<'Source> =
         | Matched of name: string * target: Tensor * source: 'Source
@@ -98,8 +99,8 @@ module Model =
 
     let private classifyParam
         (lookup: Map<string, 'Source>)
-        (getShape: 'Source -> int list)
-        (getDType: 'Source -> DType)
+        (getShape: 'Source -> int64[])
+        (getDType: 'Source -> torch.ScalarType)
         (name: string)
         (tensor: Tensor)
         : ParamMatch<'Source> =
@@ -109,16 +110,16 @@ module Model =
             let srcShape = getShape src
             let srcDType = getDType src
 
-            if tensor.Shape <> srcShape then
+            if tensor.shape <> srcShape then
                 ShapeMismatch {
                     Name = name
-                    Expected = formatShape tensor.Shape
+                    Expected = formatShape tensor.shape
                     Got = formatShape srcShape
                 }
-            elif tensor.DType <> srcDType then
+            elif tensor.dtype <> srcDType then
                 DTypeMismatch {
                     Name = name
-                    Expected = string tensor.DType
+                    Expected = string tensor.dtype
                     Got = string srcDType
                 }
             else
@@ -178,7 +179,7 @@ module Model =
     /// Return all tensors that require gradients.
     let trainableVars (model: 'T) : Tensor list =
         namedParams model
-        |> List.choose (fun (_, t) -> if t.RequiresGrad then Some t else None)
+        |> List.choose (fun (_, t) -> if t.requires_grad then Some t else None)
 
     /// Save all model tensors to a .safetensors file.
     let save (model: 'T) (filePath: string) : unit =
@@ -210,7 +211,7 @@ module Model =
 
         let matches =
             modelNames
-            |> List.map (fun (name, tensor) -> classifyParam lookup (_.Shape) (_.DType) name tensor)
+            |> List.map (fun (name, tensor) -> classifyParam lookup (_.shape) (_.dtype) name tensor)
 
         let modelNameSet = modelNames |> List.map fst |> Set.ofList
 
@@ -246,7 +247,7 @@ module Model =
 
         let matches =
             modelNames
-            |> List.map (fun (name, tensor) -> classifyParam allMeta (_.Shape) (_.DType) name tensor)
+            |> List.map (fun (name, tensor) -> classifyParam allMeta (fun m -> m.Shape) (fun m -> m.DType) name tensor)
 
         let report = buildReport matches unexpected
         enforceStrict report mode

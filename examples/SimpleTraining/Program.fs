@@ -1,23 +1,25 @@
+open TorchSharp
 open Toro
 open Toro.NN
 
 [<EntryPoint>]
 let main _argv =
     let x =
-        Tensor.ofArray (
+        torch.tensor (
             array2D [|
                 [| 0f; 0f |] //
                 [| 0f; 1f |]
                 [| 1f; 0f |]
                 [| 1f; 1f |]
             |],
-            Cpu
+            device = torch.CPU
         )
 
-    let y = Tensor.ofArray (array2D [| [| 0f |]; [| 1f |]; [| 1f |]; [| 0f |] |], Cpu)
+    let y =
+        torch.tensor (array2D [| [| 0f |]; [| 1f |]; [| 1f |]; [| 0f |] |], device = torch.CPU)
 
-    let l1 = Linear.init 2 16 F32 Cpu
-    let l2 = Linear.init 16 1 F32 Cpu
+    let l1 = Linear.init 2 16 torch.float32 torch.CPU
+    let l2 = Linear.init 16 1 torch.float32 torch.CPU
 
     let model =
         sequential {
@@ -39,7 +41,7 @@ let main _argv =
             opt.step ()
 
             if epoch % 100 = 0 then
-                let v = loss.toFloat32Scalar ()
+                let v = loss.ToSingle()
                 printfn "  epoch %4d  loss = %.6f" epoch v
         }
 
@@ -49,7 +51,7 @@ let main _argv =
     let pred =
         Toro.noGrad (fun () ->
             let p = model.forward x
-            p.flattenAll ())
+            p.flatten ())
 
     let labels = [|
         "0 XOR 0" //
@@ -59,7 +61,7 @@ let main _argv =
     |]
 
     for i in 0..3 do
-        let v = pred[i].toFloat32Scalar ()
+        let v = pred[i].ToSingle()
         printfn "  %s = %.3f" labels[i] v
 
     0

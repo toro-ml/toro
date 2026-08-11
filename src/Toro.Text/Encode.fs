@@ -1,5 +1,6 @@
 namespace Toro.Text
 
+open TorchSharp
 open Toro
 
 /// Text-to-tensor encoding utilities.
@@ -14,13 +15,13 @@ module Encode =
             tokens @ List.replicate (maxLen - len) padId
 
     /// Generate an attention mask: 1 where token differs from padId, 0 at pad positions.
-    let attentionMask (tokens: Tensor) (padId: int) : Tensor = tokens.neScalar (float padId)
+    let attentionMask (tokens: Tensor) (padId: int) : Tensor = tokens.ne (scalar (float padId))
 
     /// Encode a single text to a 1-D token ID tensor of length maxLen.
-    let toTensor (tokenizer: Tokenizer) (text: string) (maxLen: int) (padId: int) (device: Device) : Tensor =
+    let toTensor (tokenizer: Tokenizer) (text: string) (maxLen: int) (padId: int) (device: torch.Device) : Tensor =
         let ids = tokenizer.encode text |> padOrTruncate maxLen padId
         let data = ids |> List.map int64 |> List.toArray
-        Tensor.ofArray (data, device)
+        torch.tensor (data, device = device)
 
     /// Encode a batch of texts to a padded [B, L] tensor and an attention mask.
     let batch
@@ -28,7 +29,7 @@ module Encode =
         (texts: string list)
         (maxLen: int)
         (padId: int)
-        (device: Device)
+        (device: torch.Device)
         : struct (Tensor * Tensor) =
         let encoded =
             texts
@@ -40,6 +41,6 @@ module Encode =
             |> List.toArray
             |> array2D
 
-        let ids = Tensor.ofArray (data, device)
+        let ids = torch.tensor (data, device = device)
         let mask = attentionMask ids padId
         struct (ids, mask)

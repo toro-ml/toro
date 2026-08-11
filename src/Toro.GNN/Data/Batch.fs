@@ -1,5 +1,6 @@
 namespace Toro.GNN
 
+open TorchSharp
 open Toro
 
 /// Batching multiple graphs into a single disconnected graph (PyG-style).
@@ -8,12 +9,11 @@ module Batch =
     /// Node features are concatenated along dim 0.
     /// Edge indices are offset by cumulative node counts.
     /// A batch vector [N_total] maps each node to its source graph index.
-    let batch (graphs: GraphData list) : GraphData =
-        let device = graphs[0].X.Device
-        let dtype = graphs[0].X.DType
+    let batch (graphs: GraphData array) : GraphData =
+        let device = graphs[0].X.device
         let numGraphs = graphs.Length
 
-        let mutable nodeOffset = 0
+        let mutable nodeOffset = 0L
         let mutable xs = []
         let mutable edgeIndices = []
         let mutable batchVecs = []
@@ -27,12 +27,14 @@ module Batch =
             xs <- g.X :: xs
 
             let offset =
-                Tensor.full ([ 2; GraphData.numEdges g ], float nodeOffset, I64, device)
+                torch.full ([| 2L; GraphData.numEdges g |], scalar (float nodeOffset), dtype = torch.int64, device = device)
 
             let offsetEdgeIndex = g.EdgeIndex.add offset
             edgeIndices <- offsetEdgeIndex :: edgeIndices
 
-            let bv = Tensor.full ([ numNodes ], float i, I64, device)
+            let bv =
+                torch.full ([| numNodes |], scalar (float i), dtype = torch.int64, device = device)
+
             batchVecs <- bv :: batchVecs
 
             if hasEdgeAttr then
@@ -42,13 +44,13 @@ module Batch =
 
             nodeOffset <- nodeOffset + numNodes
 
-        let x = Tensor.cat (List.rev xs, 0)
-        let edgeIndex = Tensor.cat (List.rev edgeIndices, 1)
-        let batchVec = Tensor.cat (List.rev batchVecs, 0)
+        let x = torch.cat (List.rev xs |> List.toArray, 0L)
+        let edgeIndex = torch.cat (List.rev edgeIndices |> List.toArray, 1L)
+        let batchVec = torch.cat (List.rev batchVecs |> List.toArray, 0L)
 
         let edgeAttr =
             if hasEdgeAttr && edgeAttrs.Length > 0 then
-                Some(Tensor.cat (List.rev edgeAttrs, 0))
+                Some(torch.cat (List.rev edgeAttrs |> List.toArray, 0L))
             else
                 None
 
@@ -60,7 +62,7 @@ module Batch =
         }
 
     /// Return the number of graphs in a batched graph.
-    let numGraphs (g: GraphData) : int =
+    let numGraphs (g: GraphData) : int64 =
         match g.Batch with
-        | Some b -> int (b.Inner.max().item<int64> ()) + 1
+        | Some b -> b.max().ToInt64() + 1L
         | None -> 1

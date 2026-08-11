@@ -5,6 +5,7 @@ open System.Text
 open Xunit
 open FsUnit.Xunit
 open Toro
+open TorchSharp
 open Toro.NN
 open TestHelper
 
@@ -18,22 +19,22 @@ let private withTempDir f =
         if Directory.Exists dir then
             Directory.Delete(dir, true)
 
-let private tensorSum (t: Tensor) = (t.sumAll ()).toFloat32Scalar ()
+let private tensorSum (t: Tensor) = (t.sum ()).ToSingle()
 
 [<Fact>]
-let ``SafeTensors round-trip F32`` () =
+let ``SafeTensors round-trip torch.float32`` () =
     withTempDir (fun dir ->
         let path = Path.Combine(dir, "test.safetensors")
-        let t1 = Tensor.randn ([ 3; 4 ], F32, Cpu)
-        let t2 = Tensor.randn ([ 5 ], F32, Cpu)
+        let t1 = torch.randn ([| 3L; 4L |], dtype = torch.float32, device = torch.CPU)
+        let t2 = torch.randn ([| 5L |], dtype = torch.float32, device = torch.CPU)
         let tensors = Map [ "weight", t1; "bias", t2 ]
 
         SafeTensors.save tensors path
         let loaded = SafeTensors.load path
 
         loaded |> Map.count |> should equal 2
-        loaded["weight"].Shape |> should equal [ 3; 4 ]
-        loaded["bias"].Shape |> should equal [ 5 ]
+        loaded["weight"].shape |> should equal [| 3L; 4L |]
+        loaded["bias"].shape |> should equal [| 5L |]
 
         tensorSum loaded["weight"]
         |> should (equalWithin 1e-5f) (tensorSum t1)
@@ -42,22 +43,22 @@ let ``SafeTensors round-trip F32`` () =
         |> should (equalWithin 1e-5f) (tensorSum t2))
 
 [<Fact>]
-let ``SafeTensors round-trip I64`` () =
+let ``SafeTensors round-trip torch.int64`` () =
     withTempDir (fun dir ->
         let path = Path.Combine(dir, "int.safetensors")
 
-        let t = Tensor.ofArray ([| 1L; 2L; 3L; 4L; 5L; 6L |], Cpu)
+        let t = torch.tensor ([| 1L; 2L; 3L; 4L; 5L; 6L |], device = torch.CPU)
 
         let tensors = Map [ "ids", t ]
 
         SafeTensors.save tensors path
         let loaded = SafeTensors.load path
 
-        loaded["ids"].Shape |> should equal [ 6 ]
+        loaded["ids"].shape |> should equal [| 6L |]
 
-        let orig = (t.sumAll ()).toInt64Scalar ()
+        let orig = (t.sum ()).ToInt64()
 
-        let roundTripped = (loaded["ids"].sumAll ()).toInt64Scalar ()
+        let roundTripped = (loaded["ids"].sum ()).ToInt64()
 
 
         roundTripped |> should equal orig)
@@ -66,15 +67,15 @@ let ``SafeTensors round-trip I64`` () =
 let ``SafeTensors round-trip multiple dtypes`` () =
     withTempDir (fun dir ->
         let path = Path.Combine(dir, "multi.safetensors")
-        let f32 = Tensor.randn ([ 2; 3 ], F32, Cpu)
-        let f64 = Tensor.randn ([ 4 ], F64, Cpu)
+        let f32 = torch.randn ([| 2L; 3L |], dtype = torch.float32, device = torch.CPU)
+        let f64 = torch.randn ([| 4L |], dtype = torch.float64, device = torch.CPU)
         let tensors = Map [ "f32", f32; "f64", f64 ]
 
         SafeTensors.save tensors path
         let loaded = SafeTensors.load path
 
-        loaded["f32"].DType |> should equal F32
-        loaded["f64"].DType |> should equal F64)
+        loaded["f32"].dtype |> should equal torch.float32
+        loaded["f64"].dtype |> should equal torch.float64)
 
 [<Fact>]
 let ``SafeTensors empty map produces valid file`` () =
@@ -88,7 +89,7 @@ let ``SafeTensors empty map produces valid file`` () =
 let ``SafeTensors scalar tensor round-trip`` () =
     withTempDir (fun dir ->
         let path = Path.Combine(dir, "scalar.safetensors")
-        let t = Tensor.ofArray ([| 42.0f |], Cpu)
+        let t = torch.tensor ([| 42.0f |], device = torch.CPU)
         let tensors = Map [ "val", t ]
 
         SafeTensors.save tensors path
@@ -98,7 +99,7 @@ let ``SafeTensors scalar tensor round-trip`` () =
 
 [<Fact>]
 let ``Model.loadFromDict without nameMap`` () =
-    let linear = Linear.init 4 2 F32 Cpu
+    let linear = Linear.init 4 2 torch.float32 torch.CPU
     let original = Model.namedParams linear
 
     let dict =
@@ -106,7 +107,7 @@ let ``Model.loadFromDict without nameMap`` () =
         |> List.map (fun (name, t) -> name, t)
         |> Map.ofList
 
-    let linear2 = Linear.init 4 2 F32 Cpu
+    let linear2 = Linear.init 4 2 torch.float32 torch.CPU
     let report = Model.loadFromDict linear2 dict None Strict
 
     report.Loaded.Length |> should equal 2
@@ -121,7 +122,7 @@ let ``Model.loadFromDict without nameMap`` () =
 
 [<Fact>]
 let ``Model.loadFromDict with nameMap`` () =
-    let linear = Linear.init 4 2 F32 Cpu
+    let linear = Linear.init 4 2 torch.float32 torch.CPU
     let original = Model.namedParams linear
 
     let renamedDict =
@@ -134,7 +135,7 @@ let ``Model.loadFromDict with nameMap`` () =
         |> List.map (fun (name, _) -> "hf." + name, name)
         |> Map.ofList
 
-    let linear2 = Linear.init 4 2 F32 Cpu
+    let linear2 = Linear.init 4 2 torch.float32 torch.CPU
 
     let report = Model.loadFromDict linear2 renamedDict (Some nameMap) Strict
 
@@ -147,7 +148,7 @@ let ``Model.loadFromDict with nameMap`` () =
 
 [<Fact>]
 let ``Model.loadFromDict Lenient reports missing keys`` () =
-    let linear = Linear.init 4 2 F32 Cpu
+    let linear = Linear.init 4 2 torch.float32 torch.CPU
     let before = Model.namedParams linear |> List.head |> snd |> tensorSum
     let report = Model.loadFromDict linear Map.empty None Lenient
     let after = Model.namedParams linear |> List.head |> snd |> tensorSum
@@ -159,7 +160,7 @@ let ``Model.loadFromDict Lenient reports missing keys`` () =
 
 [<Fact>]
 let ``Model.loadFromDict Strict fails on missing keys`` () =
-    let linear = Linear.init 4 2 F32 Cpu
+    let linear = Linear.init 4 2 torch.float32 torch.CPU
 
     try
         Model.loadFromDict linear Map.empty None Strict |> ignore
@@ -169,16 +170,16 @@ let ``Model.loadFromDict Strict fails on missing keys`` () =
 
 [<Fact>]
 let ``Model.loadFromDict Strict fails on unexpected keys`` () =
-    let linear = Linear.init 4 2 F32 Cpu
+    let linear = Linear.init 4 2 torch.float32 torch.CPU
     let original = Model.namedParams linear
 
     let dict =
         original
         |> List.map (fun (name, t) -> name, t)
         |> Map.ofList
-        |> Map.add "Extra" (Tensor.randn ([ 2 ], F32, Cpu))
+        |> Map.add "Extra" (torch.randn ([| 2L |], dtype = torch.float32, device = torch.CPU))
 
-    let linear2 = Linear.init 4 2 F32 Cpu
+    let linear2 = Linear.init 4 2 torch.float32 torch.CPU
 
     try
         Model.loadFromDict linear2 dict None Strict |> ignore
@@ -192,24 +193,24 @@ let ``Model.loadFromDict Strict fails on unexpected keys`` () =
 let ``SafeTensors loadMeta returns tensor metadata`` () =
     withTempDir (fun dir ->
         let path = Path.Combine(dir, "meta.safetensors")
-        let t1 = Tensor.randn ([ 3; 4 ], F32, Cpu)
-        let t2 = Tensor.randn ([ 5 ], F64, Cpu)
+        let t1 = torch.randn ([| 3L; 4L |], dtype = torch.float32, device = torch.CPU)
+        let t2 = torch.randn ([| 5L |], dtype = torch.float64, device = torch.CPU)
         let tensors = Map [ "weight", t1; "bias", t2 ]
 
         SafeTensors.save tensors path
         let meta = SafeTensors.loadMeta path
 
         meta |> Map.count |> should equal 2
-        meta["weight"].DType |> should equal F32
-        meta["weight"].Shape |> should equal [ 3; 4 ]
-        meta["bias"].DType |> should equal F64
-        meta["bias"].Shape |> should equal [ 5 ])
+        meta["weight"].DType |> should equal torch.float32
+        meta["weight"].Shape |> should equal [| 3L; 4L |]
+        meta["bias"].DType |> should equal torch.float64
+        meta["bias"].Shape |> should equal [| 5L |])
 
 [<Fact>]
 let ``SafeTensors save produces 8-byte aligned header`` () =
     withTempDir (fun dir ->
         let path = Path.Combine(dir, "aligned.safetensors")
-        let t = Tensor.randn ([ 2 ], F32, Cpu)
+        let t = torch.randn ([| 2L |], dtype = torch.float32, device = torch.CPU)
         SafeTensors.save (Map [ "x", t ]) path
 
         use fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read)
@@ -221,9 +222,9 @@ let ``SafeTensors save produces 8-byte aligned header`` () =
 let ``SafeTensors loadSelected loads only requested tensors`` () =
     withTempDir (fun dir ->
         let path = Path.Combine(dir, "selective.safetensors")
-        let t1 = Tensor.randn ([ 3 ], F32, Cpu)
-        let t2 = Tensor.randn ([ 5 ], F32, Cpu)
-        let t3 = Tensor.randn ([ 7 ], F32, Cpu)
+        let t1 = torch.randn ([| 3L |], dtype = torch.float32, device = torch.CPU)
+        let t2 = torch.randn ([| 5L |], dtype = torch.float32, device = torch.CPU)
+        let t3 = torch.randn ([| 7L |], dtype = torch.float32, device = torch.CPU)
         let tensors = Map [ "a", t1; "b", t2; "c", t3 ]
 
         SafeTensors.save tensors path
@@ -237,12 +238,12 @@ let ``SafeTensors loadSelected loads only requested tensors`` () =
 
 [<Fact>]
 let ``Model.loadFromDict Lenient reports shape mismatch`` () =
-    let linear = Linear.init 4 2 F32 Cpu
+    let linear = Linear.init 4 2 torch.float32 torch.CPU
 
     let wrongShapeDict =
         Map [
-            "Weight", Tensor.randn ([ 3; 2 ], F32, Cpu)
-            "Bias", Tensor.randn ([ 2 ], F32, Cpu)
+            "Weight", torch.randn ([| 3L; 2L |], dtype = torch.float32, device = torch.CPU)
+            "Bias", torch.randn ([| 2L |], dtype = torch.float32, device = torch.CPU)
         ]
 
     let report = Model.loadFromDict linear wrongShapeDict None Lenient
@@ -254,12 +255,12 @@ let ``Model.loadFromDict Lenient reports shape mismatch`` () =
 
 [<Fact>]
 let ``Model.loadFromDict Lenient reports dtype mismatch`` () =
-    let linear = Linear.init 4 2 F32 Cpu
+    let linear = Linear.init 4 2 torch.float32 torch.CPU
 
     let wrongDTypeDict =
         Map [
-            "Weight", Tensor.randn ([ 2; 4 ], F64, Cpu)
-            "Bias", Tensor.randn ([ 2 ], F32, Cpu)
+            "Weight", torch.randn ([| 2L; 4L |], dtype = torch.float64, device = torch.CPU)
+            "Bias", torch.randn ([| 2L |], dtype = torch.float32, device = torch.CPU)
         ]
 
     let report = Model.loadFromDict linear wrongDTypeDict None Lenient
@@ -271,12 +272,12 @@ let ``Model.loadFromDict Lenient reports dtype mismatch`` () =
 
 [<Fact>]
 let ``Model.loadFromDict Strict fails on shape mismatch`` () =
-    let linear = Linear.init 4 2 F32 Cpu
+    let linear = Linear.init 4 2 torch.float32 torch.CPU
 
     let wrongShapeDict =
         Map [
-            "Weight", Tensor.randn ([ 3; 2 ], F32, Cpu)
-            "Bias", Tensor.randn ([ 2 ], F32, Cpu)
+            "Weight", torch.randn ([| 3L; 2L |], dtype = torch.float32, device = torch.CPU)
+            "Bias", torch.randn ([| 2L |], dtype = torch.float32, device = torch.CPU)
         ]
 
     try
@@ -289,12 +290,12 @@ let ``Model.loadFromDict Strict fails on shape mismatch`` () =
 
 [<Fact>]
 let ``Model.loadFromDict Strict fails on dtype mismatch`` () =
-    let linear = Linear.init 4 2 F32 Cpu
+    let linear = Linear.init 4 2 torch.float32 torch.CPU
 
     let wrongDTypeDict =
         Map [
-            "Weight", Tensor.randn ([ 2; 4 ], F64, Cpu)
-            "Bias", Tensor.randn ([ 2 ], F32, Cpu)
+            "Weight", torch.randn ([| 2L; 4L |], dtype = torch.float64, device = torch.CPU)
+            "Bias", torch.randn ([| 2L |], dtype = torch.float32, device = torch.CPU)
         ]
 
     try
@@ -341,7 +342,7 @@ let ``SafeTensors allows zero-element tensor`` () =
 
         let loaded = SafeTensors.load path
         loaded |> Map.count |> should equal 1
-        loaded["empty"].Shape |> should equal [ 0; 4 ])
+        loaded["empty"].shape |> should equal [| 0L; 4L |])
 
 [<Fact>]
 let ``SafeTensors rejects offset gap`` () =
@@ -379,9 +380,9 @@ let ``SafeTensors rejects overlapping offsets`` () =
 let ``SafeTensors save orders by descending dtype alignment then name`` () =
     withTempDir (fun dir ->
         let path = Path.Combine(dir, "sorted.safetensors")
-        let u8 = Tensor.zeros ([ 1 ], U8, Cpu)
-        let f64 = Tensor.randn ([ 1 ], F64, Cpu)
-        let f32 = Tensor.randn ([ 1 ], F32, Cpu)
+        let u8 = torch.zeros ([| 1L |], dtype = torch.ScalarType.Byte, device = torch.CPU)
+        let f64 = torch.randn ([| 1L |], dtype = torch.float64, device = torch.CPU)
+        let f32 = torch.randn ([| 1L |], dtype = torch.float32, device = torch.CPU)
 
         SafeTensors.save (Map [ "z_u8", u8; "a_f32", f32; "b_f64", f64 ]) path
 

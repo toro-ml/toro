@@ -4,6 +4,7 @@
 //   dotnet run                                                         Default repo
 //   dotnet run -- distilbert/distilbert-base-uncased-finetuned-sst-2-english
 
+open TorchSharp
 open Toro
 open Toro.NN
 open Toro.Hub
@@ -56,10 +57,10 @@ let nLayers = 6
 // ---------------------------------------------------------------------------
 
 let createAttention () =
-    let q = Linear.init dim dim F32 Cpu
-    let k = Linear.init dim dim F32 Cpu
-    let v = Linear.init dim dim F32 Cpu
-    let outLin = Linear.init dim dim F32 Cpu
+    let q = Linear.init dim dim torch.float32 torch.CPU
+    let k = Linear.init dim dim torch.float32 torch.CPU
+    let v = Linear.init dim dim torch.float32 torch.CPU
+    let outLin = Linear.init dim dim torch.float32 torch.CPU
 
     {
         Q = q
@@ -72,10 +73,10 @@ let createAttention () =
 
 let createLayer () =
     let attn = createAttention ()
-    let saNorm = LayerNorm.initDefault dim F32 Cpu
-    let ffn1 = Linear.init dim ffDim F32 Cpu
-    let ffn2 = Linear.init ffDim dim F32 Cpu
-    let outputNorm = LayerNorm.initDefault dim F32 Cpu
+    let saNorm = LayerNorm.initDefault dim torch.float32 torch.CPU
+    let ffn1 = Linear.init dim ffDim torch.float32 torch.CPU
+    let ffn2 = Linear.init ffDim dim torch.float32 torch.CPU
+    let outputNorm = LayerNorm.initDefault dim torch.float32 torch.CPU
 
     {
         Attention = attn
@@ -86,14 +87,14 @@ let createLayer () =
     }
 
 let createModel () =
-    let wordEmb = Embedding.init vocabSize dim F32 Cpu
-    let posEmb = Embedding.init maxPositions dim F32 Cpu
-    let embNorm = LayerNorm.initDefault dim F32 Cpu
+    let wordEmb = Embedding.init vocabSize dim torch.float32 torch.CPU
+    let posEmb = Embedding.init maxPositions dim torch.float32 torch.CPU
+    let embNorm = LayerNorm.initDefault dim torch.float32 torch.CPU
 
     let layers = [ for _ in 0 .. nLayers - 1 -> createLayer () ]
 
-    let preClassifier = Linear.init dim dim F32 Cpu
-    let classifier = Linear.init dim 2 F32 Cpu
+    let preClassifier = Linear.init dim dim torch.float32 torch.CPU
+    let classifier = Linear.init dim 2 torch.float32 torch.CPU
 
     {
         WordEmbeddings = wordEmb
@@ -109,24 +110,35 @@ let createModel () =
 // ---------------------------------------------------------------------------
 
 let forwardAttention (attn: DistilBertAttention) (hidden: Tensor) =
-    let batchSz = hidden.Shape[0]
-    let seqLen = hidden.Shape[1]
+    let batchSz = int hidden.shape[0]
+    let seqLen = int hidden.shape[1]
 
     let q = attn.Q.forward hidden
     let k = attn.K.forward hidden
     let v = attn.V.forward hidden
 
-    let q = q.reshape [ batchSz; seqLen; attn.NumHeads; attn.HeadDim ]
-    let q = q.permute [ 0; 2; 1; 3 ]
-    let k = k.reshape [ batchSz; seqLen; attn.NumHeads; attn.HeadDim ]
-    let k = k.permute [ 0; 2; 1; 3 ]
-    let v = v.reshape [ batchSz; seqLen; attn.NumHeads; attn.HeadDim ]
-    let v = v.permute [ 0; 2; 1; 3 ]
+    let q =
+        q.reshape ([| int64 batchSz; int64 seqLen; int64 attn.NumHeads; int64 attn.HeadDim |])
 
-    let a = q.scaledDotProductAttention (k, v)
-    let a = a.permute [ 0; 2; 1; 3 ]
+    let q = q.permute ([| 0L; 2L; 1L; 3L |])
+
+    let k =
+        k.reshape ([| int64 batchSz; int64 seqLen; int64 attn.NumHeads; int64 attn.HeadDim |])
+
+    let k = k.permute ([| 0L; 2L; 1L; 3L |])
+
+    let v =
+        v.reshape ([| int64 batchSz; int64 seqLen; int64 attn.NumHeads; int64 attn.HeadDim |])
+
+    let v = v.permute ([| 0L; 2L; 1L; 3L |])
+
+    let a = torch.nn.functional.scaled_dot_product_attention (q, k, v)
+    let a = a.permute ([| 0L; 2L; 1L; 3L |])
     let a = a.contiguous ()
-    let a = a.reshape [ batchSz; seqLen; attn.NumHeads * attn.HeadDim ]
+
+    let a =
+        a.reshape ([| int64 batchSz; int64 seqLen; int64 (attn.NumHeads * attn.HeadDim) |])
+
     attn.OutLin.forward a
 
 let forwardLayer (layer: DistilBertLayer) (hidden: Tensor) =
@@ -143,11 +155,13 @@ let forwardLayer (layer: DistilBertLayer) (hidden: Tensor) =
     layer.OutputNorm.forward hidden
 
 let forward (model: DistilBertClassifier) (inputIds: Tensor) =
-    let seqLen = inputIds.Shape[1]
+    let seqLen = inputIds.shape[1]
 
     // Embeddings: word + position
-    let posIds = Tensor.arange (float seqLen, I64, Cpu)
-    let posIds = posIds.unsqueeze 0
+    let posIds =
+        torch.arange (seqLen, dtype = torch.int64, device = torch.CPU)
+        |> fun t -> t.unsqueeze (0L)
+
     let wordEmb = model.WordEmbeddings.forward inputIds
     let posEmb = model.PositionEmbeddings.forward posIds
     let hidden = wordEmb.add posEmb
@@ -267,12 +281,15 @@ let main argv =
                 let ids = tokenizer.encode text
                 let withSpecial = 101 :: ids @ [ 102 ]
                 let data = withSpecial |> List.map int64 |> List.toArray
-                let input = Tensor.ofArray (data, Cpu)
-                let input = input.unsqueeze 0
+
+                let input =
+                    torch.tensor (data, dtype = torch.int64, device = torch.CPU)
+                    |> fun t -> t.unsqueeze (int64 0)
+
                 forward model input)
 
-        let pred = logits.argmax 1
-        let idx = pred[0].toFloat32Scalar ()
+        let pred = logits.argmax (int64 1)
+        let idx = pred[0].ToSingle()
         let label = labels[int idx]
         printfn "  %-25s -> %s" text label
 

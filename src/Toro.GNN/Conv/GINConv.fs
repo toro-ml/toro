@@ -1,5 +1,6 @@
 namespace Toro.GNN
 
+open TorchSharp
 open Toro
 open Toro.NN
 
@@ -14,8 +15,8 @@ type GINConv = {
 } with
 
     member this.forward(x: Tensor, edgeIndex: Tensor) : Tensor =
-        let numNodes = x.Shape[0]
-        let features = x.Shape[1]
+        let numNodes = x.shape[0]
+        let features = x.shape[1]
 
         let src = edgeIndex[0]
         let tgt = edgeIndex[1]
@@ -23,8 +24,8 @@ type GINConv = {
         let msg = x[src]
         let aggr = MessagePassing.aggregate Add msg tgt numNodes features
 
-        let epsVal = this.Eps.toFloat32Scalar ()
-        let h = x * (1.0 + float epsVal) + aggr
+        let epsVal = this.Eps.ToDouble()
+        let h = x * (1.0 + epsVal) + aggr
         let h = this.Linear1.forward h
         let h = h.relu ()
         this.Linear2.forward h
@@ -32,16 +33,16 @@ type GINConv = {
 module GINConv =
     /// Create a GINConv with a 2-layer MLP. trainEps controls whether eps is learnable.
     let init
-        (inChannels: int)
-        (hiddenChannels: int)
-        (outChannels: int)
+        (inChannels: int64)
+        (hiddenChannels: int64)
+        (outChannels: int64)
         (trainEps: bool)
-        (dtype: DType)
-        (device: Device)
+        (dtype: torch.ScalarType)
+        (device: torch.Device)
         : GINConv =
-        let eps = Init.toTensor [ 1 ] dtype device (Init.Const 0.0)
+        let eps = Init.toTensor [| 1L |] dtype device (Init.Const 0.0)
 
-        let eps = if trainEps then eps.requiresGrad () else eps
+        let eps = if trainEps then eps.requires_grad_ () else eps
 
         let lin1 = Linear.init inChannels hiddenChannels dtype device
         let lin2 = Linear.init hiddenChannels outChannels dtype device

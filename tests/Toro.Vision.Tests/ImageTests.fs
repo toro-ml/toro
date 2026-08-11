@@ -4,6 +4,7 @@ open Xunit
 open FsUnit.Xunit
 open SkiaSharp
 open Toro
+open TorchSharp
 open Toro.Vision
 open TestHelper
 
@@ -20,8 +21,8 @@ let ``toTensor produces [3, H, W] from SKBitmap`` () =
             System.Runtime.InteropServices.Marshal.WriteByte(pixels + offset + 2n, 0uy)
             System.Runtime.InteropServices.Marshal.WriteByte(pixels + offset + 3n, 255uy)
 
-    let t = Image.toTensor bmp Cpu
-    t.Shape |> should equal [ 3; 3; 4 ]
+    let t = Image.toTensor bmp torch.CPU
+    t.shape |> should equal [| 3L; 3L; 4L |]
 
     t.at [ I 0; I 0; I 0 ]
     |> scalarF32
@@ -49,7 +50,7 @@ let ``fromTensor roundtrips correctly`` () =
         System.Runtime.InteropServices.Marshal.WriteByte(pixels + offset + 2n, 50uy)
         System.Runtime.InteropServices.Marshal.WriteByte(pixels + offset + 3n, 255uy)
 
-    let t = Image.toTensor bmp Cpu
+    let t = Image.toTensor bmp torch.CPU
     let bmp2 = Image.fromTensor t
 
     bmp2.Width |> should equal 2
@@ -113,22 +114,22 @@ let ``SkiaTransform pipeline composes and produces tensor`` () =
     let bmp = new SKBitmap(100, 100, SKColorType.Rgba8888, SKAlphaType.Unpremul)
 
     let result =
-        SkiaTransform.pipeline [ SkiaTransform.resize 50 50; SkiaTransform.flipH ] bmp Cpu
+        SkiaTransform.pipeline [ SkiaTransform.resize 50 50; SkiaTransform.flipH ] bmp torch.CPU
 
     let t = result
-    t.Shape |> should equal [ 3; 50; 50 ]
+    t.shape |> should equal [| 3L; 50L; 50L |]
     bmp.Dispose()
 
 [<Fact>]
 let ``Normalize direct member call works without cast`` () =
-    let x = Tensor.ones ([ 3; 4; 4 ], F32, Cpu)
+    let x = torch.ones ([| 3L; 4L; 4L |], dtype = torch.float32, device = torch.CPU)
     let norm = Normalize.imageNet
     let out = norm.apply x
-    out.Shape |> should equal [ 3; 4; 4 ]
+    out.shape |> should equal [| 3L; 4L; 4L |]
 
 [<Fact>]
 let ``Resize direct member call works without cast`` () =
-    let x = Tensor.randn ([ 3; 32; 32 ], F32, Cpu)
+    let x = torch.randn ([| 3L; 32L; 32L |], dtype = torch.float32, device = torch.CPU)
     let r = Resize.create 16 16
     let out = r.apply x
-    out.Shape |> should equal [ 3; 16; 16 ]
+    out.shape |> should equal [| 3L; 16L; 16L |]

@@ -18,10 +18,10 @@ type Autoencoder = {
         member this.forward x = this.forward x
 
 let createModel (latentDim: int) =
-    let enc1 = Linear.init 784 256 F32 Cpu
-    let enc2 = Linear.init 256 latentDim F32 Cpu
-    let dec1 = Linear.init latentDim 256 F32 Cpu
-    let dec2 = Linear.init 256 784 F32 Cpu
+    let enc1 = Linear.init 784 256 torch.float32 torch.CPU
+    let enc2 = Linear.init 256 latentDim torch.float32 torch.CPU
+    let dec1 = Linear.init latentDim 256 torch.float32 torch.CPU
+    let dec2 = Linear.init 256 784 torch.float32 torch.CPU
 
     {
         Encoder =
@@ -40,8 +40,7 @@ let createModel (latentDim: int) =
     }
 
 let preprocessBatch (images: torch.Tensor) (model: Autoencoder) =
-    let x = Tensor.ofTorchTensor images
-    let x = x.flatten (1, -1)
+    let x = images.flatten (int64 1, int64 -1)
     let recon = model.forward x
     x, recon
 
@@ -93,7 +92,7 @@ let main _argv =
                 opt.step ()
 
                 let n = images.shape[0]
-                totalLoss <- totalLoss + float (loss.item ()) * float n
+                totalLoss <- totalLoss + loss.ToDouble() * float n
                 totalSamples <- totalSamples + n
             }
 
@@ -110,7 +109,7 @@ let main _argv =
                     let x, recon = preprocessBatch images model
                     let loss = Loss.mse recon x
                     let n = images.shape[0]
-                    testLoss <- testLoss + float (loss.item ()) * float n
+                    testLoss <- testLoss + loss.ToDouble() * float n
                     testTotal <- testTotal + n
                 })
 
@@ -126,11 +125,11 @@ let main _argv =
                 let orig, recon = preprocessBatch images model
 
                 let toGrid (t: Tensor) =
-                    t.at([ S(0, sampleCount) ]).reshape [ sampleCount; 1; 28; 28 ]
+                    t.at([ S(0, sampleCount) ]).reshape ([| int64 sampleCount; 1L; 28L; 28L |])
 
                 let origGrid = toGrid orig
                 let reconGrid = toGrid recon
-                let combined = Tensor.cat ([ origGrid; reconGrid ], 0)
+                let combined = torch.cat ([| origGrid; reconGrid |], int64 0)
                 let outPath = Path.Combine(__SOURCE_DIRECTORY__, "reconstruction.png")
                 Image.saveGrid combined outPath Png 0 sampleCount
 

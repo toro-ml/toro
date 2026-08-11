@@ -10,13 +10,13 @@ let latentDim = 64
 type Gan = { Gen: Sequential; Disc: Sequential }
 
 let createGan () =
-    let gL1 = Linear.init latentDim 256 F32 Cpu
-    let gL2 = Linear.init 256 512 F32 Cpu
-    let gL3 = Linear.init 512 784 F32 Cpu
+    let gL1 = Linear.init latentDim 256 torch.float32 torch.CPU
+    let gL2 = Linear.init 256 512 torch.float32 torch.CPU
+    let gL3 = Linear.init 512 784 torch.float32 torch.CPU
 
-    let dL1 = Linear.init 784 512 F32 Cpu
-    let dL2 = Linear.init 512 256 F32 Cpu
-    let dL3 = Linear.init 256 1 F32 Cpu
+    let dL1 = Linear.init 784 512 torch.float32 torch.CPU
+    let dL2 = Linear.init 512 256 torch.float32 torch.CPU
+    let dL3 = Linear.init 256 1 torch.float32 torch.CPU
 
     {
         Gen =
@@ -38,8 +38,10 @@ let createGan () =
             }
     }
 
-let generate (gen: Sequential) (batchSize: int) =
-    let z = Tensor.randn ([ batchSize; latentDim ], F32, Cpu)
+let generate (gen: Sequential) (batchSize: int64) =
+    let z =
+        torch.randn ([| batchSize; latentDim |], dtype = torch.float32, device = torch.CPU)
+
     gen.forward z
 
 [<EntryPoint>]
@@ -80,21 +82,25 @@ let main _argv =
         for batch in trainLoader do
             scoped {
                 let images = batch["data"]
-                let n = int images.shape[0]
+                let n = images.shape[0]
 
                 // --- Train Discriminator ---
-                let real = Tensor.ofTorchTensor images
-                let real = real.flatten (1, -1)
-                let real = real.affine (2.0, -1.0)
+                let real = images.flatten (1L, -1L)
+                let real = real * scalar 2.0 + scalar (-1.0)
 
                 let realLogits = gan.Disc.forward real
-                let onesTarget = Tensor.ones ([ n; 1 ], F32, Cpu)
+
+                let onesTarget = torch.ones ([| n; 1L |], dtype = torch.float32, device = torch.CPU)
+
                 let dLossReal = Loss.binaryCrossEntropyWithLogit realLogits onesTarget
 
                 let fake = generate gan.Gen n
                 let fake = fake.detach ()
                 let fakeLogits = gan.Disc.forward fake
-                let zerosTarget = Tensor.zeros ([ n; 1 ], F32, Cpu)
+
+                let zerosTarget =
+                    torch.zeros ([| n; 1L |], dtype = torch.float32, device = torch.CPU)
+
                 let dLossFake = Loss.binaryCrossEntropyWithLogit fakeLogits zerosTarget
 
                 let dLoss = (dLossReal + dLossFake) * 0.5
@@ -111,8 +117,8 @@ let main _argv =
                 gLoss.backward ()
                 optG.step ()
 
-                dLossSum <- dLossSum + dLoss.item ()
-                gLossSum <- gLossSum + gLoss.item ()
+                dLossSum <- dLossSum + dLoss.ToDouble()
+                gLossSum <- gLossSum + gLoss.ToDouble()
                 steps <- steps + 1
             }
 
@@ -125,11 +131,11 @@ let main _argv =
 
     let samples =
         Toro.noGrad (fun () ->
-            let fake = generate gan.Gen 64
+            let fake = generate gan.Gen 64L
             // Scale [-1,1] back to [0,1]
-            fake.affine (0.5, 0.5))
+            fake * scalar 0.5 + scalar 0.5)
 
-    let grid = samples.reshape [ 64; 1; 28; 28 ]
+    let grid = samples.reshape [| 64L; 1L; 28L; 28L |]
     let outPath = Path.Combine(__SOURCE_DIRECTORY__, "generated.png")
     Image.saveGrid grid outPath Png 0 8
 

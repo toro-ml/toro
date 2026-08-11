@@ -1,5 +1,6 @@
 namespace Toro.GNN
 
+open TorchSharp
 open Toro
 
 /// Aggregation strategy for message passing.
@@ -12,51 +13,63 @@ type Aggregation =
 module MessagePassing =
 
     /// Scatter messages [E, F] to target nodes [N, F] using the given aggregation.
-    let aggregate (aggr: Aggregation) (msg: Tensor) (targetIdx: Tensor) (numNodes: int) (features: int) : Tensor =
-        let idx = targetIdx.at([ A; N ]).expand [ msg.Shape[0]; features ]
+    let aggregate (aggr: Aggregation) (msg: Tensor) (targetIdx: Tensor) (numNodes: int64) (features: int64) : Tensor =
+        let idx = targetIdx.at([ A; N ]).expand [| msg.shape[0]; features |]
 
         match aggr with
         | Add ->
-            let out = Tensor.zeros ([ numNodes; features ], msg.DType, msg.Device)
-            out.scatterAdd (0, idx, msg)
+            let out =
+                torch.zeros ([| numNodes; features |], dtype = msg.dtype, device = msg.device)
+
+            out.scatter_add (0L, idx, msg)
         | Mean ->
-            let sum = Tensor.zeros ([ numNodes; features ], msg.DType, msg.Device)
-            let sum = sum.scatterAdd (0, idx, msg)
-            let count = Tensor.zeros ([ numNodes ], msg.DType, msg.Device)
-            let ones = Tensor.ones ([ msg.Shape[0] ], msg.DType, msg.Device)
-            let count = count.scatterAdd (0, targetIdx, ones)
-            let count = count.clamp (1.0, 1e30)
+            let sum =
+                torch.zeros ([| numNodes; features |], dtype = msg.dtype, device = msg.device)
+
+            let sum = sum.scatter_add (0L, idx, msg)
+
+            let count = torch.zeros ([| numNodes |], dtype = msg.dtype, device = msg.device)
+
+            let ones = torch.ones ([| msg.shape[0] |], dtype = msg.dtype, device = msg.device)
+            let count = count.scatter_add (0L, targetIdx, ones)
+            let count = count.clamp (min = scalar 1.0, max = scalar 1e30)
             sum / count.at [ A; N ]
         | Max ->
             let results = ResizeArray<Tensor>()
 
-            for i in 0 .. numNodes - 1 do
-                let mask = targetIdx.eqScalar (float i)
-                let indices = mask.nonzero().squeeze 1
+            for i in 0L .. numNodes - 1L do
+                let mask = targetIdx.eq (scalar (float i))
+                let indices = mask.nonzero().squeeze 1L
 
-                if indices.ElemCount > 0L then
-                    let selected = msg.indexSelect (0, indices)
-                    let maxVals, _ = selected.max 0
+                if indices.NumberOfElements > 0L then
+                    let selected = msg.index_select (0L, indices)
+                    let struct (maxVals, _) = selected.max (0L)
                     results.Add maxVals
                 else
-                    let zeros = Tensor.zeros ([ features ], msg.DType, msg.Device)
+                    let zeros = torch.zeros ([| features |], dtype = msg.dtype, device = msg.device)
+
                     results.Add zeros
 
-            Tensor.stack (results |> Seq.toList, 0)
+            torch.stack (results |> Seq.toArray, 0L)
 
     /// Edge-wise softmax: softmax of scores grouped by target node index.
     /// scores: [E] or [E, H], targetIdx: [E], numNodes: N.
     /// Returns normalized attention coefficients with the same shape as scores.
-    let edgeSoftmax (scores: Tensor) (targetIdx: Tensor) (numNodes: int) : Tensor =
+    let edgeSoftmax (scores: Tensor) (targetIdx: Tensor) (numNodes: int64) : Tensor =
         let expScores = scores.exp ()
 
-        if expScores.Rank = 1 then
-            let denom = Tensor.zeros ([ numNodes ], expScores.DType, expScores.Device)
-            let denom = denom.scatterAdd (0, targetIdx, expScores)
+        if int expScores.ndim = 1 then
+            let denom =
+                torch.zeros ([| numNodes |], dtype = expScores.dtype, device = expScores.device)
+
+            let denom = denom.scatter_add (0L, targetIdx, expScores)
             expScores / denom[targetIdx]
         else
-            let heads = expScores.Shape[1]
-            let idx = targetIdx.at([ A; N ]).expand [ expScores.Shape[0]; heads ]
-            let denom = Tensor.zeros ([ numNodes; heads ], expScores.DType, expScores.Device)
-            let denom = denom.scatterAdd (0, idx, expScores)
+            let heads = expScores.shape[1]
+            let idx = targetIdx.at([ A; N ]).expand [| expScores.shape[0]; heads |]
+
+            let denom =
+                torch.zeros ([| numNodes; heads |], dtype = expScores.dtype, device = expScores.device)
+
+            let denom = denom.scatter_add (0L, idx, expScores)
             expScores / denom.at [ T targetIdx; A ]

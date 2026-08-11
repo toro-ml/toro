@@ -1,5 +1,6 @@
 namespace Toro.NN
 
+open TorchSharp
 open Toro
 
 /// Classification metrics computed on tensors.
@@ -9,9 +10,9 @@ module Metrics =
     /// Both tensors must have the same shape (class indices, not logits).
     let accuracy (pred: Tensor) (target: Tensor) : float =
         let correct = pred.eq target
-        let correctF = correct.toDType F32
-        let total = correctF.meanAll ()
-        total.toFloat64Scalar ()
+        let correctF = correct.to_type torch.float32
+        let total = correctF.mean ()
+        total.ToDouble()
 
     /// Accuracy from logits: take argmax over the last dimension, then compare to target indices.
     let accuracyFromLogits (logits: Tensor) (target: Tensor) : float =
@@ -19,21 +20,18 @@ module Metrics =
         accuracy pred target
 
     let private countForClass (pred: Tensor) (target: Tensor) (c: int) =
-        let pMask = pred.eqScalar (float c)
-        let tMask = target.eqScalar (float c)
+        let pMask = pred.eq (scalar (float c))
+        let tMask = target.eq (scalar (float c))
         let tpMask = pMask * tMask
 
-        let tpF = tpMask.toDType F32
-        let tpSum = tpF.sumAll ()
-        let tp = tpSum.toFloat64Scalar ()
+        let tpF = tpMask.to_type torch.float32
+        let tp = tpF.sum().ToDouble()
 
-        let pF = pMask.toDType F32
-        let pSum = pF.sumAll ()
-        let predCount = pSum.toFloat64Scalar ()
+        let pF = pMask.to_type torch.float32
+        let predCount = pF.sum().ToDouble()
 
-        let tF = tMask.toDType F32
-        let tSum = tF.sumAll ()
-        let targetCount = tSum.toFloat64Scalar ()
+        let tF = tMask.to_type torch.float32
+        let targetCount = tF.sum().ToDouble()
 
         tp, predCount, targetCount
 

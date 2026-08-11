@@ -1,5 +1,6 @@
 namespace Toro.NN
 
+open TorchSharp
 open Toro
 
 type Dropout = {
@@ -10,7 +11,7 @@ type Dropout = {
         if not train || this.DropP = 0.0 then
             x
         else
-            x.dropout (this.DropP, train)
+            torch.nn.functional.dropout (x, this.DropP, train)
 
 module Dropout =
     let create (dropP: float) : Dropout = { DropP = dropP }

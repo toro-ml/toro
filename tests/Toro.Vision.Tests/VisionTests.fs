@@ -3,12 +3,13 @@ module VisionTests
 open Xunit
 open FsUnit.Xunit
 open Toro
+open TorchSharp
 open Toro.Vision
 open TestHelper
 
 [<Fact>]
 let ``Normalize produces correct channel statistics`` () =
-    let x = Tensor.ones ([ 3; 4; 4 ], F32, Cpu)
+    let x = torch.ones ([| 3L; 4L; 4L |], dtype = torch.float32, device = torch.CPU)
 
     let norm: ITransform = {
         Normalize.Mean = [ 0.5; 0.5; 0.5 ]
@@ -16,7 +17,7 @@ let ``Normalize produces correct channel statistics`` () =
     }
 
     let out = norm.apply x
-    out.Shape |> should equal [ 3; 4; 4 ]
+    out.shape |> should equal [| 3L; 4L; 4L |]
 
     out.at [ I 0; I 0; I 0 ]
     |> scalarF32
@@ -24,7 +25,7 @@ let ``Normalize produces correct channel statistics`` () =
 
 [<Fact>]
 let ``Normalize batched produces correct shape`` () =
-    let x = Tensor.ones ([ 2; 3; 4; 4 ], F32, Cpu)
+    let x = torch.ones ([| 2L; 3L; 4L; 4L |], dtype = torch.float32, device = torch.CPU)
 
     let norm: ITransform = {
         Normalize.Mean = [ 0.5; 0.5; 0.5 ]
@@ -32,32 +33,34 @@ let ``Normalize batched produces correct shape`` () =
     }
 
     let out = norm.apply x
-    out.Shape |> should equal [ 2; 3; 4; 4 ]
+    out.shape |> should equal [| 2L; 3L; 4L; 4L |]
 
 [<Fact>]
 let ``Resize produces correct shape`` () =
-    let x = Tensor.randn ([ 3; 32; 32 ], F32, Cpu)
+    let x = torch.randn ([| 3L; 32L; 32L |], dtype = torch.float32, device = torch.CPU)
     let resize = Resize.create 16 16
     let out = resize.apply x
-    out.Shape |> should equal [ 3; 16; 16 ]
+    out.shape |> should equal [| 3L; 16L; 16L |]
 
 [<Fact>]
 let ``Resize batched produces correct shape`` () =
-    let x = Tensor.randn ([ 2; 3; 32; 32 ], F32, Cpu)
+    let x =
+        torch.randn ([| 2L; 3L; 32L; 32L |], dtype = torch.float32, device = torch.CPU)
+
     let resize = Resize.create 16 16
     let out = resize.apply x
-    out.Shape |> should equal [ 2; 3; 16; 16 ]
+    out.shape |> should equal [| 2L; 3L; 16L; 16L |]
 
 [<Fact>]
 let ``RandomCrop produces correct shape`` () =
-    let x = Tensor.randn ([ 3; 32; 32 ], F32, Cpu)
+    let x = torch.randn ([| 3L; 32L; 32L |], dtype = torch.float32, device = torch.CPU)
     let crop = RandomCrop.create 16 16
     let out = crop.apply x
-    out.Shape |> should equal [ 3; 16; 16 ]
+    out.shape |> should equal [| 3L; 16L; 16L |]
 
 [<Fact>]
 let ``RandomCrop rejects too-small input`` () =
-    let x = Tensor.randn ([ 3; 8; 8 ], F32, Cpu)
+    let x = torch.randn ([| 3L; 8L; 8L |], dtype = torch.float32, device = torch.CPU)
     let crop = RandomCrop.create 16 16
 
     try
@@ -68,14 +71,14 @@ let ``RandomCrop rejects too-small input`` () =
 
 [<Fact>]
 let ``RandomHorizontalFlip preserves shape`` () =
-    let x = Tensor.randn ([ 3; 32; 32 ], F32, Cpu)
+    let x = torch.randn ([| 3L; 32L; 32L |], dtype = torch.float32, device = torch.CPU)
     let flip = RandomHorizontalFlip.defaultFlip
     let out = flip.apply x
-    out.Shape |> should equal [ 3; 32; 32 ]
+    out.shape |> should equal [| 3L; 32L; 32L |]
 
 [<Fact>]
 let ``Compose chains transforms`` () =
-    let x = Tensor.randn ([ 3; 32; 32 ], F32, Cpu)
+    let x = torch.randn ([| 3L; 32L; 32L |], dtype = torch.float32, device = torch.CPU)
 
     let transforms: ITransform list = [
         Resize.create 16 16 :> ITransform
@@ -86,4 +89,4 @@ let ``Compose chains transforms`` () =
     ]
 
     let out = Compose.apply transforms x
-    out.Shape |> should equal [ 3; 16; 16 ]
+    out.shape |> should equal [| 3L; 16L; 16L |]

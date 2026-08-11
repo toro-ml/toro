@@ -1,5 +1,6 @@
 namespace Toro.NN
 
+open TorchSharp
 open Toro
 
 /// Fully connected linear layer.
@@ -22,14 +23,16 @@ type Linear = {
 
 module Linear =
     /// Create a linear layer with bias.
-    let init (inDim: int) (outDim: int) (dtype: DType) (device: Device) : Linear =
-        let bound = 1.0 / sqrt (float inDim)
+    let init (inDim: int64) (outDim: int64) (dtype: torch.ScalarType) (device: torch.Device) : Linear =
+        let bound = 1.0 / sqrt (float outDim)
 
-        let ws = Init.toParam [ outDim; inDim ] dtype device Init.defaultKaimingNormal
-        let bs = Init.toParam [ outDim ] dtype device (Init.Uniform(-bound, bound))
+        let ws = Init.toParam [| outDim; inDim |] dtype device Init.defaultKaimingNormal
+
+        let bs = Init.toParam [| outDim |] dtype device (Init.Uniform(-bound, bound))
         { Weight = ws; Bias = Some bs }
 
     /// Create a linear layer without bias.
-    let initNoBias (inDim: int) (outDim: int) (dtype: DType) (device: Device) : Linear =
-        let ws = Init.toParam [ outDim; inDim ] dtype device Init.defaultKaimingNormal
+    let initNoBias (inDim: int64) (outDim: int64) (dtype: torch.ScalarType) (device: torch.Device) : Linear =
+        let ws = Init.toParam [| outDim; inDim |] dtype device Init.defaultKaimingNormal
+
         { Weight = ws; Bias = None }

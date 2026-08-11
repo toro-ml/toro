@@ -1,5 +1,6 @@
 namespace Toro.GNN
 
+open TorchSharp
 open Toro
 open Toro.NN
 
@@ -12,14 +13,15 @@ type SAGEConv = {
 } with
 
     member this.forward(x: Tensor, edgeIndex: Tensor) : Tensor =
-        let numNodes = x.Shape[0]
-        let inChannels = x.Shape[1]
+        let numNodes = x.shape[0]
+        let inChannels = x.shape[1]
 
         let src = edgeIndex[0]
         let tgt = edgeIndex[1]
 
         // Aggregate neighbor features with mean
         let neighborMsg = x.at [ T src; A ]
+
         let aggr = MessagePassing.aggregate Mean neighborMsg tgt numNodes inChannels
 
         // Self transform: x @ W_self^T
@@ -39,15 +41,16 @@ type SAGEConv = {
 
 module SAGEConv =
     /// Create a SAGEConv layer with bias.
-    let init (inChannels: int) (outChannels: int) (dtype: DType) (device: Device) : SAGEConv =
+    let init (inChannels: int64) (outChannels: int64) (dtype: torch.ScalarType) (device: torch.Device) : SAGEConv =
         let wSelf =
-            Init.toParam [ outChannels; inChannels ] dtype device Init.defaultKaimingNormal
+            Init.toParam [| outChannels; inChannels |] dtype device Init.defaultKaimingNormal
 
         let wNeighbor =
-            Init.toParam [ outChannels; inChannels ] dtype device Init.defaultKaimingNormal
+            Init.toParam [| outChannels; inChannels |] dtype device Init.defaultKaimingNormal
 
         let bound = 1.0 / sqrt (float outChannels)
-        let b = Init.toParam [ outChannels ] dtype device (Init.Uniform(-bound, bound))
+
+        let b = Init.toParam [| outChannels |] dtype device (Init.Uniform(-bound, bound))
 
         {
             WeightSelf = wSelf
@@ -56,12 +59,12 @@ module SAGEConv =
         }
 
     /// Create a SAGEConv layer without bias.
-    let initNoBias (inChannels: int) (outChannels: int) (dtype: DType) (device: Device) : SAGEConv =
+    let initNoBias (inChannels: int64) (outChannels: int64) (dtype: torch.ScalarType) (device: torch.Device) : SAGEConv =
         let wSelf =
-            Init.toParam [ outChannels; inChannels ] dtype device Init.defaultKaimingNormal
+            Init.toParam [| outChannels; inChannels |] dtype device Init.defaultKaimingNormal
 
         let wNeighbor =
-            Init.toParam [ outChannels; inChannels ] dtype device Init.defaultKaimingNormal
+            Init.toParam [| outChannels; inChannels |] dtype device Init.defaultKaimingNormal
 
         {
             WeightSelf = wSelf

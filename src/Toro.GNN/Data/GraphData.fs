@@ -32,7 +32,7 @@ module GraphData =
     }
 
     /// Return the number of nodes.
-    let numNodes (g: GraphData) = g.X.Shape[0]
+    let numNodes (g: GraphData) = g.X.shape[0]
 
     /// Return the number of edges.
-    let numEdges (g: GraphData) = g.EdgeIndex.Shape[1]
+    let numEdges (g: GraphData) = g.EdgeIndex.shape[1]

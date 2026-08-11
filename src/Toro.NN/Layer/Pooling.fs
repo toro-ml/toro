@@ -1,127 +1,138 @@
 namespace Toro.NN
 
+open TorchSharp
 open Toro
 
 type MaxPool1d = {
-    KernelSize: int
-    Stride: int
-    Padding: int
+    KernelSize: int64
+    Stride: int64
+    Padding: int64
 } with
 
     member this.forward(x: Tensor) : Tensor =
-        x.maxPool1d (this.KernelSize, stride = this.Stride, padding = this.Padding)
+        let s = this.Stride
+        let p = this.Padding
+        torch.nn.functional.max_pool1d (x, this.KernelSize, stride = s, padding = p)
 
     interface IModule with
         member this.forward x = this.forward x
 
 module MaxPool1d =
-    let create (kernelSize: int) (stride: int) (padding: int) : MaxPool1d = {
+    let create (kernelSize: int64) (stride: int64) (padding: int64) : MaxPool1d = {
         KernelSize = kernelSize
         Stride = stride
         Padding = padding
     }
 
-    let createDefault (kernelSize: int) : MaxPool1d = {
+    let createDefault (kernelSize: int64) : MaxPool1d = {
         KernelSize = kernelSize
         Stride = kernelSize
         Padding = 0
     }
 
 type MaxPool2d = {
-    KernelSize: int
-    Stride: int
-    Padding: int
+    KernelSize: int64
+    Stride: int64
+    Padding: int64
 } with
 
     member this.forward(x: Tensor) : Tensor =
-        x.maxPool2d (this.KernelSize, stride = this.Stride, padding = this.Padding)
+        let s = this.Stride
+        let p = this.Padding
+        torch.nn.functional.max_pool2d (x, this.KernelSize, stride = s, padding = p)
 
     interface IModule with
         member this.forward x = this.forward x
 
 module MaxPool2d =
-    let create (kernelSize: int) (stride: int) (padding: int) : MaxPool2d = {
+    let create (kernelSize: int64) (stride: int64) (padding: int64) : MaxPool2d = {
         KernelSize = kernelSize
         Stride = stride
         Padding = padding
     }
 
-    let createDefault (kernelSize: int) : MaxPool2d = {
+    let createDefault (kernelSize: int64) : MaxPool2d = {
         KernelSize = kernelSize
         Stride = kernelSize
         Padding = 0
     }
 
 type AvgPool2d = {
-    KernelSize: int
-    Stride: int
-    Padding: int
+    KernelSize: int64
+    Stride: int64
+    Padding: int64
 } with
 
     member this.forward(x: Tensor) : Tensor =
-        x.avgPool2d (this.KernelSize, stride = this.Stride, padding = this.Padding)
+        let s = this.Stride
+        let p = this.Padding
+        torch.nn.functional.avg_pool2d (x, this.KernelSize, stride = s, padding = p)
 
     interface IModule with
         member this.forward x = this.forward x
 
 module AvgPool2d =
-    let create (kernelSize: int) (stride: int) (padding: int) : AvgPool2d = {
+    let create (kernelSize: int64) (stride: int64) (padding: int64) : AvgPool2d = {
         KernelSize = kernelSize
         Stride = stride
         Padding = padding
     }
 
-    let createDefault (kernelSize: int) : AvgPool2d = {
+    let createDefault (kernelSize: int64) : AvgPool2d = {
         KernelSize = kernelSize
         Stride = kernelSize
         Padding = 0
     }
 
 type AvgPool1d = {
-    KernelSize: int
-    Stride: int
-    Padding: int
+    KernelSize: int64
+    Stride: int64
+    Padding: int64
 } with
 
     member this.forward(x: Tensor) : Tensor =
-        x.avgPool1d (this.KernelSize, stride = this.Stride, padding = this.Padding)
+        let s = this.Stride
+        let p = this.Padding
+        torch.nn.functional.avg_pool1d (x, this.KernelSize, stride = s, padding = p)
 
     interface IModule with
         member this.forward x = this.forward x
 
 module AvgPool1d =
-    let create (kernelSize: int) (stride: int) (padding: int) : AvgPool1d = {
+    let create (kernelSize: int64) (stride: int64) (padding: int64) : AvgPool1d = {
         KernelSize = kernelSize
         Stride = stride
         Padding = padding
     }
 
-    let createDefault (kernelSize: int) : AvgPool1d = {
+    let createDefault (kernelSize: int64) : AvgPool1d = {
         KernelSize = kernelSize
         Stride = kernelSize
         Padding = 0
     }
 
 type AdaptiveAvgPool2d = {
-    OutputSize: int
+    OutputSize: int64
 } with
 
-    member this.forward(x: Tensor) : Tensor = x.adaptiveAvgPool2d this.OutputSize
+    member this.forward(x: Tensor) : Tensor =
+        torch.nn.functional.adaptive_avg_pool2d (x, this.OutputSize)
 
     interface IModule with
         member this.forward x = this.forward x
 
 module AdaptiveAvgPool2d =
-    let create (outputSize: int) : AdaptiveAvgPool2d = { OutputSize = outputSize }
+    let create (outputSize: int64) : AdaptiveAvgPool2d = { OutputSize = outputSize }
 
 type AdaptiveAvgPool1d = {
-    OutputSize: int
+    OutputSize: int64
 } with
 
-    member this.forward(x: Tensor) : Tensor = x.adaptiveAvgPool1d this.OutputSize
+    member this.forward(x: Tensor) : Tensor =
+        torch.nn.functional.adaptive_avg_pool1d (x, this.OutputSize)
 
     interface IModule with
         member this.forward x = this.forward x
 
 module AdaptiveAvgPool1d =
-    let create (outputSize: int) : AdaptiveAvgPool1d = { OutputSize = outputSize }
+    let create (outputSize: int64) : AdaptiveAvgPool1d = { OutputSize = outputSize }

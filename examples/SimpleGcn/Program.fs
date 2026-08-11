@@ -13,17 +13,17 @@ let buildGraph () =
     let edgesTarget = [| 1L; 0L; 2L; 0L; 2L; 1L; 3L; 1L; 5L; 4L; 6L; 4L; 6L; 5L; 7L; 5L; 4L; 3L |]
 
     let edgeIndex =
-        Tensor.ofArray (Array.append edgesSource edgesTarget, Cpu)
-        |> fun t -> t.reshape [ 2; edgesSource.Length ]
+        torch.tensor (Array.append edgesSource edgesTarget, device = torch.CPU)
+        |> fun t -> t.reshape ([| 2L; int64 edgesSource.Length |])
 
-    let x = Tensor.randn ([ 8; 4 ], F32, Cpu)
+    let x = torch.randn ([| 8L; 4L |], dtype = torch.float32, device = torch.CPU)
     (x, edgeIndex)
 
 type GcnModel = { Conv1: GCNConv; Conv2: GCNConv }
 
 let initModel () =
-    let conv1 = GCNConv.init 4 16 F32 Cpu
-    let conv2 = GCNConv.init 16 2 F32 Cpu
+    let conv1 = GCNConv.init 4 16 torch.float32 torch.CPU
+    let conv2 = GCNConv.init 16 2 torch.float32 torch.CPU
     { Conv1 = conv1; Conv2 = conv2 }
 
 let forward (model: GcnModel) (x: Tensor) (edgeIndex: Tensor) =
@@ -36,7 +36,8 @@ let main _argv =
     let (x, edgeIndex) = buildGraph ()
 
     // Labels: nodes 0-3 -> class 0, nodes 4-7 -> class 1
-    let labels = Tensor.ofArray ([| 0L; 0L; 0L; 0L; 1L; 1L; 1L; 1L |], Cpu)
+    let labels =
+        torch.tensor ([| 0L; 0L; 0L; 0L; 1L; 1L; 1L; 1L |], dtype = torch.int64, device = torch.CPU)
 
     // Train mask: nodes 0, 1, 4, 5
     let trainIdx = [| 0; 1; 4; 5 |]
@@ -53,19 +54,11 @@ let main _argv =
         scoped {
             let logits = forward model x edgeIndex
 
-            let trainLogits =
-                Tensor.ofTorchTensor (
-                    logits.Inner.index (
-                        torch.TensorIndex.Tensor(torch.tensor (trainIdx |> Array.map int64, dtype = torch.int64))
-                    )
-                )
+            let trainIdxTensor = torch.tensor (trainIdx |> Array.map int64, dtype = torch.int64)
 
-            let trainLabels =
-                Tensor.ofTorchTensor (
-                    labels.Inner.index (
-                        torch.TensorIndex.Tensor(torch.tensor (trainIdx |> Array.map int64, dtype = torch.int64))
-                    )
-                )
+            let trainLogits = logits.index (torch.TensorIndex.Tensor trainIdxTensor)
+
+            let trainLabels = labels.index (torch.TensorIndex.Tensor trainIdxTensor)
 
             opt.zeroGrad ()
             let loss = Loss.crossEntropy trainLogits trainLabels
@@ -73,7 +66,7 @@ let main _argv =
             opt.step ()
 
             if epoch % 50 = 0 then
-                let v = loss.toFloat32Scalar ()
+                let v = loss.ToSingle()
                 printfn "  epoch %4d  loss = %.4f" epoch v
         }
 
@@ -83,11 +76,11 @@ let main _argv =
 
     let logits = Toro.noGrad (fun () -> forward model x edgeIndex)
 
-    let preds = logits.argmax (1)
+    let preds = logits.argmax (int64 1)
 
     for i in testIdx do
-        let pred = preds[i].toFloat32Scalar ()
-        let label = labels[i].toFloat32Scalar ()
+        let pred = preds[i].ToSingle()
+        let label = labels[i].ToSingle()
         let correct = if int pred = int label then "OK" else "MISS"
         printfn "  node %d: pred=%d label=%d  %s" i (int pred) (int label) correct
 

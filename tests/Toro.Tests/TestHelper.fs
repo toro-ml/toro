@@ -1,7 +1,8 @@
 module TestHelper
 
 open Toro
+open TorchSharp
 
-let scalarF32 (t: Tensor) = (t.sumAll ()).toFloat32Scalar ()
+let scalarF32 (t: Tensor) = (t.sum ()).ToSingle()
 
-let scalarF64 (t: Tensor) = (t.sumAll ()).toFloat64Scalar ()
+let scalarF64 (t: Tensor) = (t.sum ()).ToDouble()

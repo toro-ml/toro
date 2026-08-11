@@ -3,15 +3,16 @@ module OptimTests
 open Xunit
 open FsUnit.Xunit
 open Toro
+open TorchSharp
 open Toro.NN
 open TestHelper
 
 [<Fact>]
 let ``SGD step reduces loss`` () =
-    let linear = Linear.init 4 2 F32 Cpu
+    let linear = Linear.init 4 2 torch.float32 torch.CPU
 
-    let x = Tensor.randn ([ 8; 4 ], F32, Cpu)
-    let target = Tensor.randn ([ 8; 2 ], F32, Cpu)
+    let x = torch.randn ([| 8L; 4L |], dtype = torch.float32, device = torch.CPU)
+    let target = torch.randn ([| 8L; 2L |], dtype = torch.float32, device = torch.CPU)
 
     let opt = SGD.create 0.01 (Model.trainableVars linear)
 
@@ -19,7 +20,7 @@ let ``SGD step reduces loss`` () =
         let y = linear.forward x
         Loss.mse y target
 
-    let loss0 = (getLoss ()).toFloat32Scalar ()
+    let loss0 = (getLoss ()).ToSingle()
 
     for _ in 1..20 do
         let loss = getLoss ()
@@ -27,15 +28,15 @@ let ``SGD step reduces loss`` () =
         loss.backward ()
         opt.step ()
 
-    let lossN = (getLoss ()).toFloat32Scalar ()
+    let lossN = (getLoss ()).ToSingle()
     lossN |> should be (lessThan loss0)
 
 [<Fact>]
 let ``AdamW step reduces loss`` () =
-    let linear = Linear.init 4 2 F32 Cpu
+    let linear = Linear.init 4 2 torch.float32 torch.CPU
 
-    let x = Tensor.randn ([ 8; 4 ], F32, Cpu)
-    let target = Tensor.randn ([ 8; 2 ], F32, Cpu)
+    let x = torch.randn ([| 8L; 4L |], dtype = torch.float32, device = torch.CPU)
+    let target = torch.randn ([| 8L; 2L |], dtype = torch.float32, device = torch.CPU)
 
     let opt = AdamW.createWithLr 0.01 (Model.trainableVars linear)
 
@@ -44,7 +45,7 @@ let ``AdamW step reduces loss`` () =
         let y = linear.forward x
         Loss.mse y target
 
-    let loss0 = (getLoss ()).toFloat32Scalar ()
+    let loss0 = (getLoss ()).ToSingle()
 
     for _ in 1..20 do
         let loss = getLoss ()
@@ -52,5 +53,5 @@ let ``AdamW step reduces loss`` () =
         loss.backward ()
         opt.step ()
 
-    let lossN = (getLoss ()).toFloat32Scalar ()
+    let lossN = (getLoss ()).ToSingle()
     lossN |> should be (lessThan loss0)

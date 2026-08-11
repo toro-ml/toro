@@ -3,99 +3,100 @@ module LossTests
 open Xunit
 open FsUnit.Xunit
 open Toro
+open TorchSharp
 open Toro.NN
 open TestHelper
 
 [<Fact>]
 let ``MSE loss returns scalar`` () =
-    let inp = Tensor.randn ([ 4; 3 ], F32, Cpu)
-    let target = Tensor.randn ([ 4; 3 ], F32, Cpu)
+    let inp = torch.randn ([| 4L; 3L |], dtype = torch.float32, device = torch.CPU)
+    let target = torch.randn ([| 4L; 3L |], dtype = torch.float32, device = torch.CPU)
 
     let loss = Loss.mse inp target
-    loss.Shape |> should equal List.empty<int>
+    loss.shape |> should equal [||]
 
-    let v = loss.toFloat32Scalar ()
+    let v = loss.ToSingle()
     v |> should be (greaterThan 0.0f)
 
 [<Fact>]
 let ``MSE loss of identical tensors is zero`` () =
-    let t = Tensor.ones ([ 2; 3 ], F32, Cpu)
+    let t = torch.ones ([| 2L; 3L |], dtype = torch.float32, device = torch.CPU)
 
     let loss = Loss.mse t t
-    let v = loss.toFloat32Scalar ()
+    let v = loss.ToSingle()
     v |> should be (lessThan 1e-6f)
 
 [<Fact>]
 let ``Cross entropy loss returns scalar`` () =
-    let logits = Tensor.randn ([ 4; 3 ], F32, Cpu)
-    let targets = Tensor.zeros ([ 4 ], I64, Cpu)
+    let logits = torch.randn ([| 4L; 3L |], dtype = torch.float32, device = torch.CPU)
+    let targets = torch.zeros ([| 4L |], dtype = torch.int64, device = torch.CPU)
 
     let loss = Loss.crossEntropy logits targets
-    loss.Shape |> should equal List.empty<int>
+    loss.shape |> should equal [||]
 
-    let v = loss.toFloat32Scalar ()
+    let v = loss.ToSingle()
     v |> should be (greaterThan 0.0f)
 
 [<Fact>]
 let ``NLL loss returns scalar`` () =
-    let logProbs = Tensor.randn ([ 4; 3 ], F32, Cpu)
-    let logSm = logProbs.logSoftmax -1
-    let targets = Tensor.zeros ([ 4; 1 ], I64, Cpu)
+    let logProbs = torch.randn ([| 4L; 3L |], dtype = torch.float32, device = torch.CPU)
+    let logSm = torch.nn.functional.log_softmax (logProbs, -1L)
+    let targets = torch.zeros ([| 4L; 1L |], dtype = torch.int64, device = torch.CPU)
 
     let loss = Loss.nll logSm targets
-    loss.Shape |> should equal List.empty<int>
+    loss.shape |> should equal [||]
 
 [<Fact>]
 let ``Binary cross-entropy with logit returns scalar`` () =
-    let inp = Tensor.randn ([ 8; 1 ], F32, Cpu)
-    let target = Tensor.zeros ([ 8; 1 ], F32, Cpu)
+    let inp = torch.randn ([| 8L; 1L |], dtype = torch.float32, device = torch.CPU)
+    let target = torch.zeros ([| 8L; 1L |], dtype = torch.float32, device = torch.CPU)
 
     let loss = Loss.binaryCrossEntropyWithLogit inp target
-    loss.Shape |> should equal List.empty<int>
-    let v = loss.toFloat32Scalar ()
+    loss.shape |> should equal [||]
+    let v = loss.ToSingle()
     v |> should be (greaterThan 0.0f)
 
 [<Fact>]
 let ``L1 loss returns scalar`` () =
-    let inp = Tensor.randn ([ 4; 3 ], F32, Cpu)
-    let target = Tensor.randn ([ 4; 3 ], F32, Cpu)
+    let inp = torch.randn ([| 4L; 3L |], dtype = torch.float32, device = torch.CPU)
+    let target = torch.randn ([| 4L; 3L |], dtype = torch.float32, device = torch.CPU)
 
     let loss = Loss.l1 inp target
-    loss.Shape |> should equal List.empty<int>
-    let v = loss.toFloat32Scalar ()
+    loss.shape |> should equal [||]
+    let v = loss.ToSingle()
     v |> should be (greaterThan 0.0f)
 
 [<Fact>]
 let ``L1 loss of identical tensors is zero`` () =
-    let t = Tensor.ones ([ 2; 3 ], F32, Cpu)
+    let t = torch.ones ([| 2L; 3L |], dtype = torch.float32, device = torch.CPU)
 
     let loss = Loss.l1 t t
-    let v = loss.toFloat32Scalar ()
+    let v = loss.ToSingle()
     v |> should be (lessThan 1e-6f)
 
 [<Fact>]
 let ``Smooth L1 loss returns scalar`` () =
-    let inp = Tensor.randn ([ 4; 3 ], F32, Cpu)
-    let target = Tensor.randn ([ 4; 3 ], F32, Cpu)
+    let inp = torch.randn ([| 4L; 3L |], dtype = torch.float32, device = torch.CPU)
+    let target = torch.randn ([| 4L; 3L |], dtype = torch.float32, device = torch.CPU)
 
     let loss = Loss.smoothL1 1.0 inp target
-    loss.Shape |> should equal List.empty<int>
-    let v = loss.toFloat32Scalar ()
+    loss.shape |> should equal [||]
+    let v = loss.ToSingle()
     v |> should be (greaterThan 0.0f)
 
 [<Fact>]
 let ``Smooth L1 loss of identical tensors is zero`` () =
-    let t = Tensor.ones ([ 2; 3 ], F32, Cpu)
+    let t = torch.ones ([| 2L; 3L |], dtype = torch.float32, device = torch.CPU)
 
     let loss = Loss.smoothL1 1.0 t t
-    let v = loss.toFloat32Scalar ()
+    let v = loss.ToSingle()
     v |> should be (lessThan 1e-6f)
 
 [<Fact>]
 let ``KL divergence loss returns scalar`` () =
-    let logProbs = Tensor.randn ([ 4; 3 ], F32, Cpu)
-    let inp = logProbs.logSoftmax -1
-    let target = logProbs.softmax -1
+    let logProbs = torch.randn ([| 4L; 3L |], dtype = torch.float32, device = torch.CPU)
+    let inp = torch.nn.functional.log_softmax (logProbs, -1L)
+    let target = torch.nn.functional.softmax (logProbs, -1L)
 
     let loss = Loss.klDiv inp target
-    loss.Shape |> should equal List.empty<int>
+    loss.shape |> should equal [||]

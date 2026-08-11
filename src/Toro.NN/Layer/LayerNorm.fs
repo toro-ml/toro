@@ -1,5 +1,6 @@
 namespace Toro.NN
 
+open TorchSharp
 open Toro
 
 type LayerNormConfig = {
@@ -24,21 +25,23 @@ type LayerNorm = {
 
     member this.forward(x: Tensor) : Tensor =
         if this.RemoveMean then
-            x.layerNorm (this.Weight.Shape, weight = this.Weight, ?bias = this.Bias, eps = this.Eps)
+            let w = this.Weight
+            let b = this.Bias |> Option.defaultValue null
+            torch.nn.functional.layer_norm (x, this.Weight.shape, w, b, this.Eps)
         else
-            let xDType = x.DType
+            let xDType = x.dtype
 
             let internalDType =
                 match xDType with
-                | F16
-                | BF16 -> F32
+                | torch.ScalarType.Float16
+                | torch.ScalarType.BFloat16 -> torch.ScalarType.Float32
                 | d -> d
 
-            let x = x.toDType internalDType
-            let xSqr = x.sqr ()
-            let normX = xSqr.mean (-1, keepDim = true)
-            let xNormed = x / (normX.addScalar(this.Eps).sqrt ())
-            let xNormed = xNormed.toDType xDType
+            let x = x.to_type internalDType
+            let xSqr = x.square ()
+            let normX = torch.mean (xSqr, [| -1L |], keepdim = true)
+            let xNormed = x / (normX + scalar this.Eps).sqrt ()
+            let xNormed = xNormed.to_type xDType
             let x = xNormed.mul this.Weight
 
             match this.Bias with
@@ -49,12 +52,12 @@ type LayerNorm = {
         member this.forward x = this.forward x
 
 module LayerNorm =
-    let init (size: int) (config: LayerNormConfig) (dtype: DType) (device: Device) : LayerNorm =
-        let weight = Init.toParam [ size ] dtype device (Init.Const 1.0)
+    let init (size: int64) (config: LayerNormConfig) (dtype: torch.ScalarType) (device: torch.Device) : LayerNorm =
+        let weight = Init.toParam [| size |] dtype device (Init.Const 1.0)
 
         let bias =
             (if config.Affine then Some(Init.Const 0.0) else None)
-            |> Option.map (Init.toParam [ size ] dtype device)
+            |> Option.map (Init.toParam [| size |] dtype device)
 
         {
             Weight = weight
@@ -63,7 +66,7 @@ module LayerNorm =
             Eps = config.Eps
         }
 
-    let initDefault (size: int) (dtype: DType) (device: Device) : LayerNorm =
+    let initDefault (size: int64) (dtype: torch.ScalarType) (device: torch.Device) : LayerNorm =
         init size LayerNormConfig.defaultConfig dtype device
 
 type RmsNorm = {
@@ -76,7 +79,7 @@ type RmsNorm = {
         member this.forward x = this.forward x
 
 module RmsNorm =
-    let init (size: int) (eps: float) (dtype: DType) (device: Device) : RmsNorm =
+    let init (size: int64) (eps: float) (dtype: torch.ScalarType) (device: torch.Device) : RmsNorm =
         let config = {
             Eps = eps
             RemoveMean = false

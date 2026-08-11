@@ -4,6 +4,7 @@ open System.IO
 open Xunit
 open FsUnit.Xunit
 open Toro
+open TorchSharp
 open Toro.NN
 open TestHelper
 
@@ -16,17 +17,17 @@ let private withTempDir f =
         if Directory.Exists dir then
             Directory.Delete(dir, true)
 
-let private tensorSum (t: Tensor) = (t.sumAll ()).toFloat32Scalar ()
+let private tensorSum (t: Tensor) = (t.sum ()).ToSingle()
 
 [<Fact>]
 let ``Checkpoint round-trip with SGD`` () =
     withTempDir (fun dir ->
-        let linear = Linear.init 4 2 F32 Cpu
+        let linear = Linear.init 4 2 torch.float32 torch.CPU
         let vars = Model.trainableVars linear
         let opt = SGD.create 0.05 vars
 
-        let x = Tensor.randn ([ 8; 4 ], F32, Cpu)
-        let target = Tensor.randn ([ 8; 2 ], F32, Cpu)
+        let x = torch.randn ([| 8L; 4L |], dtype = torch.float32, device = torch.CPU)
+        let target = torch.randn ([| 8L; 2L |], dtype = torch.float32, device = torch.CPU)
 
         for _ in 1..5 do
             opt.zeroGrad ()
@@ -43,7 +44,7 @@ let ``Checkpoint round-trip with SGD`` () =
 
         Checkpoint.save linear (opt.toOps ()) 5 dir
 
-        let linear2 = Linear.init 4 2 F32 Cpu
+        let linear2 = Linear.init 4 2 torch.float32 torch.CPU
         let opt2 = SGD.create 0.01 (Model.trainableVars linear2)
 
         let epoch = Checkpoint.load linear2 (opt2.toOps ()) dir
@@ -56,12 +57,12 @@ let ``Checkpoint round-trip with SGD`` () =
 [<Fact>]
 let ``Checkpoint round-trip with AdamW`` () =
     withTempDir (fun dir ->
-        let linear = Linear.init 4 2 F32 Cpu
+        let linear = Linear.init 4 2 torch.float32 torch.CPU
         let vars = Model.trainableVars linear
         let opt = AdamW.createWithLr 0.01 vars
 
-        let x = Tensor.randn ([ 8; 4 ], F32, Cpu)
-        let target = Tensor.randn ([ 8; 2 ], F32, Cpu)
+        let x = torch.randn ([| 8L; 4L |], dtype = torch.float32, device = torch.CPU)
+        let target = torch.randn ([| 8L; 2L |], dtype = torch.float32, device = torch.CPU)
 
         for _ in 1..10 do
             opt.zeroGrad ()
@@ -76,7 +77,7 @@ let ``Checkpoint round-trip with AdamW`` () =
 
         Checkpoint.save linear (opt.toOps ()) 10 dir
 
-        let linear2 = Linear.init 4 2 F32 Cpu
+        let linear2 = Linear.init 4 2 torch.float32 torch.CPU
 
         let opt2 = AdamW.createWithLr 0.001 (Model.trainableVars linear2)
 
@@ -92,7 +93,7 @@ let ``Checkpoint round-trip with AdamW`` () =
 [<Fact>]
 let ``Checkpoint creates expected directory structure`` () =
     withTempDir (fun dir ->
-        let linear = Linear.init 2 1 F32 Cpu
+        let linear = Linear.init 2 1 torch.float32 torch.CPU
         let opt = SGD.create 0.1 (Model.trainableVars linear)
 
         Checkpoint.save linear (opt.toOps ()) 1 dir
@@ -106,12 +107,12 @@ let ``Checkpoint creates expected directory structure`` () =
 [<Fact>]
 let ``AdamW optimizer state survives checkpoint`` () =
     withTempDir (fun dir ->
-        let linear = Linear.init 4 2 F32 Cpu
+        let linear = Linear.init 4 2 torch.float32 torch.CPU
         let vars = Model.trainableVars linear
         let opt = AdamW.createWithLr 0.01 vars
 
-        let x = Tensor.randn ([ 8; 4 ], F32, Cpu)
-        let target = Tensor.randn ([ 8; 2 ], F32, Cpu)
+        let x = torch.randn ([| 8L; 4L |], dtype = torch.float32, device = torch.CPU)
+        let target = torch.randn ([| 8L; 2L |], dtype = torch.float32, device = torch.CPU)
 
         for _ in 1..5 do
             opt.zeroGrad ()
@@ -126,7 +127,7 @@ let ``AdamW optimizer state survives checkpoint`` () =
 
         Checkpoint.save linear (opt.toOps ()) 5 dir
 
-        let linear2 = Linear.init 4 2 F32 Cpu
+        let linear2 = Linear.init 4 2 torch.float32 torch.CPU
 
         let opt2 = AdamW.createWithLr 0.01 (Model.trainableVars linear2)
 

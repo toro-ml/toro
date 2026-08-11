@@ -1,5 +1,6 @@
 namespace Toro.GNN
 
+open TorchSharp
 open Toro
 open Toro.NN
 
@@ -17,14 +18,14 @@ type GraphNorm = {
     /// Normalize node features per graph.
     /// x: [N, F], batch: [N] option (None treats all nodes as one graph).
     member this.forward(x: Tensor, batch: Tensor option) : Tensor =
-        let numNodes = x.Shape[0]
+        let numNodes = x.shape[0]
 
         let batch =
             match batch with
             | Some b -> b
-            | None -> Tensor.zeros ([ int numNodes ], I64, x.Device)
+            | None -> torch.zeros ([| numNodes |], dtype = torch.int64, device = x.device)
 
-        let numGraphs = int (batch.Inner.max().item<int64> ()) + 1
+        let numGraphs = batch.max().ToInt64() + 1L
 
         let mean = GlobalPool.globalMeanPool x batch numGraphs
         let alphaMean = this.Alpha * mean[batch]
@@ -40,10 +41,10 @@ type GraphNorm = {
 
 module GraphNorm =
     /// Create a GraphNorm layer for features of size numFeatures.
-    let init (numFeatures: int) (dtype: DType) (device: Device) : GraphNorm =
-        let gamma = Init.toParam [ numFeatures ] dtype device (Init.Const 1.0)
-        let beta = Init.toParam [ numFeatures ] dtype device (Init.Const 0.0)
-        let alpha = Init.toParam [ numFeatures ] dtype device (Init.Const 1.0)
+    let init (numFeatures: int64) (dtype: torch.ScalarType) (device: torch.Device) : GraphNorm =
+        let gamma = Init.toParam [| numFeatures |] dtype device (Init.Const 1.0)
+        let beta = Init.toParam [| numFeatures |] dtype device (Init.Const 0.0)
+        let alpha = Init.toParam [| numFeatures |] dtype device (Init.Const 1.0)
 
         {
             Gamma = gamma
