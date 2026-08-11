@@ -906,9 +906,19 @@ and TIdx =
 
 module Tensor =
     /// Move a tensor out of the current dispose scope so it
-    /// survives when that scope exits.
+    /// survives when that scope exits. Only moves the tensor
+    /// if it belongs to the innermost active scope; repeated
+    /// calls in nested scopes do not move further out.
+    /// Inside <c>scoped { }</c>, return values are auto-kept, so
+    /// <c>keep</c> is only needed for side-effect retention
+    /// (e.g. caching a tensor in a mutable field).
     let keep (t: Tensor) : Tensor =
-        t.Inner.MoveToOuterDisposeScope() |> ignore
+        match torch.CurrentDisposeScope with
+        | null -> ()
+        | scope ->
+            if scope.Contains(t.Inner) then
+                scope.MoveToOuter(t.Inner) |> ignore
+
         t
 
 module Toro =
@@ -951,6 +961,16 @@ type ScopedResultBuilder() =
 
                     for field in fields do
                         keepTensors scope field
+                elif ty.IsValueType && ty.IsGenericType then
+                    for prop in
+                        ty.GetProperties(
+                            System.Reflection.BindingFlags.Public
+                            ||| System.Reflection.BindingFlags.Instance
+                        ) do
+                        let pv = prop.GetValue(v)
+
+                        if not (isNull pv) then
+                            keepTensors scope pv
 
     member _.Return x = Ok x
     member _.ReturnFrom x = x

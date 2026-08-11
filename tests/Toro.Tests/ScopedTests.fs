@@ -764,8 +764,7 @@ let ``G3 outer tensor returned from inner scoped is not moved past outer`` () =
                 let! outer = Tensor.ones ([ 2 ], F32, Cpu)
                 outerInner <- outer.Inner
 
-                let! passed =
-                    scoped { return outer }
+                let! passed = scoped { return outer }
 
                 return passed
             }
@@ -797,3 +796,76 @@ let ``G4 scoped with return! keeps result tensors`` () =
     b.Inner.IsInvalid |> should equal false
     scalarF32 a |> should (equalWithin 1e-5f) 3.0f
     scalarF32 b |> should (equalWithin 1e-5f) 0.0f
+
+// G5
+[<Fact>]
+let ``G5 scoped keeps Map of tensors`` () =
+    let mutable intermediateInner = Unchecked.defaultof<torch.Tensor>
+
+    let r =
+        scoped {
+            let! a = Tensor.ones ([ 2 ], F32, Cpu)
+            let! b = Tensor.zeros ([ 2 ], F32, Cpu)
+            let! tmp = Tensor.ones ([ 1 ], F32, Cpu)
+            intermediateInner <- tmp.Inner
+            return Map [ "a", a; "b", b ]
+        }
+
+    let m = unwrap r
+    m.Count |> should equal 2
+    m["a"].Inner.IsInvalid |> should equal false
+    m["b"].Inner.IsInvalid |> should equal false
+    scalarF32 m["a"] |> should (equalWithin 1e-5f) 2.0f
+    scalarF32 m["b"] |> should (equalWithin 1e-5f) 0.0f
+    intermediateInner.IsInvalid |> should equal true
+
+// G6
+[<Fact>]
+let ``G6 keep is idempotent within same scope`` () =
+    use _scope = torch.NewDisposeScope()
+    let t = Tensor.ones ([ 2 ], F32, Cpu) |> unwrap
+    let _ = Tensor.keep t
+    let _ = Tensor.keep t
+    t.Inner.IsInvalid |> should equal false
+    scalarF32 t |> should (equalWithin 1e-5f) 2.0f
+
+// G7
+[<Fact>]
+let ``G7 keep in nested scope does not move past outer`` () =
+    let mutable keptRef = Unchecked.defaultof<Tensor>
+
+    do
+        use _outer = torch.NewDisposeScope()
+
+        do
+            use _inner = torch.NewDisposeScope()
+            let t = Tensor.ones ([ 2 ], F32, Cpu) |> unwrap
+            keptRef <- Tensor.keep t
+
+        keptRef.Inner.IsInvalid |> should equal false
+        _outer.Contains(keptRef.Inner) |> should equal true
+
+    keptRef.Inner.IsInvalid |> should equal true
+
+// G8
+[<Fact>]
+let ``G8 double keep in nested scopes does not move two levels`` () =
+    let mutable keptRef = Unchecked.defaultof<Tensor>
+
+    do
+        use _outermost = torch.NewDisposeScope()
+
+        do
+            use _outer = torch.NewDisposeScope()
+
+            do
+                use _inner = torch.NewDisposeScope()
+                let t = Tensor.ones ([ 2 ], F32, Cpu) |> unwrap
+                keptRef <- Tensor.keep t
+                let _ = Tensor.keep keptRef
+                ()
+
+            keptRef.Inner.IsInvalid |> should equal false
+            _outer.Contains(keptRef.Inner) |> should equal true
+
+        keptRef.Inner.IsInvalid |> should equal true
