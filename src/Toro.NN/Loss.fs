@@ -2,71 +2,70 @@ namespace Toro.NN
 
 open Toro
 
+[<AutoOpen>]
+module private LossInternal =
+    let inline wrap1 f (inp: Tensor) (target: Tensor) : Result<Tensor, ToroError> =
+        Tensor.ofTorchTensor (f (inp.Inner, target.Inner))
+
 /// Loss functions. Each takes (input, target) and returns a scalar loss tensor.
 module Loss =
 
     /// $\text{MSE} = (1/n)\sum(x_i - y_i)^2$
     let mse (inp: Tensor) (target: Tensor) : Result<Tensor, ToroError> =
-        inp.sub target |> TensorR.sqr |> TensorR.meanAll
+        wrap1 TorchSharp.torch.nn.functional.mse_loss inp target
 
     /// $\text{NLL} = -(1/n)\sum x_{i,y_i}$
     let nll (inp: Tensor) (target: Tensor) : Result<Tensor, ToroError> =
-        result {
-            let! bSz = inp.dim 0
-            let! gathered = inp.gather (1, target)
-            let! squeezed = gathered.squeeze -1
-            let! total = (-squeezed).sumAll ()
-            return! total.affine (1.0 / float bSz, 0.0)
-        }
+        ToroError.wrap (fun () ->
+            let t =
+                if target.Inner.dim () > 1 then
+                    target.Inner.squeeze -1L
+                else
+                    target.Inner
+
+            TorchSharp.torch.nn.functional.nll_loss (inp.Inner, t))
+        |> Result.bind Tensor.ofTorchTensor
 
     /// $H(p,q) = -(1/n)\sum \log\text{softmax}(x)_{y_i}$
     let crossEntropy (inp: Tensor) (target: Tensor) : Result<Tensor, ToroError> =
-        result {
-            let! logSm = inp.logSoftmax -1
-            let! target' = target.unsqueeze -1
-            return! nll logSm target'
-        }
+        wrap1 TorchSharp.torch.nn.functional.cross_entropy inp target
 
     /// $\text{BCE} = \max(x,0) - x \cdot y + \ln(1 + e^{-\lvert x \rvert})$
     let binaryCrossEntropyWithLogit (inp: Tensor) (target: Tensor) : Result<Tensor, ToroError> =
-        result {
-            let! loss =
-                (inp.relu () -~ inp.mul target)
-                +~ (inp.abs ()
-                    |> TensorR.neg
-                    |> TensorR.exp
-                    |> TensorR.shift 1.0
-                    |> TensorR.log)
-
-            return! loss.meanAll ()
-        }
+        wrap1 TorchSharp.torch.nn.functional.binary_cross_entropy_with_logits inp target
 
     /// $\text{L1} = (1/n)\sum|x_i - y_i|$
     let l1 (inp: Tensor) (target: Tensor) : Result<Tensor, ToroError> =
-        result {
-            let! diff = inp.sub target
-            let! absDiff = diff.abs ()
-            return! absDiff.meanAll ()
-        }
+        wrap1 TorchSharp.torch.nn.functional.l1_loss inp target
 
     /// $\text{SmoothL1} = (1/n)\sum z_i$ where $z_i = 0.5 x_i^2/\beta$ if $|x_i| < \beta$, else $|x_i| - 0.5\beta$
     let smoothL1 (beta: float) (inp: Tensor) (target: Tensor) : Result<Tensor, ToroError> =
-        result {
-            let! diff = inp.sub target
-            let! absDiff = diff.abs ()
-            let! sq = diff.mul diff
-            let! sqTerm = sq.mulScalar (0.5 / beta)
-            let! linTerm = absDiff.addScalar (-0.5 * beta)
-            let mask = absDiff.ltScalar beta
-            let! loss = Tensor.where (mask, sqTerm, linTerm)
-            return! loss.meanAll ()
-        }
+        ToroError.wrap (fun () -> TorchSharp.torch.nn.functional.smooth_l1_loss (inp.Inner, target.Inner, beta = beta))
+        |> Result.bind Tensor.ofTorchTensor
 
     /// $\text{KL}(p \| q) = (1/n)\sum p_i (\log p_i - q_i)$. Expects log-probabilities as input and probabilities as target.
     let klDiv (inp: Tensor) (target: Tensor) : Result<Tensor, ToroError> =
-        result {
-            let! logTarget = target.log ()
-            let! diff = logTarget -~ inp
-            let! weighted = target.mul diff
-            return! weighted.meanAll ()
-        }
+        wrap1 TorchSharp.torch.nn.functional.kl_div inp target
+
+    /// Huber loss: smooth combination of L1 and L2.
+    let huber (delta: float) (inp: Tensor) (target: Tensor) : Result<Tensor, ToroError> =
+        ToroError.wrap (fun () -> TorchSharp.torch.nn.functional.huber_loss (inp.Inner, target.Inner, delta = delta))
+        |> Result.bind Tensor.ofTorchTensor
+
+    /// CTC loss for sequence-to-sequence alignment.
+    let ctc (logProbs: Tensor) (targets: Tensor) (inputLengths: Tensor) (targetLengths: Tensor) : Result<Tensor, ToroError> =
+        ToroError.wrap (fun () ->
+            TorchSharp.torch.nn.functional.ctc_loss (logProbs.Inner, targets.Inner, inputLengths.Inner, targetLengths.Inner))
+        |> Result.bind Tensor.ofTorchTensor
+
+    /// Triplet margin loss for metric learning.
+    let tripletMargin (margin: float) (anchor: Tensor) (positive: Tensor) (negative: Tensor) : Result<Tensor, ToroError> =
+        ToroError.wrap (fun () ->
+            TorchSharp.torch.nn.functional.triplet_margin_loss (anchor.Inner, positive.Inner, negative.Inner, margin = margin))
+        |> Result.bind Tensor.ofTorchTensor
+
+    /// Cosine embedding loss for similarity learning.
+    let cosineEmbedding (margin: float) (x1: Tensor) (x2: Tensor) (target: Tensor) : Result<Tensor, ToroError> =
+        ToroError.wrap (fun () ->
+            TorchSharp.torch.nn.functional.cosine_embedding_loss (x1.Inner, x2.Inner, target.Inner, margin = margin))
+        |> Result.bind Tensor.ofTorchTensor

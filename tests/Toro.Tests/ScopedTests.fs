@@ -359,7 +359,7 @@ let ``B3 error disposes all created tensors`` () =
         scoped {
             let! t = Tensor.ones ([ 2 ], F32, Cpu)
             createdInner <- t.Inner
-            return! Error(ToroError.Wrapped(System.InvalidOperationException "fail"))
+            return! Error(ToroError.TorchSharpError(System.InvalidOperationException "fail"))
         }
 
     r |> Result.isError |> should equal true

@@ -76,3 +76,52 @@ module AvgPool2d =
         Stride = kernelSize
         Padding = 0
     }
+
+type AvgPool1d = {
+    KernelSize: int
+    Stride: int
+    Padding: int
+} with
+
+    member this.forward(x: Tensor) : Result<Tensor, ToroError> =
+        x.avgPool1d (this.KernelSize, stride = this.Stride, padding = this.Padding)
+
+    interface IModule with
+        member this.forward x = this.forward x
+
+module AvgPool1d =
+    let create (kernelSize: int) (stride: int) (padding: int) : AvgPool1d = {
+        KernelSize = kernelSize
+        Stride = stride
+        Padding = padding
+    }
+
+    let createDefault (kernelSize: int) : AvgPool1d = {
+        KernelSize = kernelSize
+        Stride = kernelSize
+        Padding = 0
+    }
+
+type AdaptiveAvgPool2d = {
+    OutputSize: int
+} with
+
+    member this.forward(x: Tensor) : Result<Tensor, ToroError> = x.adaptiveAvgPool2d this.OutputSize
+
+    interface IModule with
+        member this.forward x = this.forward x
+
+module AdaptiveAvgPool2d =
+    let create (outputSize: int) : AdaptiveAvgPool2d = { OutputSize = outputSize }
+
+type AdaptiveAvgPool1d = {
+    OutputSize: int
+} with
+
+    member this.forward(x: Tensor) : Result<Tensor, ToroError> = x.adaptiveAvgPool1d this.OutputSize
+
+    interface IModule with
+        member this.forward x = this.forward x
+
+module AdaptiveAvgPool1d =
+    let create (outputSize: int) : AdaptiveAvgPool1d = { OutputSize = outputSize }

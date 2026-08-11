@@ -23,37 +23,29 @@ type LayerNorm = {
 } with
 
     member this.forward(x: Tensor) : Result<Tensor, ToroError> =
-        result {
-            let xDType = x.DType
+        if this.RemoveMean then
+            x.layerNorm (this.Weight.Shape, weight = this.Weight, ?bias = this.Bias, eps = this.Eps)
+        else
+            result {
+                let xDType = x.DType
 
-            let internalDType =
-                match xDType with
-                | F16
-                | BF16 -> F32
-                | d -> d
+                let internalDType =
+                    match xDType with
+                    | F16
+                    | BF16 -> F32
+                    | d -> d
 
-            let! x = x.toDType internalDType
+                let! x = x.toDType internalDType
+                let! xSqr = x.sqr ()
+                let! normX = xSqr.mean (-1, keepDim = true)
+                let! xNormed = x /~ (normX.addScalar this.Eps |> TensorR.sqrt)
+                let! xNormed = xNormed.toDType xDType
+                let! x = xNormed.mul this.Weight
 
-            let! x =
-                if this.RemoveMean then
-                    result {
-                        let! meanX = x.mean (-1, keepDim = true)
-                        return! x.sub meanX
-                    }
-                else
-                    Ok x
-
-            let! xSqr = x.sqr ()
-            let! normX = xSqr.mean (-1, keepDim = true)
-            let! xNormed = x /~ (normX.addScalar this.Eps |> TensorR.sqrt)
-            let! xNormed = xNormed.toDType xDType
-
-            let! x = xNormed.mul this.Weight
-
-            match this.Bias with
-            | None -> return x
-            | Some bias -> return! x.add bias
-        }
+                match this.Bias with
+                | None -> return x
+                | Some bias -> return! x.add bias
+            }
 
     interface IModule with
         member this.forward x = this.forward x

@@ -2,36 +2,28 @@ namespace Toro
 
 /// All errors that Toro operations can produce.
 type ToroError =
-    | ShapeMismatch of msg: string * expected: int list * got: int list
-    | DTypeMismatch of msg: string
-    | DeviceError of msg: string
     | TensorNotFound of path: string
     | UnsupportedDType of string
     | UnsupportedDevice of string
     | Msg of string
     /// A .NET exception caught at the TorchSharp boundary.
-    | Wrapped of exn
+    | TorchSharpError of exn
 
     override this.ToString() =
         match this with
-        | ShapeMismatch(msg, expected, got) ->
-            $"ShapeMismatch: {msg} \
-              (expected {expected}, got {got})"
-        | DTypeMismatch msg -> $"DTypeMismatch: {msg}"
-        | DeviceError msg -> $"DeviceError: {msg}"
         | TensorNotFound path -> $"TensorNotFound: {path}"
         | UnsupportedDType dt -> $"UnsupportedDType: {dt}"
         | UnsupportedDevice dev -> $"UnsupportedDevice: {dev}"
         | Msg msg -> msg
-        | Wrapped ex -> $"Error: {ex.Message}"
+        | TorchSharpError ex -> $"TorchSharpError: {ex.Message}"
 
 module ToroError =
-    /// Run f, catching any exception as Error(Wrapped exn).
+    /// Run f, catching any exception as a TorchSharpError.
     let inline wrap ([<InlineIfLambda>] f: unit -> 'a) : Result<'a, ToroError> =
         try
             Ok(f ())
         with ex ->
-            Error(Wrapped ex)
+            Error(TorchSharpError ex)
 
     let msg s : Result<'a, ToroError> = Error(Msg s)
 

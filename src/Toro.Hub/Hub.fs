@@ -54,7 +54,7 @@ module Hub =
                         let! body = response |> Response.toTextAsync
                         return Error(Msg $"HTTP {statusCode}: {body}")
                 with ex ->
-                    return Error(Wrapped ex)
+                    return Error(TorchSharpError ex)
         }
 
     /// Download a .safetensors file from Hugging Face Hub and load it as a tensor dictionary.

@@ -6,6 +6,10 @@ type LrSchedule =
     | Exponential of gamma: float
     | CosineAnnealing of tMax: int * etaMin: float
     | LinearWarmup of warmupSteps: int
+    | OneCycle of totalSteps: int * maxLr: float * divFactor: float * finalDivFactor: float * pctStart: float
+    | CosineAnnealingWarmRestarts of t0: int * tMult: int * etaMin: float
+    | Polynomial of totalSteps: int * power: float * endLr: float
+    | CyclicLR of baseLr: float * maxLr: float * stepSizeUp: int * stepSizeDown: int
 
 module LrSchedule =
     /// Pure function: compute the learning rate at a given step.
@@ -25,6 +29,46 @@ module LrSchedule =
                 baseLr * float step / float warmupSteps
             else
                 baseLr
+        | OneCycle(totalSteps, maxLr, divFactor, finalDivFactor, pctStart) ->
+            let warmup = int (float totalSteps * pctStart)
+            let initLr = maxLr / divFactor
+            let minLr = initLr / finalDivFactor
+
+            if step <= warmup then
+                let pct = float step / float warmup
+                initLr + (maxLr - initLr) * pct
+            else
+                let pct = float (step - warmup) / float (totalSteps - warmup)
+                let cosVal = cos (System.Math.PI * pct)
+                minLr + 0.5 * (maxLr - minLr) * (1.0 + cosVal)
+        | CosineAnnealingWarmRestarts(t0, tMult, etaMin) ->
+            let mutable tCur = step
+            let mutable tI = t0
+
+            while tCur >= tI do
+                tCur <- tCur - tI
+                tI <- tI * tMult
+
+            let t = float tCur / float tI
+
+            etaMin
+            + 0.5 * (baseLr - etaMin) * (1.0 + cos (System.Math.PI * t))
+        | Polynomial(totalSteps, power, endLr) ->
+            if step >= totalSteps then
+                endLr
+            else
+                let decay = (1.0 - float step / float totalSteps) ** power
+                (baseLr - endLr) * decay + endLr
+        | CyclicLR(cyclicBase, maxLr, stepSizeUp, stepSizeDown) ->
+            let cycleLen = stepSizeUp + stepSizeDown
+            let pos = step % cycleLen
+
+            if pos < stepSizeUp then
+                let pct = float pos / float stepSizeUp
+                cyclicBase + (maxLr - cyclicBase) * pct
+            else
+                let pct = float (pos - stepSizeUp) / float stepSizeDown
+                maxLr - (maxLr - cyclicBase) * pct
 
 /// Scheduler that pairs a schedule with mutable step counter and LR setter.
 type Scheduler = {

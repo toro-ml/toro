@@ -29,6 +29,7 @@
     <Compile Include="Layer/LayerNorm.fs" />
     <Compile Include="Layer/BatchNorm.fs" />
     <Compile Include="Layer/GroupNorm.fs" />
+    <Compile Include="Layer/InstanceNorm.fs" />
     <Compile Include="Layer/Activation.fs" />
     <Compile Include="Layer/Pooling.fs" />
     <Compile Include="Block/Sequential.fs" />
