@@ -35,8 +35,8 @@ module GlobalPool =
 
         for i in 0 .. numGraphs - 1 do
             let mask = batch.eqScalar (float i)
-            let indices = TorchSharp.torch.nonzero(mask.Inner).squeeze (1L)
-            let selected = x.indexSelect (0, Tensor.ofTorchTensor indices)
+            let indices = mask.nonzero().squeeze 1
+            let selected = x.indexSelect (0, indices)
             let maxVals, _ = selected.max 0
             results.Add(maxVals)
 
