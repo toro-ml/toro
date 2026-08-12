@@ -1,5 +1,7 @@
 # Agent guidelines
 
+- Before exploring the codebase broadly, read [AGENTS-codemap.md](./AGENTS-codemap.md) for a structural overview.
+
 ## Dev Environment
 
 - Run all commands through `nix develop -c` (e.g. `nix develop -c dotnet build`). The flake shell sets `DYLD_LIBRARY_PATH`/`LD_LIBRARY_PATH` for TorchSharp native libraries.
