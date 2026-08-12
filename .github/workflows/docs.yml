@@ -5,50 +5,65 @@ on:
     branches: [main]
   workflow_dispatch:
 
-permissions:
-  pages: write
-  id-token: write
-
 concurrency:
   group: pages
   cancel-in-progress: true
+
+permissions:
+  pages: write
+  id-token: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: "10.0.x"
+          cache: true
+          cache-dependency-path: |
+            **/*.fsproj
+            .config/dotnet-tools.json
+
       - name: Restore tools
         run: dotnet tool restore
+
       - name: Build library
         run: dotnet build -c Release
+
       - name: Generate API docs (FSDocs)
         run: dotnet fsi scripts/generate-api-docs.fsx
+
       - uses: pnpm/action-setup@v6
         with:
           version: 9
+
       - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
           cache-dependency-path: docs/pnpm-lock.yaml
+
       - name: Generate API MDX
         run: node scripts/generate-api-mdx.mts
+
       - name: Install dependencies
         working-directory: docs
         run: pnpm install --frozen-lockfile
+
       - name: Build docs
         working-directory: docs
         run: pnpm build
+
       - name: Prepare deploy
         working-directory: docs/build/client
         run: |
           cp -r assets toro/
           cp -r img toro/
           cp __spa-fallback.html toro/404.html
+
       - uses: actions/upload-pages-artifact@v5
         with:
           path: docs/build/client/toro

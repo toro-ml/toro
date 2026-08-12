@@ -6,11 +6,49 @@ on:
       - main
   pull_request:
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      format: ${{ steps.filter.outputs.format }}
+      dotnet: ${{ steps.filter.outputs.dotnet }}
+      docs: ${{ steps.filter.outputs.docs }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            format:
+              - 'src/**'
+              - 'tests/**'
+              - 'examples/**'
+              - 'scripts/**'
+            dotnet:
+              - 'src/**'
+              - 'tests/**'
+              - 'examples/**'
+              - '**/*.fsproj'
+              - 'global.json'
+              - 'tests/Directory.Build.props'
+              - '.config/dotnet-tools.json'
+              - '.github/workflows/**'
+            docs:
+              - 'docs/**'
+              - 'scripts/**'
+              - 'src/**'
+
   format:
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.format == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -18,6 +56,10 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
+          cache: true
+          cache-dependency-path: |
+            **/*.fsproj
+            .config/dotnet-tools.json
 
       - name: Restore tools
         run: dotnet tool restore
@@ -25,15 +67,23 @@ jobs:
       - name: Check formatting
         run: dotnet fantomas --check src/ tests/ examples/ scripts/
 
-  test:
+  dotnet:
+    needs: changes
+    if: |
+      github.event_name == 'push' ||
+      needs.changes.outputs.dotnet == 'true' ||
+      needs.changes.outputs.docs == 'true'
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v7
 
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
+          cache: true
+          cache-dependency-path: |
+            **/*.fsproj
+            .config/dotnet-tools.json
 
       - name: Restore
         run: dotnet restore
@@ -47,20 +97,54 @@ jobs:
       - name: Pack
         run: dotnet pack src/Toro/Toro.fsproj --configuration Release --no-restore --no-build --output artifacts
 
+      - name: Upload build artifacts for docs
+        if: github.event_name == 'pull_request' && needs.changes.outputs.docs == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotnet-build
+          path: |
+            src/**/bin/
+            src/**/obj/
+          retention-days: 1
+
+  docs:
+    needs: [changes, dotnet]
+    if: github.event_name == 'pull_request' && needs.changes.outputs.docs == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: dotnet-build
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+          cache: true
+          cache-dependency-path: |
+            **/*.fsproj
+            .config/dotnet-tools.json
+
       - name: Restore tools
         run: dotnet tool restore
+
       - name: Generate API docs (FSDocs)
         run: dotnet fsi scripts/generate-api-docs.fsx
+
       - uses: pnpm/action-setup@v6
         with:
           version: 9
+
       - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
           cache-dependency-path: docs/pnpm-lock.yaml
+
       - name: Generate API MDX
         run: node scripts/generate-api-mdx.mts
+
       - name: Docs build
         working-directory: docs
         run: |
