@@ -16,6 +16,11 @@
       "version": "22.1.0",
       "commands": ["fsdocs"],
       "rollForward": false
+    },
+    "fslangmcp": {
+      "version": "0.13.2",
+      "commands": ["fslangmcp"],
+      "rollForward": false
     }
   }
 }

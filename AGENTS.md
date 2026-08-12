@@ -1,6 +1,7 @@
 # Agent guidelines
 
 - Before exploring the codebase broadly, read [AGENTS-codemap.md](./AGENTS-codemap.md) for a structural overview.
+- For semantic F# queries (type-check, symbol search, compile order), use the F# MCP with `Toro.slnx` as project context.
 
 ## Dev Environment
 
