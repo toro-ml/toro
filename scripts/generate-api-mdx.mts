@@ -291,6 +291,14 @@ const filePages: FilePage[] = [
     description: "Evaluation metrics (accuracy, precision, recall, F1).",
     sources: [{ html: "toro-nn-metrics.html", heading: "Metrics" }],
   },
+  {
+    subdir: "toro-nn",
+    namespace: "Toro.NN",
+    slug: "api-checkpoint",
+    title: "Checkpoint",
+    description: "Save and restore full training state (model + optimizer + epoch).",
+    sources: [{ html: "toro-nn-checkpoint.html", heading: "Checkpoint" }],
+  },
 
   {
     subdir: "toro",

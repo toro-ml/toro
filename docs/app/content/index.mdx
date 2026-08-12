@@ -4,7 +4,7 @@ description: PyTorch semantics, idiomatic F#. Powered by TorchSharp.
 ---
 
 Toro wraps [TorchSharp](https://github.com/dotnet/TorchSharp) with an F#-idiomatic API.
-It keeps PyTorch's tensor semantics while using records, computation expressions, and direct method chaining.
+It keeps PyTorch's tensor semantics while using records, computation expressions, and function composition.
 
 - **Direct API** -- operations throw on failure for concise method chaining, just like PyTorch.
 - **Records as models** -- models are plain F# records. `Model.trainableVars` collects parameters by reflection, so there is no base class to inherit.
@@ -12,14 +12,14 @@ It keeps PyTorch's tensor semantics while using records, computation expressions
 - **Computation expressions for composition** -- `sequential { }` composes layers; `pipeline { }` enables composition for heterogeneous signatures.
 - **PyTorch-compatible surface** -- tensor operations, neural network layers, and training utilities mirror PyTorch naming and behavior.
 
-| Package | Purpose |
-| ----------- | -------------------------------------------- |
-| `Toro` | Tensors, DType, Device, SafeTensors I/O |
-| `Toro.NN` | Layers, loss functions, optimizers, metrics |
-| `Toro.GNN` | Graph neural network layers and batching |
-| `Toro.Vision` | Image I/O and transforms (SkiaSharp + Torch) |
-| `Toro.Text` | Tokenization via Microsoft.ML.Tokenizers |
-| `Toro.Hub` | Hugging Face Hub client for pre-trained models |
+| Package       | Purpose                                        |
+| ------------- | ---------------------------------------------- |
+| `Toro`        | Tensor alias, `scoped { }` CE, SafeTensors I/O |
+| `Toro.NN`     | Layers, loss functions, optimizers, metrics    |
+| `Toro.GNN`    | Graph neural network layers and batching       |
+| `Toro.Vision` | Image I/O and transforms (SkiaSharp + Torch)   |
+| `Toro.Text`   | Tokenization via Microsoft.ML.Tokenizers       |
+| `Toro.Hub`    | Hugging Face Hub client for pre-trained models |
 
 ## Install
 
@@ -37,24 +37,38 @@ dotnet add package Toro.Text     # Tokenization and text preprocessing
 ## Train an XOR model
 
 ```fsharp
+open TorchSharp
 open Toro
 open Toro.NN
 
-let x = Tensor.ofList ([ [0f;0f]; [0f;1f]; [1f;0f]; [1f;1f] ], Cpu)
-let y = Tensor.ofList ([ [0f]; [1f]; [1f]; [0f] ], Cpu)
+let x =
+    torch.tensor (
+        array2D [| [| 0f; 0f |]; [| 0f; 1f |]; [| 1f; 0f |]; [| 1f; 1f |] |],
+        device = torch.CPU
+    )
 
-let l1 = Linear.init 2 16 F32 Cpu
-let l2 = Linear.init 16 1 F32 Cpu
+let y =
+    torch.tensor (
+        array2D [| [| 0f |]; [| 1f |]; [| 1f |]; [| 0f |] |],
+        device = torch.CPU
+    )
+
+let l1 = Linear.init 2 16 torch.float32 torch.CPU
+let l2 = Linear.init 16 1 torch.float32 torch.CPU
 let model = sequential { l1; Relu; l2 }
 
 let opt = AdamW.createWithLr 0.01 (Model.trainableVars model)
-for _ in 1..500 do
+
+for epoch in 1..500 do
     scoped {
         opt.zeroGrad ()
         let pred = model.forward x
         let loss = Loss.mse pred y
         loss.backward ()
         opt.step ()
+
+        if epoch % 100 = 0 then
+            printfn "epoch %d  loss=%.6f" epoch (loss.ToSingle())
     }
 ```
 
@@ -62,36 +76,34 @@ Operations throw on failure. `scoped { }` disposes intermediate tensors at the e
 
 ## Define a CNN with records
 
-Models are plain F# records. Each part defines a `forward` member:
+Models are plain F# records. Each record defines a `forward` member that composes layers with `>>`:
 
 ```fsharp
 type Features = {
     Conv1: Conv2d; Bn1: BatchNorm; Pool1: MaxPool2d
     Conv2: Conv2d; Bn2: BatchNorm; Pool2: MaxPool2d
 } with
-    member this.forward(train, x) =
-        x
-        |> this.Conv1.forward
-        |> this.Bn1.forwardT train
-        |> _.relu()
-        |> this.Pool1.forward
-        |> this.Conv2.forward
-        |> this.Bn2.forwardT train
-        |> _.relu()
-        |> this.Pool2.forward
+    member this.forward(train: bool) : Tensor -> Tensor =
+        this.Conv1.forward
+        >> this.Bn1.forwardT train
+        >> _.relu()
+        >> this.Pool1.forward
+        >> this.Conv2.forward
+        >> this.Bn2.forwardT train
+        >> _.relu()
+        >> this.Pool2.forward
 
 type Classifier = { Fc1: Linear; Drop: Dropout; Fc2: Linear } with
-    member this.forward(train, x) =
-        x
-        |> _.flatten(1, -1)
-        |> this.Fc1.forward
-        |> _.relu()
-        |> this.Drop.forwardT train
-        |> this.Fc2.forward
+    member this.forward(train: bool) : Tensor -> Tensor =
+        _.flatten(1L, -1L)
+        >> this.Fc1.forward
+        >> _.relu()
+        >> this.Drop.forwardT train
+        >> this.Fc2.forward
 
 type CnnModel = { Features: Features; Classifier: Classifier } with
-    member this.forward(train, x) =
-        x |> this.Features.forward(train) |> this.Classifier.forward(train)
+    member this.forward(train: bool) : Tensor -> Tensor =
+        this.Features.forward train >> this.Classifier.forward train
 ```
 
 Nested records compose naturally. `Model.trainableVars` walks the entire structure by reflection.
@@ -99,13 +111,18 @@ Nested records compose naturally. `Model.trainableVars` walks the entire structu
 ## Evaluate
 
 ```fsharp
-Toro.noGrad (fun () ->
-    let pred = model.forward testX
-    let argmax = pred.argmax 1
-    let eq = (argmax .=. testY).toDType F32
-    let acc = eq.meanAll ()
-    printfn "Accuracy: %.1f%%" (acc.item () * 100.0)
-)
+let pred =
+    Toro.noGrad (fun () ->
+        let p = model.forward x
+        p.flatten ())
+
+let labels = [| "0 XOR 0"; "0 XOR 1"; "1 XOR 0"; "1 XOR 1" |]
+let expected = [| 0f; 1f; 1f; 0f |]
+
+for i in 0..3 do
+    let v = pred[i].ToSingle()
+    let ok = if abs (v - expected[i]) < 0.5f then "OK" else "MISS"
+    printfn "  %s = %.3f  %s" labels[i] v ok
 ```
 
 ## Examples

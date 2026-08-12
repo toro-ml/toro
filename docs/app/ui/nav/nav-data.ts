@@ -71,20 +71,6 @@ export function hasActiveNavEntry(
 
 export const navSections: readonly NavSection[] = [
   {
-    title: null,
-    items: [
-      { to: "/getting-started", label: "Getting Started" },
-      { to: "/concepts", label: "Core Concepts" },
-      { to: "/tensor", label: "Tensor" },
-      { to: "/nn", label: "Neural Networks" },
-      { to: "/training", label: "Training" },
-      { to: "/gnn", label: "Graph Neural Networks" },
-      { to: "/vision", label: "Vision" },
-      { to: "/text", label: "Text Processing" },
-      { to: "/hub", label: "Hub" },
-    ],
-  },
-  {
     title: "API Reference",
     groups: [
       {
@@ -132,6 +118,7 @@ export const navSections: readonly NavSection[] = [
           { to: "/api-optim", label: "Optim" },
           { to: "/api-scheduler", label: "Scheduler" },
           { to: "/api-clip", label: "Clip" },
+          { to: "/api-checkpoint", label: "Checkpoint" },
         ],
       },
       {
