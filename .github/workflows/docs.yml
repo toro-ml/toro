@@ -1,7 +1,9 @@
 name: docs
 
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
 
@@ -10,14 +12,25 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
+  actions: read
+  contents: read
   pages: write
   id-token: write
 
 jobs:
   build:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+
+      - name: Download dotnet build from CI
+        if: github.event_name == 'workflow_run'
+        uses: actions/download-artifact@v4
+        with:
+          name: dotnet-build
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
 
       - uses: actions/setup-dotnet@v6
         with:
@@ -27,11 +40,12 @@ jobs:
             **/*.fsproj
             .config/dotnet-tools.json
 
+      - name: Build library
+        if: github.event_name == 'workflow_dispatch'
+        run: dotnet build -c Release
+
       - name: Restore tools
         run: dotnet tool restore
-
-      - name: Build library
-        run: dotnet build -c Release
 
       - name: Generate API docs (FSDocs)
         run: dotnet fsi scripts/generate-api-docs.fsx

@@ -98,7 +98,9 @@ jobs:
         run: dotnet pack src/Toro/Toro.fsproj --configuration Release --no-restore --no-build --output artifacts
 
       - name: Upload build artifacts for docs
-        if: github.event_name == 'pull_request' && needs.changes.outputs.docs == 'true'
+        if: |
+          github.event_name == 'push' ||
+          (github.event_name == 'pull_request' && needs.changes.outputs.docs == 'true')
         uses: actions/upload-artifact@v4
         with:
           name: dotnet-build
