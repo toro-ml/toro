@@ -324,5 +324,5 @@ let ``pipeline propagates exceptions`` () =
         f x |> ignore
         failwith "Expected exception"
     with
-    | :? System.Exception as ex when ex.Message = "test error" -> ()
+    | ex when ex.Message = "test error" -> ()
     | ex -> Assert.Fail $"Expected exception with message \"test error\", got %A{ex}"
