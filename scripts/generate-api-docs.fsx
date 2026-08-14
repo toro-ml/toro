@@ -10,10 +10,24 @@ let exec (cmd: string) (args: string) =
     psi.RedirectStandardError <- true
     psi.UseShellExecute <- false
     let p = Diagnostics.Process.Start(psi)
-    let stdout = p.StandardOutput.ReadToEnd()
-    let stderr = p.StandardError.ReadToEnd()
+    let stdout = p.StandardOutput.ReadToEndAsync()
+    let stderr = p.StandardError.ReadToEndAsync()
     p.WaitForExit()
-    (p.ExitCode, stdout, stderr)
+    (p.ExitCode, stdout.Result, stderr.Result)
+
+let requireSuccess description (code, stdout: string, stderr: string) =
+    if code <> 0 then
+        eprintfn "%s failed with exit code %d." description code
+
+        if not (String.IsNullOrWhiteSpace stdout) then
+            eprintfn "stdout:\n%s" (stdout.TrimEnd())
+
+        if not (String.IsNullOrWhiteSpace stderr) then
+            eprintfn "stderr:\n%s" (stderr.TrimEnd())
+
+        exit code
+
+    stdout
 
 let copyDeps () =
     let libDir = Path.Combine(root, ".fsdocs-libs")
@@ -21,11 +35,9 @@ let copyDeps () =
     let projects = [ "src/Toro.Text"; "src/Toro.Vision" ]
 
     for proj in projects do
-        let (code, _, err) =
-            exec "dotnet" $"publish {proj} -c Release --no-build -o {libDir}"
-
-        if code <> 0 then
-            eprintfn "publish %s failed: %s" proj err
+        exec "dotnet" $"publish {proj} -c Release --no-build -o {libDir}"
+        |> requireSuccess $"publish {proj}"
+        |> ignore
 
     let targets = [
         ("src/Toro.Text/bin/Release/net10.0", [ "Microsoft.ML.Tokenizers.dll" ])
@@ -42,12 +54,9 @@ let copyDeps () =
                 File.Copy(src, Path.Combine(dest, dll), true)
 
 let run () =
-    let (code, stdout, stderr) =
+    let stdout =
         exec "dotnet" "fsdocs build --clean --input .fsdocs-input --output .fsdocs-out --properties Configuration=Release"
-
-    if code <> 0 then
-        eprintfn "fsdocs failed: %s" stderr
-        exit 1
+        |> requireSuccess "fsdocs"
 
     printfn "%s" stdout
 
