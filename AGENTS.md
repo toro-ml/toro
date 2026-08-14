@@ -18,7 +18,7 @@
 
 ## Navigation
 
-- Read `CODEMAP/index.md` before broad repository exploration.
+- Read `CODEMAP.md` before broad repository exploration.
 - Read only the package map relevant to the task.
 - Use language-aware tools for definitions, references, callers, types,
   implementations, and diagnostics.
