@@ -183,6 +183,7 @@ The [MnistTraining](examples/MnistTraining) example saves CPU Torch RNG state an
 | [SimpleGcn](examples/SimpleGcn) | Node classification with GCNConv |
 | [HubSentiment](examples/HubSentiment) | Pinned DistilBERT weights and declarative name mapping |
 | [HubResNet18](examples/HubResNet18) | Pinned ResNet-18 weights and image preprocessing |
+| [HubClip](examples/HubClip) | Zero-shot image classification with pinned CLIP weights |
 | [HubDistilGpt2](examples/HubDistilGpt2) | CPU text generation with pinned DistilGPT2 weights |
 | [HubSmolLm2](examples/HubSmolLm2) | CPU instruction generation with pinned SmolLM2 weights |
 

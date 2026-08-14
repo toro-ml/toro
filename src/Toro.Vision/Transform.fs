@@ -98,6 +98,7 @@ module Resize =
     let create (height: int) (width: int) : Resize = { Height = height; Width = width }
 
 /// Resize an image while preserving its aspect ratio so that its shortest edge has the requested size.
+/// Bilinear and bicubic interpolation use antialiasing.
 /// Input: $[C, H, W]$ or $[B, C, H, W]$.
 type ResizeShortestEdge = {
     Size: int
@@ -128,7 +129,7 @@ type ResizeShortestEdge = {
             match this.Mode with
             | torch.InterpolationMode.Bilinear
             | torch.InterpolationMode.Bicubic ->
-                torch.nn.functional.interpolate (input, size, mode = this.Mode, align_corners = false)
+                torch.nn.functional.interpolate (input, size, mode = this.Mode, align_corners = false, antialias = true)
             | _ -> torch.nn.functional.interpolate (input, size, mode = this.Mode)
 
         if rank = 3 then

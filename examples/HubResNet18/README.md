@@ -27,11 +27,11 @@ Files are cached by repository and revision under `~/.cache/toro/hub/`.
 Loading microsoft/resnet-18 at 65a5785d9156231087c481e0c7dd33a5ff6f7e3e ...
 Loaded 102 parameters and buffers; ignored 20 source tensors.
 Predictions for https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/hub/parrots.png:
-  1. macaw                          57.96%
-  2. quail                          13.20%
-  3. partridge                      7.76%
-  4. ruffed grouse, partridge, Bonasa umbellus 5.47%
-  5. vulture                        4.48%
+  1. macaw                          62.96%
+  2. partridge                      6.63%
+  3. ruffed grouse, partridge, Bonasa umbellus 5.50%
+  4. vulture                        5.30%
+  5. quail                          4.64%
 ```
 
 Exact probabilities can vary with the TorchSharp and LibTorch versions.

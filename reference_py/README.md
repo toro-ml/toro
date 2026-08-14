@@ -20,3 +20,19 @@ uv run python llm_reference.py smollm2 "What is 84 * 3 / 2?" 16
 
 The reference disables the Transformers KV cache because the Toro examples recompute the full sequence for each token.
 This keeps the BF16 operation order comparable for SmolLM2.
+
+## CLIP reference
+
+Run the pinned CLIP ViT-B/32 model with the default parrot image and labels:
+
+```bash
+uv run python clip_reference.py
+```
+
+Pass the same image and candidate labels used by the Toro example:
+
+```bash
+uv run python clip_reference.py ../image.jpg "tabby cat" dog car
+```
+
+The command prints the probability and rank of each label as JSON.
