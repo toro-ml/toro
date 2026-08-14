@@ -4,6 +4,95 @@ open Toro
 open Toro.NN
 open Toro.Vision
 
+type Options = {
+    Epochs: int
+    Seed: int
+    CheckpointDir: string option
+    Resume: bool
+}
+
+let parseOptions (argv: string[]) =
+    let rec loop options args =
+        match args with
+        | [] -> options
+        | "--epochs" :: value :: rest -> loop { options with Epochs = int value } rest
+        | "--seed" :: value :: rest -> loop { options with Seed = int value } rest
+        | "--checkpoint" :: value :: rest ->
+            loop
+                {
+                    options with
+                        CheckpointDir = Some value
+                }
+                rest
+        | "--resume" :: rest -> loop { options with Resume = true } rest
+        | unknown :: _ -> invalidArg (nameof argv) $"Unknown or incomplete argument: {unknown}"
+
+    let options =
+        loop
+            {
+                Epochs = 5
+                Seed = 1337
+                CheckpointDir = None
+                Resume = false
+            }
+            (Array.toList argv)
+
+    if options.Epochs < 0 then
+        invalidArg (nameof argv) "--epochs must be non-negative."
+
+    if options.Resume && options.CheckpointDir.IsNone then
+        invalidArg (nameof argv) "--resume requires --checkpoint <directory>."
+
+    options
+
+let trainingStateFileName = "training-state.safetensors"
+let rngStateName = "torch.cpu_rng_state"
+let schedulerStepName = "scheduler.current_step"
+
+let saveTrainingState (scheduler: Scheduler) (checkpointDir: string) =
+    let state = Scheduler.getState scheduler
+    let filePath = IO.Path.Combine(checkpointDir, trainingStateFileName)
+
+    scoped {
+        let rngState = torch.get_rng_state ()
+
+        let schedulerStep =
+            torch.tensor ([| int64 state.CurrentStep |], dtype = torch.int64, device = torch.CPU)
+
+        SafeTensors.save (Map [ rngStateName, rngState; schedulerStepName, schedulerStep ]) filePath
+    }
+
+let loadTrainingState (scheduler: Scheduler) (checkpointDir: string) =
+    let filePath = IO.Path.Combine(checkpointDir, trainingStateFileName)
+    let state = SafeTensors.load filePath
+    let expected = Set [ rngStateName; schedulerStepName ]
+    let actual = state |> Map.keys |> Set.ofSeq
+
+    if actual <> expected then
+        invalidOp $"Training state key mismatch: expected={expected}; actual={actual}."
+
+    let rngState = state[rngStateName]
+    let schedulerStep = state[schedulerStepName]
+
+    if rngState.dtype <> torch.uint8 || rngState.ndim <> 1L then
+        invalidOp "Torch CPU RNG state must be a rank-1 uint8 tensor."
+
+    if
+        schedulerStep.dtype <> torch.int64
+        || schedulerStep.shape <> [| 1L |]
+    then
+        invalidOp "Scheduler step must be an int64 tensor with shape [1]."
+
+    let schedulerState = {
+        CurrentStep = schedulerStep.item<int64> () |> int
+    }
+
+    Scheduler.loadState schedulerState scheduler
+    torch.set_rng_state rngState
+
+    for tensor in state.Values do
+        tensor.Dispose()
+
 type MnistModel = {
     Conv1: Conv2d
     Conv2: Conv2d
@@ -43,10 +132,12 @@ let createModel () =
     }
 
 [<EntryPoint>]
-let main _argv =
+let main argv =
+    let options = parseOptions argv
     let batchSize = 64
-    let epochs = 5
     let lr = 1e-3
+
+    torch.manual_seed (int64 options.Seed) |> ignore
 
     let dataPath =
         IO.Path.Combine(Environment.GetFolderPath Environment.SpecialFolder.LocalApplicationData, "toro-mnist")
@@ -66,18 +157,43 @@ let main _argv =
 
     let model = createModel ()
     let opt = AdamW.createWithLr lr (Model.trainableParams model)
+    let scheduler = Scheduler.create (StepDecay(2, 0.5)) opt.setLearningRate lr
+
+    let startEpoch =
+        match options.Resume, options.CheckpointDir with
+        | true, Some checkpointDir ->
+            let completedEpoch = Checkpoint.load model opt checkpointDir
+            loadTrainingState scheduler checkpointDir
+
+            if scheduler.CurrentStep <> completedEpoch then
+                invalidOp $"Checkpoint epoch {completedEpoch} does not match scheduler step {scheduler.CurrentStep}."
+
+            completedEpoch + 1
+        | _ -> 1
 
     printfn ""
     printfn "Model: Conv2d(1->8, 5, s2) -> Conv2d(8->16, 5, s2) -> Linear(256->64) -> Linear(64->10)"
     printfn "Optimizer: AdamW (lr=%.0e)" lr
-    printfn ""
+    printfn "Seed: %d" options.Seed
 
-    use trainLoader =
-        torch.utils.data.DataLoader(trainDataset, batchSize, shuffle = true, device = torch.CPU)
+    if options.Resume then
+        printfn "Resumed at epoch %d" startEpoch
+
+    printfn ""
 
     use testLoader = torch.utils.data.DataLoader(testDataset, 256, device = torch.CPU)
 
-    for epoch in 1..epochs do
+    for epoch in startEpoch .. options.Epochs do
+        use trainLoader =
+            torch.utils.data.DataLoader(
+                trainDataset,
+                batchSize,
+                shuffle = true,
+                device = torch.CPU,
+                seed = options.Seed + epoch,
+                disposeDataset = false
+            )
+
         let mutable totalLoss = 0.0
         let mutable totalCorrect = 0L
         let mutable totalSamples = 0L
@@ -108,7 +224,7 @@ let main _argv =
 
         let avgLoss = totalLoss / float totalSamples
         let accuracy = float totalCorrect / float totalSamples * 100.0
-        printf "Epoch %d/%d  train loss=%.4f  acc=%.1f%%" epoch epochs avgLoss accuracy
+        printf "Epoch %d/%d  train loss=%.4f  acc=%.1f%%" epoch options.Epochs avgLoss accuracy
 
         let mutable testCorrect = 0L
         let mutable testTotal = 0L
@@ -133,6 +249,14 @@ let main _argv =
 
         let testAcc = float testCorrect / float testTotal * 100.0
         printfn "  test acc=%.1f%%" testAcc
+
+        Scheduler.step scheduler
+
+        match options.CheckpointDir with
+        | Some checkpointDir ->
+            Checkpoint.save model opt epoch checkpointDir
+            saveTrainingState scheduler checkpointDir
+        | None -> ()
 
     printfn ""
     printfn "Done."

@@ -7,6 +7,12 @@ open Toro
 /// Spatial transforms operating directly on SKBitmap for CPU-optimized preprocessing.
 module SkiaTransform =
 
+    let private nextInt (exclusiveUpperBound: int) =
+        use value =
+            torch.randint (int64 exclusiveUpperBound, [| 1L |], dtype = torch.int64, device = torch.CPU)
+
+        value.item<int64> () |> int
+
     /// Resize a bitmap to the given width and height using high-quality sampling.
     let resize (width: int) (height: int) (bitmap: SKBitmap) : SKBitmap =
         let resized = new SKBitmap(width, height, bitmap.ColorType, bitmap.AlphaType)
@@ -31,8 +37,8 @@ module SkiaTransform =
         if bitmap.Width < width || bitmap.Height < height then
             failwith $"randomCrop: input {bitmap.Width}x{bitmap.Height} is smaller than crop {width}x{height}"
         else
-            let left = System.Random.Shared.Next(0, bitmap.Width - width + 1)
-            let top = System.Random.Shared.Next(0, bitmap.Height - height + 1)
+            let left = nextInt (bitmap.Width - width + 1)
+            let top = nextInt (bitmap.Height - height + 1)
             let rect = SKRectI(left, top, left + width, top + height)
             let cropped = new SKBitmap(width, height, bitmap.ColorType, bitmap.AlphaType)
             bitmap.ExtractSubset(cropped, rect) |> ignore

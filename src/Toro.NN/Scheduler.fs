@@ -78,6 +78,9 @@ type Scheduler = {
     SetLr: float -> unit
 }
 
+/// Mutable state snapshot of a learning-rate scheduler.
+type SchedulerState = { CurrentStep: int }
+
 module Scheduler =
     let create (schedule: LrSchedule) (setLr: float -> unit) (baseLr: float) : Scheduler = {
         Schedule = schedule
@@ -93,3 +96,14 @@ module Scheduler =
 
     let currentLr (sched: Scheduler) =
         LrSchedule.lrAt sched.BaseLr sched.Schedule sched.CurrentStep
+
+    /// Capture the mutable scheduler state without its schedule configuration or LR setter.
+    let getState (sched: Scheduler) : SchedulerState = { CurrentStep = sched.CurrentStep }
+
+    /// Restore mutable scheduler state and apply the corresponding learning rate.
+    let loadState (state: SchedulerState) (sched: Scheduler) : unit =
+        if state.CurrentStep < 0 then
+            invalidArg (nameof state) $"Scheduler step must be non-negative, but is {state.CurrentStep}."
+
+        sched.CurrentStep <- state.CurrentStep
+        sched.SetLr(currentLr sched)

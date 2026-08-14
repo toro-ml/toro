@@ -46,6 +46,7 @@ type TensorMismatch = {
 /// Report produced after loading tensors into a model.
 type LoadReport = {
     Loaded: string list
+    Ignored: string list
     Missing: string list
     Unexpected: string list
     ShapeMismatches: TensorMismatch list
@@ -404,12 +405,13 @@ module Model =
             else
                 Matched(state, source)
 
-    let private buildReport matches unexpected = {
+    let private buildReport matches ignored unexpected = {
         Loaded =
             matches
             |> List.choose (function
                 | Matched(state, _) -> Some state.Name
                 | _ -> None)
+        Ignored = ignored
         Missing =
             matches
             |> List.choose (function
@@ -450,38 +452,39 @@ module Model =
             invalidOp (String.concat "; " parts)
         | _ -> ()
 
-    let private mappedLookup tensors nameMap =
-        match nameMap with
-        | None -> tensors
-        | Some mapping ->
-            let mapped =
-                tensors
-                |> Map.toList
-                |> List.map (fun (sourceName, tensor) ->
-                    let targetName =
-                        mapping
-                        |> Map.tryFind sourceName
-                        |> Option.defaultValue sourceName
+    let private mappedLookup tensors mapping =
+        let mapped, ignored =
+            tensors
+            |> Map.toList
+            |> List.fold
+                (fun (mapped, ignored) (sourceName, tensor) ->
+                    match NameMapping.resolve mapping sourceName with
+                    | NameResolution.Keep -> (sourceName, sourceName, tensor) :: mapped, ignored
+                    | NameResolution.Rename targetName -> (sourceName, targetName, tensor) :: mapped, ignored
+                    | NameResolution.Ignore -> mapped, sourceName :: ignored)
+                ([], [])
 
-                    sourceName, targetName, tensor)
+        let mapped = List.rev mapped
+        let ignored = List.rev ignored
 
-            let collisions =
-                mapped
-                |> List.groupBy (fun (_, targetName, _) -> targetName)
-                |> List.choose (fun (targetName, entries) ->
-                    match entries with
-                    | [ _ ] -> None
-                    | _ -> Some(targetName, entries |> List.map (fun (sourceName, _, _) -> sourceName)))
+        let collisions =
+            mapped
+            |> List.groupBy (fun (_, targetName, _) -> targetName)
+            |> List.choose (fun (targetName, entries) ->
+                match entries with
+                | [ _ ] -> None
+                | _ -> Some(targetName, entries |> List.map (fun (sourceName, _, _) -> sourceName)))
 
-            match collisions with
-            | [] ->
-                mapped
-                |> List.map (fun (_, targetName, tensor) -> targetName, tensor)
-                |> Map.ofList
-            | (targetName, sourceNames) :: _ ->
-                invalidOp $"nameMap maps multiple source keys %A{sourceNames} to '{targetName}'."
+        match collisions with
+        | [] ->
+            mapped
+            |> List.map (fun (_, targetName, tensor) -> targetName, tensor)
+            |> Map.ofList,
+            ignored
+        | (targetName, sourceNames) :: _ ->
+            invalidOp $"Name mapping maps multiple source keys %A{sourceNames} to '{targetName}'."
 
-    let private planLoad lookup getShape getDType model mode =
+    let private planLoad lookup ignored getShape getDType model mode =
         let state = namedState model
         let matches = state |> List.map (classifyState lookup getShape getDType)
         let stateNames = state |> List.map _.Name |> Set.ofList
@@ -492,15 +495,15 @@ module Model =
             |> List.map fst
             |> List.filter (fun name -> not (Set.contains name stateNames))
 
-        let report = buildReport matches unexpected
+        let report = buildReport matches ignored unexpected
         enforceStrict report mode
         report, matches
 
-    let internal prepareLoadFromDict model tensors nameMap mode =
-        let lookup = mappedLookup tensors nameMap
+    let internal prepareLoadFromDict mapping mode model tensors =
+        let lookup, ignored = mappedLookup tensors mapping
 
         let report, matches =
-            planLoad lookup (fun (tensor: Tensor) -> tensor.shape) (fun (tensor: Tensor) -> tensor.dtype) model mode
+            planLoad lookup ignored (fun (tensor: Tensor) -> tensor.shape) (fun (tensor: Tensor) -> tensor.dtype) model mode
 
         let commit () =
             for matched in matches do
@@ -518,9 +521,16 @@ module Model =
         |> fun tensors -> SafeTensors.save tensors filePath
 
     /// Load tensors from a dictionary into the model, matching by canonical state name.
-    /// When nameMap is Some, dictionary keys are translated before matching.
-    let loadFromDict model tensors nameMap mode =
-        let report, commit = prepareLoadFromDict model tensors nameMap mode
+    /// Validation completes before any model tensor is changed.
+    let loadFromDict (mode: LoadMode) (model: 'T) (tensors: Map<string, Tensor>) =
+        let report, commit = prepareLoadFromDict NameMapping.identity mode model tensors
+        commit ()
+        report
+
+    /// Translate or ignore external tensor names declaratively, then load matching canonical state.
+    /// Mapping, collision, shape, and dtype validation completes before any model tensor is changed.
+    let loadFromDictWith (mapping: NameMapping) (mode: LoadMode) (model: 'T) (tensors: Map<string, Tensor>) =
+        let report, commit = prepareLoadFromDict mapping mode model tensors
         commit ()
         report
 
@@ -530,7 +540,7 @@ module Model =
         let metadata = SafeTensors.loadMeta filePath
 
         let report, matches =
-            planLoad metadata (fun item -> item.Shape) (fun item -> item.DType) model mode
+            planLoad metadata [] (fun item -> item.Shape) (fun item -> item.DType) model mode
 
         let namesToLoad =
             matches

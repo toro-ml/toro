@@ -21,6 +21,7 @@
   <ItemGroup>
     <Compile Include="Module.fs" />
     <Compile Include="Init.fs" />
+    <Compile Include="NameMapping.fs" />
     <Compile Include="Model.fs" />
     <Compile Include="Layer/Linear.fs" />
     <Compile Include="Layer/Embedding.fs" />

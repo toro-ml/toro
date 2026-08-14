@@ -107,7 +107,7 @@ let ``AdamW state uses canonical names and restores independently of parameter o
         Model.namedState source
         |> List.map (fun item -> item.Name, item.Tensor)
         |> Map.ofList
-        |> fun tensors -> Model.loadFromDict replica tensors None Strict
+        |> Model.loadFromDict Strict replica
         |> ignore
 
         let replicaOptimizer =

@@ -98,7 +98,7 @@ let ``SafeTensors scalar tensor round-trip`` () =
         tensorSum loaded["val"] |> should (equalWithin 1e-5f) 42.0f)
 
 [<Fact>]
-let ``Model.loadFromDict without nameMap`` () =
+let ``Model.loadFromDict with canonical names`` () =
     let linear = Linear.init 4 2 torch.float32 torch.CPU
     let original = Model.namedParams linear
 
@@ -108,7 +108,7 @@ let ``Model.loadFromDict without nameMap`` () =
         |> Map.ofList
 
     let linear2 = Linear.init 4 2 torch.float32 torch.CPU
-    let report = Model.loadFromDict linear2 dict None Strict
+    let report = dict |> Model.loadFromDict Strict linear2
 
     report.Loaded.Length |> should equal 2
     report.Missing |> should be Empty
@@ -131,7 +131,7 @@ let ``Model.loadFromDict without nameMap`` () =
     w2 |> should (equalWithin 1e-5f) w1
 
 [<Fact>]
-let ``Model.loadFromDict with nameMap`` () =
+let ``Model.loadFromDictWith rewrites names`` () =
     let linear = Linear.init 4 2 torch.float32 torch.CPU
     let original = Model.namedParams linear
 
@@ -140,14 +140,13 @@ let ``Model.loadFromDict with nameMap`` () =
         |> List.map (fun item -> "hf." + item.Name, item.Tensor)
         |> Map.ofList
 
-    let nameMap =
-        original
-        |> List.map (fun item -> "hf." + item.Name, item.Name)
-        |> Map.ofList
+    let nameMapping = NameMapping.create [ NameRule.rewrite "hf.{name}" "{name}" ]
 
     let linear2 = Linear.init 4 2 torch.float32 torch.CPU
 
-    let report = Model.loadFromDict linear2 renamedDict (Some nameMap) Strict
+    let report =
+        renamedDict
+        |> Model.loadFromDictWith nameMapping Strict linear2
 
 
     report.Loaded.Length |> should equal 2
@@ -176,7 +175,7 @@ let ``Model.loadFromDict Lenient reports missing keys`` () =
         |> _.Tensor
         |> tensorSum
 
-    let report = Model.loadFromDict linear Map.empty None Lenient
+    let report = Map.empty |> Model.loadFromDict Lenient linear
 
     let after =
         Model.namedParams linear
@@ -195,7 +194,7 @@ let ``Model.loadFromDict Strict fails on missing keys`` () =
     let linear = Linear.init 4 2 torch.float32 torch.CPU
 
     try
-        Model.loadFromDict linear Map.empty None Strict |> ignore
+        Map.empty |> Model.loadFromDict Strict linear |> ignore
         failwith "Expected exception for missing keys in Strict mode"
     with _ ->
         ()
@@ -214,7 +213,7 @@ let ``Model.loadFromDict Strict fails on unexpected keys`` () =
     let linear2 = Linear.init 4 2 torch.float32 torch.CPU
 
     try
-        Model.loadFromDict linear2 dict None Strict |> ignore
+        dict |> Model.loadFromDict Strict linear2 |> ignore
         failwith "Expected exception for unexpected keys in Strict mode"
     with _ ->
         ()
@@ -278,7 +277,7 @@ let ``Model.loadFromDict Lenient reports shape mismatch`` () =
             "Bias", torch.randn ([| 2L |], dtype = torch.float32, device = torch.CPU)
         ]
 
-    let report = Model.loadFromDict linear wrongShapeDict None Lenient
+    let report = wrongShapeDict |> Model.loadFromDict Lenient linear
 
 
     report.ShapeMismatches.Length |> should equal 1
@@ -295,7 +294,7 @@ let ``Model.loadFromDict Lenient reports dtype mismatch`` () =
             "Bias", torch.randn ([| 2L |], dtype = torch.float32, device = torch.CPU)
         ]
 
-    let report = Model.loadFromDict linear wrongDTypeDict None Lenient
+    let report = wrongDTypeDict |> Model.loadFromDict Lenient linear
 
 
     report.DTypeMismatches.Length |> should equal 1
@@ -313,8 +312,7 @@ let ``Model.loadFromDict Strict fails on shape mismatch`` () =
         ]
 
     try
-        Model.loadFromDict linear wrongShapeDict None Strict
-        |> ignore
+        wrongShapeDict |> Model.loadFromDict Strict linear |> ignore
 
         failwith "Expected exception for shape mismatch in Strict mode"
     with _ ->
@@ -331,8 +329,7 @@ let ``Model.loadFromDict Strict fails on dtype mismatch`` () =
         ]
 
     try
-        Model.loadFromDict linear wrongDTypeDict None Strict
-        |> ignore
+        wrongDTypeDict |> Model.loadFromDict Strict linear |> ignore
 
         failwith "Expected exception for dtype mismatch in Strict mode"
     with _ ->

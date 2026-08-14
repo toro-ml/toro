@@ -82,7 +82,9 @@ module Checkpoint =
         scoped {
             let modelTensors = SafeTensors.load (modelPath dirPath)
             let optimizerTensors = SafeTensors.load (optimizerPath dirPath)
-            let _, commitModel = Model.prepareLoadFromDict model modelTensors None Strict
+
+            let _, commitModel =
+                Model.prepareLoadFromDict NameMapping.identity Strict model modelTensors
 
             optimizer.validateStateDict optimizerTensors
 

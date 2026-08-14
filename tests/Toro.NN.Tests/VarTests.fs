@@ -261,7 +261,8 @@ let ``Strict load validates all tensors before changing any tensor`` () =
     let invalidBias = torch.zeros ([| 3L |], dtype = torch.float32)
 
     Assert.Throws<InvalidOperationException>(fun () ->
-        Model.loadFromDict model (Map [ "Weight", replacementWeight; "Bias", invalidBias ]) None Strict
+        Map [ "Weight", replacementWeight; "Bias", invalidBias ]
+        |> Model.loadFromDict Strict model
         |> ignore)
     |> ignore
 
@@ -275,7 +276,8 @@ let ``Lenient load changes only matching canonical state`` () =
     let invalidBias = torch.zeros ([| 3L |], dtype = torch.float32)
 
     let report =
-        Model.loadFromDict model (Map [ "Weight", replacementWeight; "Bias", invalidBias ]) None Lenient
+        Map [ "Weight", replacementWeight; "Bias", invalidBias ]
+        |> Model.loadFromDict Lenient model
 
     report.Loaded |> should equal [ "Weight" ]
 
@@ -287,21 +289,70 @@ let ``Lenient load changes only matching canonical state`` () =
     tensorSum model.Bias.Value |> should equal beforeBias
 
 [<Fact>]
-let ``nameMap collisions are rejected before model changes`` () =
+let ``NameMapping collisions are rejected before model changes`` () =
     let model = Linear.initNoBias 2 2 torch.float32 torch.CPU
     let before = tensorSum model.Weight
     let source = torch.ones_like model.Weight
     let tensors = Map [ "first", source; "second", source ]
-    let mapping = Map [ "first", "Weight"; "second", "Weight" ]
+
+    let mapping =
+        NameMapping.create [ NameRule.rename "first" "Weight"; NameRule.rename "second" "Weight" ]
 
     let error =
         Assert.Throws<InvalidOperationException>(fun () ->
-            Model.loadFromDict model tensors (Some mapping) Strict
+            tensors
+            |> Model.loadFromDictWith mapping Strict model
             |> ignore)
 
     Assert.Contains("first", error.Message)
     Assert.Contains("second", error.Message)
     tensorSum model.Weight |> should equal before
+
+[<Fact>]
+let ``NameMapping can intentionally ignore source suffixes in Strict mode`` () =
+    let model = Linear.initNoBias 2 2 torch.float32 torch.CPU
+    let replacement = torch.ones_like model.Weight
+    let externalState = torch.zeros ([| 1L |], dtype = torch.int64)
+
+    let mapping = NameMapping.create [ NameRule.ignoreSuffix "num_batches_tracked" ]
+
+    let report =
+        Map [ "Weight", replacement; "external.norm.num_batches_tracked", externalState ]
+        |> Model.loadFromDictWith mapping Strict model
+
+    report.Loaded |> should equal [ "Weight" ]
+
+    report.Ignored
+    |> should equal [ "external.norm.num_batches_tracked" ]
+
+    report.Unexpected |> should be Empty
+
+[<Fact>]
+let ``Ambiguous NameMapping rules fail before model changes`` () =
+    let model = Linear.initNoBias 2 2 torch.float32 torch.CPU
+    let before = tensorSum model.Weight
+    let replacement = torch.ones_like model.Weight
+
+    let mapping =
+        NameMapping.create [ NameRule.rename "external" "Weight"; NameRule.rewrite "{name}" "{name}" ]
+
+    let error =
+        Assert.Throws<InvalidOperationException>(fun () ->
+            Map [ "external", replacement ]
+            |> Model.loadFromDictWith mapping Strict model
+            |> ignore)
+
+    Assert.Contains("matches multiple", error.Message)
+    tensorSum model.Weight |> should equal before
+
+[<Fact>]
+let ``NameRule rejects references to undeclared captures`` () =
+    let error =
+        Assert.Throws<ArgumentException>(fun () ->
+            NameRule.rewrite "layer.{index}.weight" "Layers.{missing}.Weight"
+            |> ignore)
+
+    Assert.Contains("unknown capture", error.Message)
 
 [<Fact>]
 let ``Model save writes a shared tensor only under its canonical name`` () =

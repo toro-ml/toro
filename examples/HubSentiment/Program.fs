@@ -182,52 +182,49 @@ let forward (model: DistilBertClassifier) (inputIds: Tensor) =
 // HF name mapping
 // ---------------------------------------------------------------------------
 
-let buildNameMap () =
-    let emb = [
-        "distilbert.embeddings.word_embeddings.weight", "WordEmbeddings.Embeddings"
-        "distilbert.embeddings.position_embeddings.weight", "PositionEmbeddings.Embeddings"
-        "distilbert.embeddings.LayerNorm.weight", "EmbNorm.Weight"
-        "distilbert.embeddings.LayerNorm.bias", "EmbNorm.Bias"
-    ]
+let nameMapping =
+    let layer sourceSuffix targetSuffix =
+        NameRule.rewrite ("distilbert.transformer.layer.{layer}." + sourceSuffix) ("Layers.{layer}." + targetSuffix)
 
-    let layers = [
-        for i in 0 .. nLayers - 1 do
-            let hf = $"distilbert.transformer.layer.{i}"
-            let toro = $"Layers.{i}"
-            yield $"{hf}.attention.q_lin.weight", $"{toro}.Attention.Q.Weight"
-            yield $"{hf}.attention.q_lin.bias", $"{toro}.Attention.Q.Bias"
-            yield $"{hf}.attention.k_lin.weight", $"{toro}.Attention.K.Weight"
-            yield $"{hf}.attention.k_lin.bias", $"{toro}.Attention.K.Bias"
-            yield $"{hf}.attention.v_lin.weight", $"{toro}.Attention.V.Weight"
-            yield $"{hf}.attention.v_lin.bias", $"{toro}.Attention.V.Bias"
-            yield $"{hf}.attention.out_lin.weight", $"{toro}.Attention.OutLin.Weight"
-            yield $"{hf}.attention.out_lin.bias", $"{toro}.Attention.OutLin.Bias"
-            yield $"{hf}.sa_layer_norm.weight", $"{toro}.SaNorm.Weight"
-            yield $"{hf}.sa_layer_norm.bias", $"{toro}.SaNorm.Bias"
-            yield $"{hf}.ffn.lin1.weight", $"{toro}.Ffn1.Weight"
-            yield $"{hf}.ffn.lin1.bias", $"{toro}.Ffn1.Bias"
-            yield $"{hf}.ffn.lin2.weight", $"{toro}.Ffn2.Weight"
-            yield $"{hf}.ffn.lin2.bias", $"{toro}.Ffn2.Bias"
-            yield $"{hf}.output_layer_norm.weight", $"{toro}.OutputNorm.Weight"
-            yield $"{hf}.output_layer_norm.bias", $"{toro}.OutputNorm.Bias"
+    NameMapping.create [
+        NameRule.rename "distilbert.embeddings.word_embeddings.weight" "WordEmbeddings.Embeddings"
+        NameRule.rename "distilbert.embeddings.position_embeddings.weight" "PositionEmbeddings.Embeddings"
+        NameRule.rename "distilbert.embeddings.LayerNorm.weight" "EmbNorm.Weight"
+        NameRule.rename "distilbert.embeddings.LayerNorm.bias" "EmbNorm.Bias"
+        layer "attention.q_lin.weight" "Attention.Q.Weight"
+        layer "attention.q_lin.bias" "Attention.Q.Bias"
+        layer "attention.k_lin.weight" "Attention.K.Weight"
+        layer "attention.k_lin.bias" "Attention.K.Bias"
+        layer "attention.v_lin.weight" "Attention.V.Weight"
+        layer "attention.v_lin.bias" "Attention.V.Bias"
+        layer "attention.out_lin.weight" "Attention.OutLin.Weight"
+        layer "attention.out_lin.bias" "Attention.OutLin.Bias"
+        layer "sa_layer_norm.weight" "SaNorm.Weight"
+        layer "sa_layer_norm.bias" "SaNorm.Bias"
+        layer "ffn.lin1.weight" "Ffn1.Weight"
+        layer "ffn.lin1.bias" "Ffn1.Bias"
+        layer "ffn.lin2.weight" "Ffn2.Weight"
+        layer "ffn.lin2.bias" "Ffn2.Bias"
+        layer "output_layer_norm.weight" "OutputNorm.Weight"
+        layer "output_layer_norm.bias" "OutputNorm.Bias"
+        NameRule.rename "pre_classifier.weight" "PreClassifier.Weight"
+        NameRule.rename "pre_classifier.bias" "PreClassifier.Bias"
+        NameRule.rename "classifier.weight" "Classifier.Weight"
+        NameRule.rename "classifier.bias" "Classifier.Bias"
     ]
-
-    let head = [
-        "pre_classifier.weight", "PreClassifier.Weight"
-        "pre_classifier.bias", "PreClassifier.Bias"
-        "classifier.weight", "Classifier.Weight"
-        "classifier.bias", "Classifier.Bias"
-    ]
-
-    Map(emb @ layers @ head)
 
 // ---------------------------------------------------------------------------
 // Tokenizer (WordPiece via Toro.Text)
 // ---------------------------------------------------------------------------
 
-let loadTokenizer (repoId: string) : Async<Tokenizer> =
+let loadTokenizer (repoId: string) (revision: string) : Async<Tokenizer> =
     async {
-        let! path = Hub.download repoId "vocab.txt"
+        let! path =
+            Hub.download {
+                RepoId = repoId
+                Revision = revision
+                Filename = "vocab.txt"
+            }
 
         return
             Tokenizer.fromWordPiece {
@@ -259,19 +256,26 @@ let main argv =
         Array.tryItem 0 argv
         |> Option.defaultValue "distilbert/distilbert-base-uncased-finetuned-sst-2-english"
 
-    printfn "Downloading %s ..." repoId
+    let revision =
+        Array.tryItem 1 argv
+        |> Option.defaultValue "714eb0fa89d2f80546fda750413ed43d93601a13"
+
+    printfn "Downloading %s at %s ..." repoId revision
 
     let weights =
-        Hub.loadSafeTensors repoId "model.safetensors"
+        Hub.loadSafeTensors {
+            RepoId = repoId
+            Revision = revision
+            Filename = "model.safetensors"
+        }
         |> Async.RunSynchronously
 
-    let tokenizer = loadTokenizer repoId |> Async.RunSynchronously
+    let tokenizer = loadTokenizer repoId revision |> Async.RunSynchronously
 
     printfn "Downloaded %d tensors, tokenizer ready" (weights: Map<string, Tensor>).Count
 
     let model = createModel ()
-    let nameMap = buildNameMap ()
-    let report = Model.loadFromDict model weights (Some nameMap) Lenient
+    let report = weights |> Model.loadFromDictWith nameMapping Lenient model
     printfn "Model loaded (%d params, %d skipped)" report.Loaded.Length report.Missing.Length
     printfn ""
 

@@ -3,6 +3,17 @@ namespace Toro.Vision
 open TorchSharp
 open Toro
 
+module private TorchRandom =
+    let nextDouble () =
+        use value = torch.rand ([| 1L |], dtype = torch.float64, device = torch.CPU)
+        value.item<double> ()
+
+    let nextInt (exclusiveUpperBound: int) =
+        use value =
+            torch.randint (int64 exclusiveUpperBound, [| 1L |], dtype = torch.int64, device = torch.CPU)
+
+        value.item<int64> () |> int
+
 /// Image transform that maps a tensor to a tensor.
 type ITransform =
     abstract apply: Tensor -> Tensor
@@ -86,6 +97,54 @@ type Resize = {
 module Resize =
     let create (height: int) (width: int) : Resize = { Height = height; Width = width }
 
+/// Resize an image while preserving its aspect ratio so that its shortest edge has the requested size.
+/// Input: $[C, H, W]$ or $[B, C, H, W]$.
+type ResizeShortestEdge = {
+    Size: int
+    Mode: torch.InterpolationMode
+} with
+
+    member this.apply(x: Tensor) : Tensor =
+        if this.Size <= 0 then
+            invalidArg (nameof this.Size) "ResizeShortestEdge size must be positive."
+
+        let rank = int x.ndim
+
+        if rank <> 3 && rank <> 4 then
+            invalidArg (nameof x) $"ResizeShortestEdge expects rank 3 or 4, got rank {rank}."
+
+        let h = int x.shape[rank - 2]
+        let w = int x.shape[rank - 1]
+
+        if h <= 0 || w <= 0 then
+            invalidArg (nameof x) $"ResizeShortestEdge expects positive spatial dimensions, got {h}x{w}."
+
+        let scale = float this.Size / float (min h w)
+        let newHeight = max 1 (int (float h * scale))
+        let newWidth = max 1 (int (float w * scale))
+        let size = [| int64 newHeight; int64 newWidth |]
+
+        let resize input =
+            match this.Mode with
+            | torch.InterpolationMode.Bilinear
+            | torch.InterpolationMode.Bicubic ->
+                torch.nn.functional.interpolate (input, size, mode = this.Mode, align_corners = false)
+            | _ -> torch.nn.functional.interpolate (input, size, mode = this.Mode)
+
+        if rank = 3 then
+            let batched = x.unsqueeze 0L
+            let resized = resize batched
+            resized.squeeze 0L
+        else
+            resize x
+
+    interface ITransform with
+        member this.apply x = this.apply x
+
+module ResizeShortestEdge =
+    /// Create an aspect-ratio-preserving shortest-edge resize.
+    let create (size: int) (mode: torch.InterpolationMode) : ResizeShortestEdge = { Size = size; Mode = mode }
+
 /// Randomly flip the image horizontally with probability p.
 /// Input: $[C, H, W]$ or $[B, C, H, W]$.
 type RandomHorizontalFlip = {
@@ -95,7 +154,7 @@ type RandomHorizontalFlip = {
     member this.apply(x: Tensor) : Tensor =
         let wDim = int x.ndim - 1
 
-        if System.Random.Shared.NextDouble() < this.P then
+        if TorchRandom.nextDouble () < this.P then
             x.flip [| int64 wDim |]
         else
             x
@@ -124,8 +183,8 @@ type RandomCrop = {
         if h < this.Height || w < this.Width then
             failwith $"RandomCrop: input {h}x{w} is smaller than crop {this.Height}x{this.Width}"
         else
-            let top = System.Random.Shared.Next(0, h - this.Height + 1)
-            let left = System.Random.Shared.Next(0, w - this.Width + 1)
+            let top = TorchRandom.nextInt (h - this.Height + 1)
+            let left = TorchRandom.nextInt (w - this.Width + 1)
 
             let cropped = x.narrow (hDim, int64 top, int64 this.Height)
             cropped.narrow (wDim, int64 left, int64 this.Width)
@@ -174,7 +233,7 @@ type RandomVerticalFlip = {
     member this.apply(x: Tensor) : Tensor =
         let hDim = int x.ndim - 2
 
-        if System.Random.Shared.NextDouble() < this.P then
+        if TorchRandom.nextDouble () < this.P then
             x.flip [| int64 hDim |]
         else
             x
