@@ -14,7 +14,7 @@ permissions:
   id-token: write
 
 env:
-  NUGET_PACKAGES: Toro Toro.NN Toro.GNN Toro.Text Toro.Vision
+  RELEASE_PACKAGES: Toro Toro.NN Toro.GNN Toro.Text Toro.Vision
 
 jobs:
   format:
@@ -91,7 +91,8 @@ jobs:
       - name: Pack packages
         run: |
           version=${{ steps.version.outputs.version }}
-          for pkg in $NUGET_PACKAGES; do
+          IFS=' ' read -r -a packages <<< "$RELEASE_PACKAGES"
+          for pkg in "${packages[@]}"; do
             dotnet pack "src/$pkg/$pkg.fsproj" \
               --configuration Release \
               --no-build \
@@ -109,7 +110,8 @@ jobs:
       - name: NuGet push packages
         run: |
           version=${{ steps.version.outputs.version }}
-          for pkg in $NUGET_PACKAGES; do
+          IFS=' ' read -r -a packages <<< "$RELEASE_PACKAGES"
+          for pkg in "${packages[@]}"; do
             dotnet nuget push "artifacts/$pkg.$version.nupkg" \
               --api-key ${{ steps.login.outputs.NUGET_API_KEY }} \
               --source https://api.nuget.org/v3/index.json \
