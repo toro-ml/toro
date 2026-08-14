@@ -7,8 +7,11 @@ open Toro.NN
 /// GraphSAGE convolution layer (Hamilton et al., 2017).
 /// $\mathbf{x}_i' = \mathbf{W}_1 \mathbf{x}_i + \mathbf{W}_2 \cdot \text{mean}_{j \in \mathcal{N}(i)} \mathbf{x}_j$
 type SAGEConv = {
+    [<Parameter>]
     WeightSelf: Tensor
+    [<Parameter>]
     WeightNeighbor: Tensor
+    [<Parameter>]
     Bias: Tensor option
 } with
 

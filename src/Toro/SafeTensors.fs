@@ -179,8 +179,7 @@ module SafeTensors =
 
         meta, tensors
 
-    /// Save tensors to a .safetensors file.
-    let save (tensors: Map<string, torch.Tensor>) (filePath: string) : unit =
+    let private saveStaged (tensors: Map<string, torch.Tensor>) (filePath: string) =
         let dir = Path.GetDirectoryName filePath
 
         if not (String.IsNullOrEmpty dir) && not (Directory.Exists dir) then
@@ -195,9 +194,11 @@ module SafeTensors =
             sortedEntries
             |> Array.mapFold
                 (fun offset (name, (tensor: torch.Tensor)) ->
-                    let inner = tensor.contiguous ()
+                    // Tensor.bytes is only safe to read from host memory. Stage every
+                    // tensor on CPU and normalize its layout before serializing it.
+                    let inner = tensor.cpu().contiguous ()
                     let byteLen = inner.NumberOfElements * inner.ElementSize
-                    let entry = (name, tensor.dtype, tensor.shape, offset, offset + byteLen)
+                    let entry = (name, inner.dtype, inner.shape, offset, offset + byteLen)
                     (inner, entry), offset + byteLen)
                 0L
 
@@ -242,3 +243,6 @@ module SafeTensors =
             let buf = Array.zeroCreate<byte> bytes.Length
             bytes.CopyTo(buf.AsSpan())
             bw.Write(buf)
+
+    /// Save tensors to a .safetensors file after staging them as contiguous CPU tensors.
+    let save (tensors: Map<string, torch.Tensor>) (filePath: string) : unit = scoped { saveStaged tensors filePath }

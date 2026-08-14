@@ -17,9 +17,13 @@ module BatchNormConfig =
     }
 
 type BatchNorm = {
+    [<Parameter>]
     Weight: Tensor option
+    [<Parameter>]
     Bias: Tensor option
+    [<Buffer>]
     RunningMean: Tensor
+    [<Buffer>]
     RunningVar: Tensor
     Config: BatchNormConfig
 } with

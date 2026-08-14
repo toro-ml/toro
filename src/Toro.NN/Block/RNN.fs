@@ -45,9 +45,13 @@ type LSTMConfig = {
     }
 
 type LSTM = {
+    [<Parameter>]
     WIh: Tensor
+    [<Parameter>]
     WHh: Tensor
+    [<Parameter>]
     BIh: Tensor option
+    [<Parameter>]
     BHh: Tensor option
     HiddenDim: int
     DType: torch.ScalarType
@@ -145,9 +149,13 @@ type GRUConfig = {
     }
 
 type GRU = {
+    [<Parameter>]
     WIh: Tensor
+    [<Parameter>]
     WHh: Tensor
+    [<Parameter>]
     BIh: Tensor option
+    [<Parameter>]
     BHh: Tensor option
     HiddenDim: int
     DType: torch.ScalarType

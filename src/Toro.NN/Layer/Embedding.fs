@@ -4,6 +4,7 @@ open TorchSharp
 open Toro
 
 type Embedding = {
+    [<Parameter>]
     Embeddings: Tensor
     HiddenSize: int64
 } with

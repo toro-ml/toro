@@ -9,7 +9,9 @@ open Toro.NN
 ///   \frac{1}{\sqrt{\deg(i)} \cdot \sqrt{\deg(j)}}
 ///   \left( \mathbf{W}^\top \mathbf{x}_j \right) + \mathbf{b}$
 type GCNConv = {
+    [<Parameter>]
     Weight: Tensor
+    [<Parameter>]
     Bias: Tensor option
 } with
 

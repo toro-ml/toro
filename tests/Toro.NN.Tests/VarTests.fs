@@ -1,5 +1,8 @@
 module VarTests
 
+open System
+open System.Collections.Generic
+open System.IO
 open Xunit
 open FsUnit.Xunit
 open Toro
@@ -7,131 +10,311 @@ open TorchSharp
 open Toro.NN
 open TestHelper
 
-// --- Model.namedParams tests ---
+type ParamBranch = TwoLayers of first: Linear * second: Linear
+
+type ClassifiedState = {
+    [<Parameter>]
+    Trainable: Tensor
+    [<Parameter>]
+    Frozen: Tensor
+    [<Buffer>]
+    Running: Tensor
+    [<ModelIgnore>]
+    Ignored: Tensor
+}
+
+type UnclassifiedState = { Value: Tensor }
+
+type ConflictingAttributes = {
+    [<Parameter; Buffer>]
+    Value: Tensor
+}
+
+type SharedParameters = {
+    [<Parameter>]
+    First: Tensor
+    [<Parameter>]
+    Second: Tensor
+}
+
+type SharedRoles = {
+    [<Parameter>]
+    Parameter: Tensor
+    [<Buffer>]
+    Buffer: Tensor
+}
+
+type TensorContainers = {
+    [<Parameter>]
+    Optional: Tensor option
+    [<Parameter>]
+    Pair: Tensor * Tensor
+}
+
+let private parameter value requiresGrad =
+    let tensor = Init.toTensor [| 2L |] torch.float32 torch.CPU (Init.Const value)
+    tensor.requires_grad <- requiresGrad
+    tensor
+
+let private names (tensors: NamedTensor list) = tensors |> List.map _.Name
+let private tensorSum (tensor: Tensor) = (tensor.sum ()).ToSingle()
+
+let private withTempDir action =
+    let dir = Path.Combine(Path.GetTempPath(), $"toro-model-{Guid.NewGuid()}")
+
+    try
+        Directory.CreateDirectory dir |> ignore
+        action dir
+    finally
+        if Directory.Exists dir then
+            Directory.Delete(dir, true)
 
 [<Fact>]
-let ``namedParams collects tensors from Linear`` () =
-    let linear = Linear.init 4 2 torch.float32 torch.CPU
-    let ps = Model.namedParams linear
-    ps.Length |> should equal 2
-    ps |> List.map fst |> should contain "Weight"
-    ps |> List.map fst |> should contain "Bias"
+let ``named state classifies parameters buffers frozen values and ignored values`` () =
+    let model = {
+        Trainable = parameter 1.0 true
+        Frozen = parameter 2.0 false
+        Running = parameter 3.0 false
+        Ignored = parameter 4.0 true
+    }
+
+    Model.namedState model
+    |> List.map (fun item -> item.Name, item.Kind)
+    |> should equal [ "Trainable", Parameter; "Frozen", Parameter; "Running", Buffer ]
+
+    Model.namedParams model
+    |> names
+    |> should equal [ "Trainable"; "Frozen" ]
+
+    Model.namedBuffers model
+    |> names
+    |> should equal [ "Running" ]
+
+    Model.trainableParams model
+    |> names
+    |> should equal [ "Trainable" ]
 
 [<Fact>]
-let ``namedParams skips None bias`` () =
-    let linear = Linear.initNoBias 4 2 torch.float32 torch.CPU
-    let ps = Model.namedParams linear
-    ps.Length |> should equal 1
-    ps |> List.map fst |> should equal [ "Weight" ]
+let ``named state rejects unclassified tensors with their path`` () =
+    let model = { Value = parameter 1.0 true }
+
+    let error =
+        Assert.Throws<InvalidOperationException>(fun () -> Model.namedState model |> ignore)
+
+    Assert.Contains("Value", error.Message)
 
 [<Fact>]
-let ``namedParams recurses into nested records`` () =
-    let linear = Linear.init 4 2 torch.float32 torch.CPU
+let ``named state rejects conflicting field attributes`` () =
+    let model: ConflictingAttributes = { Value = parameter 1.0 true }
 
+    let error =
+        Assert.Throws<InvalidOperationException>(fun () -> Model.namedState model |> ignore)
+
+    Assert.Contains("Value", error.Message)
+
+[<Fact>]
+let ``named state canonicalizes shared tensors to the first path`` () =
+    let shared = parameter 1.0 true
+    let model = { First = shared; Second = shared }
+    Model.namedState model |> names |> should equal [ "First" ]
+
+[<Fact>]
+let ``named state rejects conflicting roles for a shared tensor`` () =
+    let shared = parameter 1.0 true
+
+    let model: SharedRoles = { Parameter = shared; Buffer = shared }
+
+    let error =
+        Assert.Throws<InvalidOperationException>(fun () -> Model.namedState model |> ignore)
+
+    Assert.Contains("Parameter", error.Message)
+    Assert.Contains("Buffer", error.Message)
+
+[<Fact>]
+let ``namedParams keeps established record option tuple union and list names`` () =
     let model = {|
-        L1 = linear
-        L2 = Linear.init 2 1 torch.float32 torch.CPU
+        Branch = TwoLayers(Linear.initNoBias 3 2 torch.float32 torch.CPU, Linear.initNoBias 2 1 torch.float32 torch.CPU)
+        Optional = Some(Linear.initNoBias 4 3 torch.float32 torch.CPU)
+        Pair = Linear.initNoBias 2 1 torch.float32 torch.CPU, Linear.initNoBias 1 1 torch.float32 torch.CPU
+        Layers = [ Linear.initNoBias 1 1 torch.float32 torch.CPU ]
     |}
 
-    let ps = Model.namedParams model
-    ps.Length |> should equal 4
-    ps |> List.map fst |> should contain "L1.Weight"
-    ps |> List.map fst |> should contain "L1.Bias"
-    ps |> List.map fst |> should contain "L2.Weight"
-    ps |> List.map fst |> should contain "L2.Bias"
+    Model.namedParams model
+    |> names
+    |> should equal [
+        "Branch.TwoLayers.0.Weight"
+        "Branch.TwoLayers.1.Weight"
+        "Layers.0.Weight"
+        "Optional.Weight"
+        "Pair.0.Weight"
+        "Pair.1.Weight"
+    ]
 
 [<Fact>]
-let ``trainableVars returns only requiresGrad tensors`` () =
-    let bn = BatchNorm.initDefault 4 torch.float32 torch.CPU
-    let all = Model.namedParams bn
-    let trainable = Model.trainableVars bn
+let ``parameter attributes propagate through option and tuple containers`` () =
+    let model: TensorContainers = {
+        Optional = Some(parameter 1.0 true)
+        Pair = parameter 2.0 true, parameter 3.0 true
+    }
 
-    all.Length |> should be (greaterThan trainable.Length)
-
-    trainable
-    |> List.iter (fun t -> t.requires_grad |> should be True)
-
-// --- Model.save / loadInto tests ---
+    Model.namedParams model
+    |> names
+    |> should equal [ "Optional"; "Pair.0"; "Pair.1" ]
 
 [<Fact>]
-let ``Model save and loadInto round-trips`` () =
-    let dir =
-        System.IO.Path.Combine(System.IO.Path.GetTempPath(), System.Guid.NewGuid().ToString())
+let ``namedParams preserves Sequential layer names and order`` () =
+    let model =
+        sequential {
+            Linear.initNoBias 4 2 torch.float32 torch.CPU
+            Linear.initNoBias 2 1 torch.float32 torch.CPU
+        }
 
-    try
-        System.IO.Directory.CreateDirectory dir |> ignore
-        let path = System.IO.Path.Combine(dir, "model.safetensors")
-
-        let linear = Linear.init 3 2 torch.float32 torch.CPU
-
-        let wSum = (linear.Weight.sum ()).ToSingle()
-
-
-        Model.save linear path
-
-        let linear2 = Linear.init 3 2 torch.float32 torch.CPU
-        let report = Model.loadInto linear2 path Strict
-
-        report.Loaded.Length |> should equal 2
-        report.Missing |> should be Empty
-        report.Unexpected |> should be Empty
-        report.ShapeMismatches |> should be Empty
-        report.DTypeMismatches |> should be Empty
-
-        let wSum2 = (linear2.Weight.sum ()).ToSingle()
-
-
-        wSum2 |> should (equalWithin 1e-5f) wSum
-    finally
-        if System.IO.Directory.Exists dir then
-            System.IO.Directory.Delete(dir, true)
+    Model.namedParams model
+    |> names
+    |> should equal [ "Layers.0.Weight"; "Layers.1.Weight" ]
 
 [<Fact>]
-let ``Model loadInto Lenient reports shape mismatch`` () =
-    let dir =
-        System.IO.Path.Combine(System.IO.Path.GetTempPath(), System.Guid.NewGuid().ToString())
+let ``namedParams sorts string dictionary keys ordinally`` () =
+    let dictionary = Dictionary<string, Linear>()
+    dictionary.Add("z", Linear.initNoBias 2 1 torch.float32 torch.CPU)
+    dictionary.Add("A", Linear.initNoBias 4 2 torch.float32 torch.CPU)
 
-    try
-        System.IO.Directory.CreateDirectory dir |> ignore
-        let path = System.IO.Path.Combine(dir, "model.safetensors")
-
-        let linear = Linear.init 3 2 torch.float32 torch.CPU
-        Model.save linear path
-
-        let linear2 = Linear.init 5 2 torch.float32 torch.CPU
-        let report = Model.loadInto linear2 path Lenient
-
-        report.ShapeMismatches.Length |> should equal 1
-        report.ShapeMismatches[0].Name |> should equal "Weight"
-        report.Loaded |> should contain "Bias"
-    finally
-        if System.IO.Directory.Exists dir then
-            System.IO.Directory.Delete(dir, true)
+    Model.namedParams dictionary
+    |> names
+    |> should equal [ "A.Weight"; "z.Weight" ]
 
 [<Fact>]
-let ``Model loadInto loads only required tensors`` () =
-    let dir =
-        System.IO.Path.Combine(System.IO.Path.GetTempPath(), System.Guid.NewGuid().ToString())
+let ``named state rejects unstable enumerables and invalid dictionaries`` () =
+    let sequence = seq { Linear.initNoBias 2 1 torch.float32 torch.CPU }
 
-    try
-        System.IO.Directory.CreateDirectory dir |> ignore
-        let path = System.IO.Path.Combine(dir, "model.safetensors")
+    Assert.Throws<InvalidOperationException>(fun () -> Model.namedState sequence |> ignore)
+    |> ignore
 
-        let t1 = torch.randn ([| 1L; 3L |], dtype = torch.float32, device = torch.CPU)
-        let t2 = torch.randn ([| 1L |], dtype = torch.float32, device = torch.CPU)
-        let t3 = torch.randn ([| 5L |], dtype = torch.float32, device = torch.CPU)
+    let nonString = Dictionary<int, Linear>()
+    nonString.Add(0, Linear.initNoBias 2 1 torch.float32 torch.CPU)
 
-        SafeTensors.save (Map [ "Weight", t1; "Bias", t2; "Extra", t3 ]) path
+    Assert.Throws<InvalidOperationException>(fun () -> Model.namedState nonString |> ignore)
+    |> ignore
 
+    let dotted = Map [ "invalid.name", Linear.initNoBias 2 1 torch.float32 torch.CPU ]
 
-        let linear = Linear.init 3 1 torch.float32 torch.CPU
-        let report = Model.loadInto linear path Lenient
+    Assert.Throws<InvalidOperationException>(fun () -> Model.namedState dotted |> ignore)
+    |> ignore
 
-        report.Unexpected |> should contain "Extra"
-        report.Loaded.Length |> should equal 2
-    finally
-        if System.IO.Directory.Exists dir then
-            System.IO.Directory.Delete(dir, true)
+[<Fact>]
+let ``named state rejects cycles with the active path`` () =
+    let items = ResizeArray<obj>()
+    items.Add items
+
+    let error =
+        Assert.Throws<InvalidOperationException>(fun () -> Model.namedState items |> ignore)
+
+    Assert.Contains("0", error.Message)
+
+[<Fact>]
+let ``type plan caches do not change discovery results`` () =
+    let first = Linear.init 4 2 torch.float32 torch.CPU
+    let second = Linear.init 4 2 torch.float32 torch.CPU
+
+    Model.namedState first
+    |> names
+    |> should equal (Model.namedState second |> names)
+
+[<Fact>]
+let ``BatchNorm exposes affine values as parameters and running state as buffers`` () =
+    let batchNorm = BatchNorm.initDefault 4 torch.float32 torch.CPU
+
+    Model.namedParams batchNorm
+    |> names
+    |> should equal [ "Weight"; "Bias" ]
+
+    Model.namedBuffers batchNorm
+    |> names
+    |> should equal [ "RunningMean"; "RunningVar" ]
+
+[<Fact>]
+let ``Model save and load round-trips parameters and buffers`` () =
+    withTempDir (fun dir ->
+        let path = Path.Combine(dir, "model.safetensors")
+        let source = BatchNorm.initDefault 4 torch.float32 torch.CPU
+        source.RunningMean.copyInPlace (torch.full_like (source.RunningMean, 7.0))
+        Model.save source path
+
+        SafeTensors.loadMeta path
+        |> Map.keys
+        |> Seq.toList
+        |> should equal [ "Bias"; "RunningMean"; "RunningVar"; "Weight" ]
+
+        let target = BatchNorm.initDefault 4 torch.float32 torch.CPU
+        let report = Model.loadInto target path Strict
+
+        report.Loaded
+        |> should equal [ "Weight"; "Bias"; "RunningMean"; "RunningVar" ]
+
+        tensorSum target.RunningMean |> should equal 28.0f)
+
+[<Fact>]
+let ``Strict load validates all tensors before changing any tensor`` () =
+    let model = Linear.init 3 2 torch.float32 torch.CPU
+    let beforeWeight = tensorSum model.Weight
+    let replacementWeight = torch.full_like (model.Weight, 9.0)
+    let invalidBias = torch.zeros ([| 3L |], dtype = torch.float32)
+
+    Assert.Throws<InvalidOperationException>(fun () ->
+        Model.loadFromDict model (Map [ "Weight", replacementWeight; "Bias", invalidBias ]) None Strict
+        |> ignore)
+    |> ignore
+
+    tensorSum model.Weight |> should equal beforeWeight
+
+[<Fact>]
+let ``Lenient load changes only matching canonical state`` () =
+    let model = Linear.init 3 2 torch.float32 torch.CPU
+    let beforeBias = tensorSum model.Bias.Value
+    let replacementWeight = torch.full_like (model.Weight, 2.0)
+    let invalidBias = torch.zeros ([| 3L |], dtype = torch.float32)
+
+    let report =
+        Model.loadFromDict model (Map [ "Weight", replacementWeight; "Bias", invalidBias ]) None Lenient
+
+    report.Loaded |> should equal [ "Weight" ]
+
+    report.ShapeMismatches
+    |> List.map _.Name
+    |> should equal [ "Bias" ]
+
+    tensorSum model.Weight |> should equal 12.0f
+    tensorSum model.Bias.Value |> should equal beforeBias
+
+[<Fact>]
+let ``nameMap collisions are rejected before model changes`` () =
+    let model = Linear.initNoBias 2 2 torch.float32 torch.CPU
+    let before = tensorSum model.Weight
+    let source = torch.ones_like model.Weight
+    let tensors = Map [ "first", source; "second", source ]
+    let mapping = Map [ "first", "Weight"; "second", "Weight" ]
+
+    let error =
+        Assert.Throws<InvalidOperationException>(fun () ->
+            Model.loadFromDict model tensors (Some mapping) Strict
+            |> ignore)
+
+    Assert.Contains("first", error.Message)
+    Assert.Contains("second", error.Message)
+    tensorSum model.Weight |> should equal before
+
+[<Fact>]
+let ``Model save writes a shared tensor only under its canonical name`` () =
+    withTempDir (fun dir ->
+        let path = Path.Combine(dir, "model.safetensors")
+        let shared = parameter 4.0 true
+        let model = { First = shared; Second = shared }
+        Model.save model path
+
+        SafeTensors.loadMeta path
+        |> Map.keys
+        |> Seq.toList
+        |> should equal [ "First" ])
 
 // --- Init tests ---
 
@@ -139,44 +322,32 @@ let ``Model loadInto loads only required tensors`` () =
 let ``Uniform init produces values in range`` () =
     let lo, up = -1.0, 1.0
 
-    let t = Init.toTensor [| 10000L |] torch.float64 torch.CPU (Init.Uniform(lo, up))
+    let tensor =
+        Init.toTensor [| 10000L |] torch.float64 torch.CPU (Init.Uniform(lo, up))
 
-
-    let mean = (t.mean ()).ToDouble()
-
+    let mean = (tensor.mean ()).ToDouble()
     mean |> should be (greaterThan (lo + 0.1))
     mean |> should be (lessThan (up - 0.1))
 
 [<Fact>]
 let ``KaimingNormal init has reasonable variance`` () =
     let shape = [| 256L; 128L |]
-    let fanIn = 128
-
-    let t = Init.toTensor shape torch.float32 torch.CPU Init.KaimingNormal
-
-    let expectedStd = sqrt (2.0 / float fanIn)
-
-    let mean = (t.mean ()).ToSingle()
-
-    let sqr = t.square ()
-    let meanSqr = (sqr.mean ()).ToSingle()
-    let variance = float meanSqr - (float mean * float mean)
-    let actualStd = sqrt variance
-
+    let expectedStd = sqrt (2.0 / 128.0)
+    let tensor = Init.toTensor shape torch.float32 torch.CPU Init.KaimingNormal
+    let mean = (tensor.mean ()).ToSingle()
+    let meanSquare = (tensor.square().mean ()).ToSingle()
+    let actualStd = sqrt (float meanSquare - float mean * float mean)
     abs (actualStd - expectedStd) |> should be (lessThan 0.02)
 
 [<Fact>]
 let ``Init Const creates tensor with given value`` () =
-    let t = Init.toTensor [| 3L; 2L |] torch.float32 torch.CPU (Init.Const 5.0)
-
-    t.shape |> should equal [| 3L; 2L |]
-    let sum = (t.sum ()).ToSingle()
-    sum |> should equal 30.0f
+    let tensor = Init.toTensor [| 3L; 2L |] torch.float32 torch.CPU (Init.Const 5.0)
+    tensor.shape |> should equal [| 3L; 2L |]
+    tensorSum tensor |> should equal 30.0f
 
 [<Fact>]
 let ``Init Randn creates tensor with specified mean`` () =
-    let t = Init.toTensor [| 10000L |] torch.float64 torch.CPU (Init.Randn(3.0, 0.01))
+    let tensor =
+        Init.toTensor [| 10000L |] torch.float64 torch.CPU (Init.Randn(3.0, 0.01))
 
-
-    let mean = (t.mean ()).ToDouble()
-    mean |> should (equalWithin 0.1) 3.0
+    (tensor.mean ()).ToDouble() |> should (equalWithin 0.1) 3.0

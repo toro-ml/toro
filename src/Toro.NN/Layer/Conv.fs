@@ -24,7 +24,9 @@ module Conv1dConfig =
 
 /// 1-D convolution layer.
 type Conv1d = {
+    [<Parameter>]
     Weight: Tensor
+    [<Parameter>]
     Bias: Tensor option
     Config: Conv1dConfig
 } with
@@ -117,7 +119,9 @@ module Conv2dConfig =
 
 /// 2-D convolution layer.
 type Conv2d = {
+    [<Parameter>]
     Weight: Tensor
+    [<Parameter>]
     Bias: Tensor option
     Config: Conv2dConfig
 } with
@@ -211,7 +215,9 @@ module ConvTranspose1dConfig =
 
 /// 1-D transposed convolution layer.
 type ConvTranspose1d = {
+    [<Parameter>]
     Weight: Tensor
+    [<Parameter>]
     Bias: Tensor option
     Config: ConvTranspose1dConfig
 } with
@@ -283,7 +289,9 @@ module ConvTranspose2dConfig =
 
 /// 2-D transposed convolution layer.
 type ConvTranspose2d = {
+    [<Parameter>]
     Weight: Tensor
+    [<Parameter>]
     Bias: Tensor option
     Config: ConvTranspose2dConfig
 } with

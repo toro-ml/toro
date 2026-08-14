@@ -8,9 +8,13 @@ open Toro.NN
 /// Multi-head attention mechanism over graph edges.
 /// $\alpha_{ij} = \text{softmax}_j(\text{LeakyReLU}(\mathbf{a}^T [\mathbf{W}\mathbf{x}_i \| \mathbf{W}\mathbf{x}_j]))$
 type GATConv = {
+    [<Parameter>]
     Weight: Tensor
+    [<Parameter>]
     AttSrc: Tensor
+    [<Parameter>]
     AttTgt: Tensor
+    [<Parameter>]
     Bias: Tensor option
     Heads: int64
     OutChannels: int64

@@ -45,7 +45,7 @@ let main _argv =
     let testIdx = [| 2; 3; 6; 7 |]
 
     let model = initModel ()
-    let opt = AdamW.createWithLr 0.01 (Model.trainableVars model)
+    let opt = AdamW.createWithLr 0.01 (Model.trainableParams model)
 
     printfn "Training 2-layer GCN on synthetic graph (8 nodes, 2 classes)..."
     printfn ""

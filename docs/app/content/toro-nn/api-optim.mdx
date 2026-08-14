@@ -12,18 +12,18 @@ showTitle: false
 | Name | Description |
 | --- | --- |
 | `LearningRate` |  |
-| `Vars` |  |
+| `Parameters` |  |
 
 ## Instance members
 
 | Name | Description |
 | --- | --- |
 | `this.learningRate ()` |  |
-| `this.loadState _dirPath` |  |
-| `this.saveState _dirPath` |  |
+| `this.loadStateDict tensors` |  |
+| `this.saveState filePath` |  |
 | `this.setLearningRate lr` |  |
 | `this.step ()` |  |
-| `this.toOps ()` |  |
+| `this.validateStateDict tensors` |  |
 | `this.zeroGrad ()` |  |
 
 ---
@@ -34,19 +34,19 @@ showTitle: false
 
 | Name | Description |
 | --- | --- |
+| `ParameterStates` |  |
 | `Params` |  |
 | `StepCount` |  |
-| `Vars` |  |
 
 ## Instance members
 
 | Name | Description |
 | --- | --- |
 | `this.learningRate ()` |  |
-| `this.loadState dirPath` |  |
-| `this.saveState dirPath` |  |
+| `this.loadStateDict tensors` |  |
+| `this.saveState filePath` |  |
 | `this.setLearningRate lr` |  |
 | `this.step ()` |  |
-| `this.toOps ()` |  |
+| `this.validateStateDict tensors` |  |
 | `this.zeroGrad ()` |  |
 

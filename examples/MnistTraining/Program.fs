@@ -65,7 +65,7 @@ let main _argv =
     printfn "  Test samples:  %d" testDataset.Count
 
     let model = createModel ()
-    let opt = AdamW.createWithLr lr (Model.trainableVars model)
+    let opt = AdamW.createWithLr lr (Model.trainableParams model)
 
     printfn ""
     printfn "Model: Conv2d(1->8, 5, s2) -> Conv2d(8->16, 5, s2) -> Linear(256->64) -> Linear(64->10)"

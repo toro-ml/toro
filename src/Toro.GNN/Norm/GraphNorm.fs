@@ -9,8 +9,11 @@ open Toro.NN
 ///   {\sqrt{\text{Var}[\mathbf{x}_i - \alpha \odot E[\mathbf{x}]] + \epsilon}}
 ///   \odot \gamma + \beta$
 type GraphNorm = {
+    [<Parameter>]
     Gamma: Tensor
+    [<Parameter>]
     Beta: Tensor
+    [<Parameter>]
     Alpha: Tensor
     Eps: float
 } with

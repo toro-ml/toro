@@ -18,7 +18,9 @@ module InstanceNormConfig =
 
 /// Instance normalization layer.
 type InstanceNorm = {
+    [<Parameter>]
     Weight: Tensor option
+    [<Parameter>]
     Bias: Tensor option
     Eps: float
     Momentum: float

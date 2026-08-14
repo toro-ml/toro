@@ -17,7 +17,9 @@ module LayerNormConfig =
     }
 
 type LayerNorm = {
+    [<Parameter>]
     Weight: Tensor
+    [<Parameter>]
     Bias: Tensor option
     RemoveMean: bool
     Eps: float

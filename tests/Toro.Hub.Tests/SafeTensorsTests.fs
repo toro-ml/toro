@@ -104,7 +104,7 @@ let ``Model.loadFromDict without nameMap`` () =
 
     let dict =
         original
-        |> List.map (fun (name, t) -> name, t)
+        |> List.map (fun item -> item.Name, item.Tensor)
         |> Map.ofList
 
     let linear2 = Linear.init 4 2 torch.float32 torch.CPU
@@ -116,8 +116,18 @@ let ``Model.loadFromDict without nameMap`` () =
     report.ShapeMismatches |> should be Empty
     report.DTypeMismatches |> should be Empty
 
-    let w1 = Model.namedParams linear |> List.head |> snd |> tensorSum
-    let w2 = Model.namedParams linear2 |> List.head |> snd |> tensorSum
+    let w1 =
+        Model.namedParams linear
+        |> List.head
+        |> _.Tensor
+        |> tensorSum
+
+    let w2 =
+        Model.namedParams linear2
+        |> List.head
+        |> _.Tensor
+        |> tensorSum
+
     w2 |> should (equalWithin 1e-5f) w1
 
 [<Fact>]
@@ -127,12 +137,12 @@ let ``Model.loadFromDict with nameMap`` () =
 
     let renamedDict =
         original
-        |> List.map (fun (name, t) -> "hf." + name, t)
+        |> List.map (fun item -> "hf." + item.Name, item.Tensor)
         |> Map.ofList
 
     let nameMap =
         original
-        |> List.map (fun (name, _) -> "hf." + name, name)
+        |> List.map (fun item -> "hf." + item.Name, item.Name)
         |> Map.ofList
 
     let linear2 = Linear.init 4 2 torch.float32 torch.CPU
@@ -142,16 +152,38 @@ let ``Model.loadFromDict with nameMap`` () =
 
     report.Loaded.Length |> should equal 2
 
-    let w1 = Model.namedParams linear |> List.head |> snd |> tensorSum
-    let w2 = Model.namedParams linear2 |> List.head |> snd |> tensorSum
+    let w1 =
+        Model.namedParams linear
+        |> List.head
+        |> _.Tensor
+        |> tensorSum
+
+    let w2 =
+        Model.namedParams linear2
+        |> List.head
+        |> _.Tensor
+        |> tensorSum
+
     w2 |> should (equalWithin 1e-5f) w1
 
 [<Fact>]
 let ``Model.loadFromDict Lenient reports missing keys`` () =
     let linear = Linear.init 4 2 torch.float32 torch.CPU
-    let before = Model.namedParams linear |> List.head |> snd |> tensorSum
+
+    let before =
+        Model.namedParams linear
+        |> List.head
+        |> _.Tensor
+        |> tensorSum
+
     let report = Model.loadFromDict linear Map.empty None Lenient
-    let after = Model.namedParams linear |> List.head |> snd |> tensorSum
+
+    let after =
+        Model.namedParams linear
+        |> List.head
+        |> _.Tensor
+        |> tensorSum
+
     after |> should (equalWithin 1e-5f) before
     report.Loaded |> should be Empty
     report.Missing.Length |> should equal 2
@@ -175,7 +207,7 @@ let ``Model.loadFromDict Strict fails on unexpected keys`` () =
 
     let dict =
         original
-        |> List.map (fun (name, t) -> name, t)
+        |> List.map (fun item -> item.Name, item.Tensor)
         |> Map.ofList
         |> Map.add "Extra" (torch.randn ([| 2L |], dtype = torch.float32, device = torch.CPU))
 

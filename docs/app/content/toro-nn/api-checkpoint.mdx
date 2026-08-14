@@ -1,0 +1,48 @@
+---
+title: "Checkpoint"
+description: "Save and restore full training state (model + optimizer + epoch)."
+namespace: "Toro.NN"
+---
+
+Save and restore versioned training state (model + optimizer + epoch).
+
+| Function | Description |
+| --- | --- |
+| `load model optimizer dirPath` | Validate a Version 2 checkpoint completely, then commit model state,
+ optimizer state, and learning rate in that order. Return the restored epoch. |
+| `save model optimizer epoch dirPath` | Save canonical model state, optimizer state, and a Version 2 manifest. |
+
+## load
+
+```fsharp
+load model optimizer dirPath
+```
+
+Validate a Version 2 checkpoint completely, then commit model state,
+ optimizer state, and learning rate in that order. Return the restored epoch.
+
+**Parameters**
+
+- `model` : `'T`
+- `optimizer` : `IOptimizer`
+- `dirPath` : `string`
+
+**Returns** `int`
+
+---
+
+## save
+
+```fsharp
+save model optimizer epoch dirPath
+```
+
+Save canonical model state, optimizer state, and a Version 2 manifest.
+
+**Parameters**
+
+- `model` : `'T`
+- `optimizer` : `IOptimizer`
+- `epoch` : `int`
+- `dirPath` : `string`
+

@@ -13,7 +13,7 @@ Read and write the SafeTensors binary format.
 | `loadMetaFromStream stream` | Parse the SafeTensors header from an open stream.
  Returns (headerSize, tensorMetadata). |
 | `loadSelected filePath names` | Load only the tensors whose names are in the given set. |
-| `save tensors filePath` | Save tensors to a .safetensors file. |
+| `save tensors filePath` | Save tensors to a .safetensors file after staging them as contiguous CPU tensors. |
 
 ## load
 
@@ -87,7 +87,7 @@ Load only the tensors whose names are in the given set.
 save tensors filePath
 ```
 
-Save tensors to a .safetensors file.
+Save tensors to a .safetensors file after staging them as contiguous CPU tensors.
 
 **Parameters**
 

@@ -5,7 +5,9 @@ open Toro
 
 /// Fully connected linear layer.
 type Linear = {
+    [<Parameter>]
     Weight: Tensor
+    [<Parameter>]
     Bias: Tensor option
 } with
 

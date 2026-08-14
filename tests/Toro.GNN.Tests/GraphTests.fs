@@ -5,9 +5,44 @@ open FsUnit.Xunit
 open Toro
 open TorchSharp
 open Toro.GNN
+open Toro.NN
 open TestHelper
 
 let private mkEdgeIndex (data: int64 array2d) = (TorchSharp.torch.tensor data)
+
+[<Fact>]
+let ``GNN layers expose explicitly classified named parameters`` () =
+    let gcn = GCNConv.init 4 8 torch.float32 torch.CPU
+
+    Model.namedParams gcn
+    |> List.map _.Name
+    |> should equal [ "Weight"; "Bias" ]
+
+    let gat = GATConv.initDefault 4 8 torch.float32 torch.CPU
+
+    Model.namedParams gat
+    |> List.map _.Name
+    |> should equal [ "Weight"; "AttSrc"; "AttTgt"; "Bias" ]
+
+    let sage = SAGEConv.init 4 8 torch.float32 torch.CPU
+
+    Model.namedParams sage
+    |> List.map _.Name
+    |> should equal [ "WeightSelf"; "WeightNeighbor"; "Bias" ]
+
+    let graphNorm = GraphNorm.init 4 torch.float32 torch.CPU
+
+    Model.namedParams graphNorm
+    |> List.map _.Name
+    |> should equal [ "Gamma"; "Beta"; "Alpha" ]
+
+[<Fact>]
+let ``GraphData is rejected as unclassified runtime data`` () =
+    let graph =
+        GraphData.create (torch.randn ([| 2L; 3L |], dtype = torch.float32)) (mkEdgeIndex (array2D [| [| 0L |]; [| 1L |] |]))
+
+    Assert.Throws<System.InvalidOperationException>(fun () -> Model.namedState graph |> ignore)
+    |> ignore
 
 
 [<Fact>]

@@ -4,18 +4,24 @@ description: "Model composition and parameter management."
 namespace: "Toro.NN"
 ---
 
-Reflection-based parameter discovery, serialization, and deserialization for F# record models.
+Attribute-driven model state discovery, serialization, and deserialization.
+ Records use field names; options are transparent; tuples and stable lists use zero-based
+ indices; union values use CaseName.index; and string dictionaries use ordinally sorted keys.
+ Supported containers are records, options, tuples, discriminated unions, arrays, F# lists,
+ ResizeArray/IList/IReadOnlyList, and string-keyed dictionaries.
 
 | Function | Description |
 | --- | --- |
-| `loadFromDict model tensors nameMap mode` | Load tensors from a dictionary into the model, matching by parameter name.
+| `loadFromDict model tensors nameMap mode` | Load tensors from a dictionary into the model, matching by canonical state name.
  When nameMap is Some, dictionary keys are translated before matching. |
 | `loadInto model filePath mode` | Load tensors from a .safetensors file into the model in place.
- Shape and dtype are validated from the header before any tensor data is read.
- Only the tensors that match both shape and dtype are loaded into memory. |
-| `namedParams model` | Return all named tensors in the model via reflection. |
-| `save model filePath` | Save all model tensors to a .safetensors file. |
-| `trainableVars model` | Return all tensors that require gradients. |
+ Validation completes before any model tensor is changed. |
+| `namedBuffers model` | Return canonical persistent buffers in deterministic discovery order. |
+| `namedParams model` | Return canonical parameters, including parameters that do not require gradients. |
+| `namedState model` | Return parameters and buffers in deterministic discovery order. A shared Tensor is
+ represented once, under the first path at which it is discovered. |
+| `save model filePath` | Save canonical parameters and buffers to a .safetensors file. |
+| `trainableParams model` | Return canonical parameters whose Tensor currently requires gradients. |
 
 ## loadFromDict
 
@@ -23,12 +29,12 @@ Reflection-based parameter discovery, serialization, and deserialization for F# 
 loadFromDict model tensors nameMap mode
 ```
 
-Load tensors from a dictionary into the model, matching by parameter name.
+Load tensors from a dictionary into the model, matching by canonical state name.
  When nameMap is Some, dictionary keys are translated before matching.
 
 **Parameters**
 
-- `model` : `'T`
+- `model` : `'a`
 - `tensors` : `Map<string, Tensor>`
 - `nameMap` : `Map<string, string> option`
 - `mode` : `LoadMode`
@@ -44,8 +50,7 @@ loadInto model filePath mode
 ```
 
 Load tensors from a .safetensors file into the model in place.
- Shape and dtype are validated from the header before any tensor data is read.
- Only the tensors that match both shape and dtype are loaded into memory.
+ Validation completes before any model tensor is changed.
 
 **Parameters**
 
@@ -57,19 +62,52 @@ Load tensors from a .safetensors file into the model in place.
 
 ---
 
+## namedBuffers
+
+```fsharp
+namedBuffers model
+```
+
+Return canonical persistent buffers in deterministic discovery order.
+
+**Parameters**
+
+- `model` : `'T`
+
+**Returns** `NamedTensor list`
+
+---
+
 ## namedParams
 
 ```fsharp
 namedParams model
 ```
 
-Return all named tensors in the model via reflection.
+Return canonical parameters, including parameters that do not require gradients.
 
 **Parameters**
 
 - `model` : `'T`
 
-**Returns** `(string * Tensor) list`
+**Returns** `NamedTensor list`
+
+---
+
+## namedState
+
+```fsharp
+namedState model
+```
+
+Return parameters and buffers in deterministic discovery order. A shared Tensor is
+ represented once, under the first path at which it is discovered.
+
+**Parameters**
+
+- `model` : `'T`
+
+**Returns** `NamedTensor list`
 
 ---
 
@@ -79,7 +117,7 @@ Return all named tensors in the model via reflection.
 save model filePath
 ```
 
-Save all model tensors to a .safetensors file.
+Save canonical parameters and buffers to a .safetensors file.
 
 **Parameters**
 
@@ -88,17 +126,17 @@ Save all model tensors to a .safetensors file.
 
 ---
 
-## trainableVars
+## trainableParams
 
 ```fsharp
-trainableVars model
+trainableParams model
 ```
 
-Return all tensors that require gradients.
+Return canonical parameters whose Tensor currently requires gradients.
 
 **Parameters**
 
 - `model` : `'T`
 
-**Returns** `Tensor list`
+**Returns** `NamedTensor list`
 

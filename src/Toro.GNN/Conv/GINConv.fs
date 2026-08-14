@@ -9,6 +9,7 @@ open Toro.NN
 ///   + \sum_{j \in \mathcal{N}(i)} \mathbf{x}_j\bigr)$
 /// where $h_\Theta$ is a 2-layer MLP: Linear -> ReLU -> Linear.
 type GINConv = {
+    [<Parameter>]
     Eps: Tensor
     Linear1: Linear
     Linear2: Linear

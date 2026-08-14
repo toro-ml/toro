@@ -10,7 +10,9 @@ module GroupNormConfig =
 
 type GroupNorm = {
     NumGroups: int64
+    [<Parameter>]
     Weight: Tensor option
+    [<Parameter>]
     Bias: Tensor option
     Eps: float
 } with

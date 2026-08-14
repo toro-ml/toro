@@ -7,7 +7,7 @@ Toro wraps [TorchSharp](https://github.com/dotnet/TorchSharp) with an F#-idiomat
 It keeps PyTorch's tensor semantics while using records, computation expressions, and function composition.
 
 - **Direct API** -- operations throw on failure for concise method chaining, just like PyTorch.
-- **Records as models** -- models are plain F# records. `Model.trainableVars` collects parameters by reflection, so there is no base class to inherit.
+- **Records as models** -- models are plain F# records. Built-in layers mark trainable state explicitly, and `Model.trainableParams` discovers it without a base class.
 - **Ownership management** -- `scoped { }` CE automatically disposes intermediate tensors. Return values are kept alive past the scope.
 - **Computation expressions for composition** -- `sequential { }` composes layers; `pipeline { }` enables composition for heterogeneous signatures.
 - **PyTorch-compatible surface** -- tensor operations, neural network layers, and training utilities mirror PyTorch naming and behavior.
@@ -57,7 +57,7 @@ let l1 = Linear.init 2 16 torch.float32 torch.CPU
 let l2 = Linear.init 16 1 torch.float32 torch.CPU
 let model = sequential { l1; Relu; l2 }
 
-let opt = AdamW.createWithLr 0.01 (Model.trainableVars model)
+let opt = AdamW.createWithLr 0.01 (Model.trainableParams model)
 
 for epoch in 1..500 do
     scoped {
@@ -106,7 +106,7 @@ type CnnModel = { Features: Features; Classifier: Classifier } with
         this.Features.forward train >> this.Classifier.forward train
 ```
 
-Nested records compose naturally. `Model.trainableVars` walks the entire structure by reflection.
+Nested records compose naturally. `Model.trainableParams` walks the supported model structure and returns canonical named parameters.
 
 ## Evaluate
 
