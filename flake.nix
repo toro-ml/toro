@@ -29,6 +29,8 @@
             buildInputs = [
               pkgs.dotnet-sdk_10
               pkgs.lefthook
+            ] ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux [
+              pkgs.fontconfig
             ];
 
             DOTNET_CLI_TELEMETRY_OPTOUT = "1";
@@ -43,20 +45,25 @@
                   else
                     (if pkgs.stdenv.hostPlatform.isAarch64 then "linux-arm64" else "linux-x64");
                 ldVar = if isDarwin then "DYLD_LIBRARY_PATH" else "LD_LIBRARY_PATH";
+                systemLibraryPath = pkgs.lib.makeLibraryPath (
+                  pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux [
+                    pkgs.fontconfig
+                  ]
+                );
               in
               ''
                 NUGET_PACKAGES="''${NUGET_PACKAGES:-$HOME/.nuget/packages}"
-                _torch_paths=""
+                _runtime_paths="${systemLibraryPath}"
                 for d in "$NUGET_PACKAGES"/libtorch-cpu-${arch}/*/runtimes/${arch}/native \
                          "$NUGET_PACKAGES"/torchsharp/*/runtimes/${arch}/native; do
                   if [ -d "$d" ]; then
-                    _torch_paths="$_torch_paths:$d"
+                    _runtime_paths="$_runtime_paths:$d"
                   fi
                 done
-                if [ -n "$_torch_paths" ]; then
-                  export ${ldVar}="''${_torch_paths#:}''${${ldVar}:+:$${ldVar}}"
+                if [ -n "$_runtime_paths" ]; then
+                  export ${ldVar}="''${_runtime_paths#:}''${${ldVar}:+:$${ldVar}}"
                 fi
-                unset _torch_paths
+                unset _runtime_paths
 
                 if [ -d .git ]; then
                   lefthook install >/dev/null
