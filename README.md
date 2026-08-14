@@ -13,6 +13,7 @@ Model structure determines stable names for parameters and buffers, which are al
 
 [Documentation](https://toro-ml.github.io/toro/) · [Examples](#examples) · [NuGet packages](#packages)
 
+> [!NOTE]
 > Toro is under active development.
 > Public APIs and checkpoint formats may change between releases.
 
