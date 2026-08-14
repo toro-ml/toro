@@ -27,5 +27,7 @@
     <Project Path="examples/SimpleGcn/SimpleGcn.fsproj" />
     <Project Path="examples/HubSentiment/HubSentiment.fsproj" />
     <Project Path="examples/HubResNet18/HubResNet18.fsproj" />
+    <Project Path="examples/HubDistilGpt2/HubDistilGpt2.fsproj" />
+    <Project Path="examples/HubSmolLm2/HubSmolLm2.fsproj" />
   </Folder>
 </Solution>

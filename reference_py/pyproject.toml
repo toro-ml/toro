@@ -1,0 +1,136 @@
+[project]
+name = "reference_py"
+version = "0.1.0"
+description = "Python reference environment for Toro integration checks"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "opencv-python>=4.13.0.92",
+    "scipy>=1.16.2",
+    "numpy>=2.4.2",
+    "matplotlib>=3.10.7",
+    "pillow>=12.0.0",
+    "tqdm>=4.67.3",
+    "rich>=14.3.2",
+    "torch-geometric>=2.7.0",
+    "scikit-learn>=1.7.2",
+    "torch-spatiotemporal>=0.9.5",
+]
+
+[dependency-groups]
+dev = [
+    "hf>=1.1.0",
+    "huggingface-hub>=0.36.0",
+    "ipykernel>=7.2.0",
+    "pytest>=8.4.1",
+    "python-dotenv>=1.2.1",
+    "ruff>=0.15.0",
+    "transformers>=5.15.0",
+    "ty>=0.0.15",
+]
+
+[tool.ruff]
+line-length = 132
+
+# https://github.com/astral-sh/uv/issues/13794
+[project.optional-dependencies]
+cpu = [
+    "torch==2.8.0",
+    "torchvision==0.23.0",
+    "pyg-lib>=0.5.0",
+    "torch-scatter>=2.1.2",
+    "torch-sparse>=0.6.18",
+]
+gpu = [
+    "torch==2.8.0",
+    "torchvision==0.23.0",
+    "pyg-lib>=0.5.0",
+    "torch-scatter>=2.1.2",
+    "torch-sparse>=0.6.18",
+]
+
+[tool.uv]
+conflicts = [[{ extra = "cpu" }, { extra = "gpu" }]]
+no-build-isolation-package = [
+    #   "torch-cluster",
+    "torch-scatter",
+    "torch-sparse",
+    #   "torch-spline-conv",
+    #   "torchaudio",
+    #   "torchvision"
+]
+
+[tool.uv.sources]
+torch = [
+    { index = "torch-cpu", extra = "cpu" },
+    { index = "torch-gpu", extra = "gpu" },
+]
+torchvision = [
+    { index = "torch-cpu", extra = "cpu" },
+    { index = "torch-gpu", extra = "gpu" },
+]
+pyg-lib = [
+    { index = "pyg-gpu", extra = "gpu" },
+    { index = "pyg-cpu", extra = "cpu" },
+]
+torch-scatter = [
+    { index = "pyg-gpu", extra = "gpu" },
+    { index = "pyg-cpu", extra = "cpu" },
+]
+torch-sparse = [
+    { index = "pyg-gpu", extra = "gpu" },
+    { index = "pyg-cpu", extra = "cpu" },
+]
+# torch-cluster = [
+#     { index = "indexpygcu121", extra = "cu121" },
+#     { index = "indexpygcu124", extra = "cu124" },
+# ]
+# torch-spline-conv = [
+#     { index = "indexpygcu121", extra = "cu121" },
+#     { index = "indexpygcu124", extra = "cu124" },
+# ]
+
+[[tool.uv.index]]
+name = "torch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "torch-gpu"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[[tool.uv.index]]
+name = "pyg-cpu"
+url = "https://data.pyg.org/whl/torch-2.8.0%2Bcpu.html"
+format = "flat"
+explicit = true
+
+[[tool.uv.index]]
+name = "pyg-gpu"
+url = "https://data.pyg.org/whl/torch-2.8.0%2Bcu128.html"
+format = "flat"
+explicit = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-v --tb=short"
+markers = [
+    "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
+]
+filterwarnings = [
+    "ignore:.*low contrast image.*:UserWarning:skimage._shared.utils",
+    "ignore:.*'mode' parameter is deprecated.*:DeprecationWarning:torchvision.transforms.functional",
+    "ignore:.*rich is experimental/alpha.*",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[tool.ty.environment]
+root = ["./src", "./tests", "./entrypoints"]
