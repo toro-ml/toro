@@ -61,7 +61,7 @@
                   fi
                 done
                 if [ -n "$_runtime_paths" ]; then
-                  export ${ldVar}="''${_runtime_paths#:}''${${ldVar}:+:$${ldVar}}"
+                  export ${ldVar}="''${_runtime_paths#:}"
                 fi
                 unset _runtime_paths
 
