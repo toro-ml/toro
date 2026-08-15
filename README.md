@@ -164,7 +164,7 @@ The [MnistTraining](examples/MnistTraining) example saves CPU Torch RNG state an
 | [`Toro`](src/Toro) | Tensor extensions, scoped ownership, and SafeTensors |
 | [`Toro.NN`](src/Toro.NN) | Model state, layers, optimizers, schedulers, and checkpoints |
 | [`Toro.GNN`](src/Toro.GNN) | Graph data, message passing, graph convolutions, and pooling |
-| [`Toro.Models`](src/Toro.Models) | Reusable pretrained model implementations and local loaders |
+| [`Toro.Models`](src/Toro.Models) | Pretrained models, local loaders, and token-level generation |
 | [`Toro.Text`](src/Toro.Text) | Tokenization and tensor encoding |
 | [`Toro.Vision`](src/Toro.Vision) | Image loading and tensor transforms |
 

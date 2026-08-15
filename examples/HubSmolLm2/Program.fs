@@ -1,7 +1,6 @@
 open System
 open System.IO
 open TorchSharp
-open Toro
 open Toro.Hub
 open Toro.Models
 open Toro.Text
@@ -43,49 +42,13 @@ let chatPrompt userPrompt =
     $"<|im_start|>system\nYou are a helpful AI assistant named SmolLM, trained by Hugging Face<|im_end|>\n<|im_start|>user\n{userPrompt}<|im_end|>\n<|im_start|>assistant\n"
 
 let generate (model: SmolLm2) (tokenizer: Tokenizer) maxNewTokens userPrompt =
-    let promptTokens = tokenizer.encode (chatPrompt userPrompt) |> List.map int64
+    let promptTokenIds = tokenizer.encode (chatPrompt userPrompt) |> List.map int64
 
-    if promptTokens.IsEmpty then
-        invalidArg (nameof userPrompt) "The prompt must produce at least one token."
-
-    if int64 promptTokens.Length + int64 maxNewTokens > model.Config.MaxPositionEmbeddings then
-        invalidArg
-            (nameof maxNewTokens)
-            $"The prompt and generated text must fit within {model.Config.MaxPositionEmbeddings} tokens."
-
-    use cache =
-        SmolLm2.createCache 1L (int64 promptTokens.Length + int64 maxNewTokens) model
-
-    let response = ResizeArray<int>()
-    let mutable inputIds = promptTokens |> List.toArray
-    let mutable finished = false
-
-    for _ in 1..maxNewTokens do
-        if not finished then
-            let nextToken =
-                Toro.inferenceMode (fun () ->
-                    scoped {
-                        let input = torch.tensor (inputIds, dtype = torch.int64, device = torch.CPU)
-
-                        let output =
-                            model
-                            |> SmolLm2.forward {
-                                InputIds = input.unsqueeze 0L
-                                AttentionMask = None
-                                PositionIds = None
-                                Cache = Some cache
-                            }
-
-                        return (output.Logits.at [ I 0; I -1 ]).argmax(0L).ToInt64()
-                    })
-
-            if nextToken = model.Config.EosTokenId then
-                finished <- true
-            else
-                inputIds <- [| nextToken |]
-                response.Add(int nextToken)
-
-    response |> Seq.toList |> tokenizer.decode
+    model
+    |> SmolLm2.asCausalLm
+    |> Generation.generate (GenerationOptions.greedy maxNewTokens) promptTokenIds
+    |> List.map int
+    |> tokenizer.decode
 
 [<EntryPoint>]
 let main argv =
@@ -97,9 +60,6 @@ let main argv =
         Array.tryItem 1 argv
         |> Option.map int
         |> Option.defaultValue 32
-
-    if maxNewTokens < 0 then
-        invalidArg (nameof argv) "max-new-tokens must be non-negative."
 
     printfn "Loading %s at %s ..." repoId revision
     let tokenizer = loadTokenizer ()

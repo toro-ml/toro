@@ -1,7 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <Compile Include="AssemblyInfo.fs" />
     <Compile Include="SmolLm2Tests.fs" />
+    <Compile Include="DistilGpt2Tests.fs" />
+    <Compile Include="GenerationTests.fs" />
   </ItemGroup>
 
   <ItemGroup>

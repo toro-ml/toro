@@ -54,8 +54,22 @@ let copyDeps () =
                 File.Copy(src, Path.Combine(dest, dll), true)
 
 let run () =
+    let projects =
+        [
+            "src/Toro/Toro.fsproj"
+            "src/Toro.NN/Toro.NN.fsproj"
+            "src/Toro.GNN/Toro.GNN.fsproj"
+            "src/Toro.Text/Toro.Text.fsproj"
+            "src/Toro.Vision/Toro.Vision.fsproj"
+            "src/Toro.Models/Toro.Models.fsproj"
+            "src/Toro.Hub/Toro.Hub.fsproj"
+        ]
+        |> String.concat " "
+
     let stdout =
-        exec "dotnet" "fsdocs build --clean --input .fsdocs-input --output .fsdocs-out --properties Configuration=Release"
+        exec
+            "dotnet"
+            $"fsdocs build --clean --input .fsdocs-input --output .fsdocs-out --projects {projects} --properties Configuration=Release"
         |> requireSuccess "fsdocs"
 
     printfn "%s" stdout

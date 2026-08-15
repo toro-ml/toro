@@ -40,14 +40,15 @@ uv run python llm_reference.py distilgpt2 "Hello, I'm a language model" 8
 ```
 
 The reference result has response IDs `[13, 314, 1101, 257, 3303, 2746, 13, 314]` and the suffix `. I'm a language model. I`, matching the Toro output above.
+Both implementations prefill once and then decode one token at a time with a key/value cache.
 
 ## Implementation
 
-- The GPT-2 architecture remains inside the example.
-- `NameMapping` rewrites Hugging Face block paths to Toro record paths.
+- `Toro.Models` provides the GPT-2 architecture, fixed-capacity KV cache, and common generation session.
+- The model descriptor uses Hugging Face names and Conv1D weight shapes directly, so loading does not transpose weights.
+- `DistilGpt2.loadFromDirectory` validates the config and complete F32 state, then copies one tensor at a time.
 - The stored causal-mask buffers are ignored because TorchSharp creates the causal mask during attention.
-- GPT-2 Conv1D weights are transposed before strict model loading.
 - `BpeConfig.ByteLevel` and `ByteLevelPreTokenizer` configure GPT-2 byte-level tokenization.
-- Generation uses greedy decoding and recomputes the full sequence for each token.
+- The example handles only revision-pinned downloads, tokenization, greedy generation, and output.
 
 DistilGPT2 is an English text-completion model rather than an instruction-following chat model.

@@ -175,24 +175,10 @@ type SmolLm2Cache internal (config: SmolLm2Config, batchSize: int64, capacity: i
                 values |> Array.iter _.Dispose()
 
 /// Tensor inputs accepted by SmolLM2.
-type SmolLm2Input = {
-    /// Token IDs with shape [batch, sequence].
-    InputIds: Tensor
-    /// Optional 0/1 padding mask with shape [batch, total sequence].
-    AttentionMask: Tensor option
-    /// Optional absolute positions with shape [sequence] or [batch, sequence].
-    PositionIds: Tensor option
-    /// Optional cache used for prefill and incremental decoding.
-    Cache: SmolLm2Cache option
-}
+type SmolLm2Input = CausalLmInput<SmolLm2Cache>
 
 /// Tensor outputs produced by SmolLM2.
-type SmolLm2Output = {
-    /// Vocabulary logits with shape [batch, sequence, vocabulary].
-    Logits: Tensor
-    /// The cache supplied in the input, after the successful forward pass.
-    Cache: SmolLm2Cache option
-}
+type SmolLm2Output = CausalLmOutput<SmolLm2Cache>
 
 module private ConfigJson =
 
@@ -568,6 +554,17 @@ module SmolLm2 =
         |> Option.iter (fun cache -> cache.Advance sequenceLength)
 
         { Logits = logits; Cache = input.Cache }
+
+    /// Bind a SmolLM2 model to the common typed causal language-model interface.
+    let asCausalLm (model: SmolLm2) : CausalLm<SmolLm2Cache> = {
+        ContextLength = model.Config.MaxPositionEmbeddings
+        EosTokenIds = Set.singleton model.Config.EosTokenId
+        Device = model.TokenEmbedding.Embeddings.device
+        CreateCache = fun batchSize capacity -> createCache batchSize capacity model
+        CacheLength = _.Length
+        DisposeCache = fun cache -> (cache :> IDisposable).Dispose()
+        Forward = fun input -> forward input model
+    }
 
     /// Load config and a strict single-file or sharded SafeTensors state from a local directory.
     let loadFromDirectory (directory: string) (device: torch.Device) : SmolLm2 * LoadReport =

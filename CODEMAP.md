@@ -82,7 +82,9 @@ Reusable pretrained model implementations. Namespace: `Toro.Models`.
 
 | File | Role |
 |------|------|
-| `SmolLm2.fs` | SmolLM2 config, F# record model, Hugging Face-named descriptor, local loader, and fixed-capacity KV cache |
+| `CausalLm.fs` | Typed causal LM contract, prefill/decode operations, sampling, and request-local generation sessions |
+| `SmolLm2.fs` | SmolLM2 config, F# record model, Hugging Face-named descriptor, local loader, and fixed-capacity GQA cache |
+| `DistilGpt2.fs` | DistilGPT-2 config, HF-layout Conv1D model, descriptor, local loader, and fixed-capacity KV cache |
 
 ### Toro.Vision — `src/Toro.Vision/`
 
@@ -112,7 +114,7 @@ Text tokenization. Namespace: `Toro.Text`.
 - **`pipeline { }` CE**: Composes arbitrary `'a -> 'b` functions and `IModule.forward` calls via `>>`.
 - **Named optimizer state**: SGD and AdamW implement `IOptimizer`; AdamW state is keyed by canonical parameter name.
 - **SafeTensors for persistence**: `ModelState` and checkpoint loading validate all metadata before reading and copying one tensor at a time.
-- **Pretrained models**: `Toro.Models` owns reusable architectures and local asset loaders without depending on Hub, tokenizers, or HTTP.
+- **Pretrained models**: `Toro.Models` owns reusable architectures, local asset loaders, typed causal LM operations, and request-local generation sessions without depending on Hub, tokenizers, or HTTP.
 
 ## Project Layout
 
