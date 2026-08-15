@@ -36,6 +36,16 @@ type NamedTensor = {
     Kind: TensorKind
 }
 
+/// A validated snapshot of canonical model-state names and tensor identities.
+type ModelState = private ModelState of NamedTensor list
+
+/// Explicitly describes model parameters, buffers, and resource disposal without reflection.
+type ModelDescriptor<'Model> = {
+    NamedParameters: 'Model -> seq<string * Tensor>
+    NamedBuffers: 'Model -> seq<string * Tensor>
+    Dispose: 'Model -> unit
+}
+
 /// Describes a shape or dtype mismatch between model and loaded tensor.
 type TensorMismatch = {
     Name: string
@@ -58,7 +68,19 @@ type LoadMode =
     | Strict
     | Lenient
 
-/// Attribute-driven model state discovery, serialization, and deserialization.
+type private StateMatch<'Source> =
+    | Matched of state: NamedTensor * source: 'Source
+    | MissingState of name: string
+    | ShapeMismatch of TensorMismatch
+    | DTypeMismatch of TensorMismatch
+
+/// Operations on explicit model descriptors.
+module ModelDescriptor =
+
+    /// Dispose resources owned by a model using its explicit descriptor.
+    let dispose (descriptor: ModelDescriptor<'Model>) (model: 'Model) = descriptor.Dispose model
+
+/// Attribute-driven model state discovery.
 /// Records use field names; options are transparent; tuples and stable lists use zero-based
 /// indices; union values use CaseName.index; and string dictionaries use ordinally sorted keys.
 /// Supported containers are records, options, tuples, discriminated unions, arrays, F# lists,
@@ -88,12 +110,6 @@ module Model =
         | Union
         | Scalar
         | UnsupportedEnumerable
-
-    type private StateMatch<'Source> =
-        | Matched of state: NamedTensor * source: 'Source
-        | MissingState of name: string
-        | ShapeMismatch of TensorMismatch
-        | DTypeMismatch of TensorMismatch
 
     let private typePlans = ConcurrentDictionary<Type, TypePlan>()
     let private recordPlans = ConcurrentDictionary<Type, FieldPlan[]>()
@@ -330,8 +346,17 @@ module Model =
         let canonical = ResizeArray<NamedTensor>()
 
         for name, tensor, kind in entries do
-            if String.IsNullOrEmpty name then
+            if String.IsNullOrWhiteSpace name then
                 invalidOp "Model state contains a tensor without a name."
+
+            if
+                name.Split('.', StringSplitOptions.None)
+                |> Array.exists String.IsNullOrEmpty
+            then
+                invalidOp $"Model state name '{name}' contains an empty path segment."
+
+            if isNull (box tensor) then
+                invalidOp $"Model state '{name}' contains a null Tensor."
 
             if not (names.Add name) then
                 invalidOp $"Duplicate model state name: '{name}'."
@@ -354,25 +379,49 @@ module Model =
 
         canonical |> Seq.toList
 
-    /// Return parameters and buffers in deterministic discovery order. A shared Tensor is
+    /// Discover model state through attributes and supported F# containers. A shared Tensor is
     /// represented once, under the first path at which it is discovered.
-    let namedState (model: 'T) : NamedTensor list =
+    let state (model: 'Model) : ModelState =
         let ancestors = HashSet<obj>(ReferenceEqualityComparer.Instance)
-        collect ancestors None "" (box model) |> canonicalize
+
+        collect ancestors None "" (box model)
+        |> canonicalize
+        |> ModelState
+
+    /// Build model state from an explicit descriptor without inspecting the model structure.
+    let stateWith (descriptor: ModelDescriptor<'Model>) (model: 'Model) : ModelState =
+        let parameters =
+            descriptor.NamedParameters model
+            |> Seq.map (fun (name, tensor) -> name, tensor, Parameter)
+
+        let buffers =
+            descriptor.NamedBuffers model
+            |> Seq.map (fun (name, tensor) -> name, tensor, Buffer)
+
+        Seq.append parameters buffers
+        |> Seq.toList
+        |> canonicalize
+        |> ModelState
+
+/// Query, save, and load a validated model-state view.
+module ModelState =
+
+    /// Return parameters and buffers in deterministic canonical order.
+    let namedState (ModelState state) : NamedTensor list = state
 
     /// Return canonical parameters, including parameters that do not require gradients.
-    let namedParams (model: 'T) : NamedTensor list =
-        namedState model
+    let namedParams state : NamedTensor list =
+        namedState state
         |> List.filter (fun item -> item.Kind = Parameter)
 
-    /// Return canonical persistent buffers in deterministic discovery order.
-    let namedBuffers (model: 'T) : NamedTensor list =
-        namedState model
+    /// Return canonical persistent buffers in deterministic order.
+    let namedBuffers state : NamedTensor list =
+        namedState state
         |> List.filter (fun item -> item.Kind = Buffer)
 
     /// Return canonical parameters whose Tensor currently requires gradients.
-    let trainableParams (model: 'T) : NamedTensor list =
-        namedParams model
+    let trainableParams state : NamedTensor list =
+        namedParams state
         |> List.filter (fun item -> item.Tensor.requires_grad)
 
     let private formatShape (shape: int64[]) =
@@ -484,10 +533,10 @@ module Model =
         | (targetName, sourceNames) :: _ ->
             invalidOp $"Name mapping maps multiple source keys %A{sourceNames} to '{targetName}'."
 
-    let private planLoad lookup ignored getShape getDType model mode =
-        let state = namedState model
-        let matches = state |> List.map (classifyState lookup getShape getDType)
-        let stateNames = state |> List.map _.Name |> Set.ofList
+    let private planLoad lookup ignored getShape getDType modelState mode =
+        let entries = namedState modelState
+        let matches = entries |> List.map (classifyState lookup getShape getDType)
+        let stateNames = entries |> List.map _.Name |> Set.ofList
 
         let unexpected =
             lookup
@@ -499,11 +548,17 @@ module Model =
         enforceStrict report mode
         report, matches
 
-    let internal prepareLoadFromDict mapping mode model tensors =
+    let internal prepareLoadFromDict mapping mode modelState tensors =
         let lookup, ignored = mappedLookup tensors mapping
 
         let report, matches =
-            planLoad lookup ignored (fun (tensor: Tensor) -> tensor.shape) (fun (tensor: Tensor) -> tensor.dtype) model mode
+            planLoad
+                lookup
+                ignored
+                (fun (tensor: Tensor) -> tensor.shape)
+                (fun (tensor: Tensor) -> tensor.dtype)
+                modelState
+                mode
 
         let commit () =
             for matched in matches do
@@ -513,52 +568,67 @@ module Model =
 
         report, commit
 
+    let internal prepareLoadSafeTensors mapping mode modelState (reader: SafeTensorReader) =
+        let sources =
+            reader.Metadata
+            |> Map.map (fun sourceName metadata -> sourceName, metadata)
+
+        let lookup, ignored = mappedLookup sources mapping
+
+        let report, matches =
+            planLoad
+                lookup
+                ignored
+                (fun (_, metadata: TensorMeta) -> metadata.Shape)
+                (fun (_, metadata: TensorMeta) -> metadata.DType)
+                modelState
+                mode
+
+        let commit () =
+            for matched in matches do
+                match matched with
+                | Matched(state, (sourceName, _)) ->
+                    use source = reader.ReadTensor sourceName
+                    state.Tensor.copyInPlace source
+                | _ -> ()
+
+        report, commit
+
     /// Save canonical parameters and buffers to a .safetensors file.
-    let save (model: 'T) (filePath: string) : unit =
-        namedState model
+    let save modelState (filePath: string) : unit =
+        namedState modelState
         |> List.map (fun item -> item.Name, item.Tensor)
         |> Map.ofList
         |> fun tensors -> SafeTensors.save tensors filePath
 
     /// Load tensors from a dictionary into the model, matching by canonical state name.
     /// Validation completes before any model tensor is changed.
-    let loadFromDict (mode: LoadMode) (model: 'T) (tensors: Map<string, Tensor>) =
-        let report, commit = prepareLoadFromDict NameMapping.identity mode model tensors
+    let loadFromDict (mode: LoadMode) modelState (tensors: Map<string, Tensor>) =
+        let report, commit =
+            prepareLoadFromDict NameMapping.identity mode modelState tensors
+
         commit ()
         report
 
     /// Translate or ignore external tensor names declaratively, then load matching canonical state.
     /// Mapping, collision, shape, and dtype validation completes before any model tensor is changed.
-    let loadFromDictWith (mapping: NameMapping) (mode: LoadMode) (model: 'T) (tensors: Map<string, Tensor>) =
-        let report, commit = prepareLoadFromDict mapping mode model tensors
+    let loadFromDictWith (mapping: NameMapping) (mode: LoadMode) modelState (tensors: Map<string, Tensor>) =
+        let report, commit = prepareLoadFromDict mapping mode modelState tensors
         commit ()
         report
 
-    /// Load tensors from a .safetensors file into the model in place.
+    /// Load tensors from a validated SafeTensors reader into model state.
     /// Validation completes before any model tensor is changed.
-    let loadInto (model: 'T) (filePath: string) (mode: LoadMode) : LoadReport =
-        let metadata = SafeTensors.loadMeta filePath
+    let loadSafeTensors (mode: LoadMode) modelState (reader: SafeTensorReader) : LoadReport =
+        let report, commit =
+            prepareLoadSafeTensors NameMapping.identity mode modelState reader
 
-        let report, matches =
-            planLoad metadata [] (fun item -> item.Shape) (fun item -> item.DType) model mode
+        commit ()
+        report
 
-        let namesToLoad =
-            matches
-            |> List.choose (function
-                | Matched(state, _) -> Some state.Name
-                | _ -> None)
-            |> Set.ofList
-
-        scoped {
-            let _, tensors = SafeTensors.loadSelected filePath namesToLoad
-
-            for matched in matches do
-                match matched with
-                | Matched(state, _) ->
-                    match Map.tryFind state.Name tensors with
-                    | Some source -> state.Tensor.copyInPlace source
-                    | None -> invalidOp $"Validated tensor '{state.Name}' was not loaded."
-                | _ -> ()
-        }
-
+    /// Translate or ignore external names, then load one validated SafeTensors entry at a time.
+    /// Mapping, name, shape, and dtype validation completes before any tensor is changed.
+    let loadSafeTensorsWith (mapping: NameMapping) (mode: LoadMode) modelState (reader: SafeTensorReader) : LoadReport =
+        let report, commit = prepareLoadSafeTensors mapping mode modelState reader
+        commit ()
         report

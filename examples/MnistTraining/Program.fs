@@ -156,13 +156,14 @@ let main argv =
     printfn "  Test samples:  %d" testDataset.Count
 
     let model = createModel ()
-    let opt = AdamW.createWithLr lr (Model.trainableParams model)
+    let modelState = Model.state model
+    let opt = AdamW.createWithLr lr (ModelState.trainableParams modelState)
     let scheduler = Scheduler.create (StepDecay(2, 0.5)) opt.setLearningRate lr
 
     let startEpoch =
         match options.Resume, options.CheckpointDir with
         | true, Some checkpointDir ->
-            let completedEpoch = Checkpoint.load model opt checkpointDir
+            let completedEpoch = Checkpoint.load modelState opt checkpointDir
             loadTrainingState scheduler checkpointDir
 
             if scheduler.CurrentStep <> completedEpoch then
@@ -254,7 +255,7 @@ let main argv =
 
         match options.CheckpointDir with
         | Some checkpointDir ->
-            Checkpoint.save model opt epoch checkpointDir
+            Checkpoint.save modelState opt epoch checkpointDir
             saveTrainingState scheduler checkpointDir
         | None -> ()
 

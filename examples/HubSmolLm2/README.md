@@ -46,7 +46,7 @@ Its generated IDs are `[2068, 5482, 451, 28, 392, 808, 737, 288, 21000, 260, 435
 
 - The Llama architecture, rotary position embedding, grouped-query attention, SwiGLU MLP, and chat template remain inside the example.
 - `NameMapping` rewrites Hugging Face layer paths to Toro record paths.
-- `Model.loadWith` validates and loads the complete BF16 state strictly.
+- `ModelState.loadSafeTensorsWith` validates the complete BF16 state and copies one tensor at a time.
 - `BpeConfig.ByteLevel` and `ByteLevelPreTokenizer` configure the model's GPT-2 tokenizer and chat tokens.
 - Generation uses greedy decoding and recomputes the full sequence for each token.
 

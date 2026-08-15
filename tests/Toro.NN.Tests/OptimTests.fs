@@ -19,6 +19,9 @@ let private withTempDir action =
         if Directory.Exists dir then
             Directory.Delete(dir, true)
 
+let private trainableParams model =
+    model |> Model.state |> ModelState.trainableParams
+
 let private trainOnce (linear: Linear) (optimizer: #IOptimizer) x target =
     optimizer.zeroGrad ()
 
@@ -36,7 +39,7 @@ let ``SGD step reduces loss`` () =
     let x = torch.randn ([| 8L; 4L |], dtype = torch.float32, device = torch.CPU)
     let target = torch.randn ([| 8L; 2L |], dtype = torch.float32, device = torch.CPU)
 
-    let opt = SGD.create 0.01 (Model.trainableParams linear)
+    let opt = SGD.create 0.01 (trainableParams linear)
 
     let getLoss () =
         let y = linear.forward x
@@ -88,7 +91,7 @@ let ``AdamW state uses canonical names and restores independently of parameter o
     withTempDir (fun dir ->
         let statePath = Path.Combine(dir, "optimizer.safetensors")
         let source = Linear.init 4 2 torch.float32 torch.CPU
-        let sourceOptimizer = AdamW.createWithLr 0.01 (Model.trainableParams source)
+        let sourceOptimizer = AdamW.createWithLr 0.01 (trainableParams source)
         let x = torch.randn ([| 8L; 4L |], dtype = torch.float32)
         let target = torch.randn ([| 8L; 2L |], dtype = torch.float32)
 
@@ -104,18 +107,21 @@ let ``AdamW state uses canonical names and restores independently of parameter o
 
         let replica = Linear.init 4 2 torch.float32 torch.CPU
 
-        Model.namedState source
+        Model.state source
+        |> ModelState.namedState
         |> List.map (fun item -> item.Name, item.Tensor)
         |> Map.ofList
-        |> Model.loadFromDict Strict replica
+        |> ModelState.loadFromDict Strict (Model.state replica)
         |> ignore
 
         let replicaOptimizer =
-            Model.trainableParams replica
+            trainableParams replica
             |> List.rev
             |> AdamW.createWithLr 0.01
 
-        replicaOptimizer.loadStateDict state
+        use reader = SafeTensors.openFile statePath
+        let commit = replicaOptimizer.prepareLoadState reader
+        commit ()
         trainOnce source sourceOptimizer x target
         trainOnce replica replicaOptimizer x target
 
@@ -130,25 +136,27 @@ let ``AdamW state validation rejects missing unexpected shape and dtype mismatch
     withTempDir (fun dir ->
         let statePath = Path.Combine(dir, "optimizer.safetensors")
         let linear = Linear.init 4 2 torch.float32 torch.CPU
-        let optimizer = AdamW.createWithLr 0.01 (Model.trainableParams linear)
+        let optimizer = AdamW.createWithLr 0.01 (trainableParams linear)
         optimizer.saveState statePath
         let state = SafeTensors.load statePath
 
-        Assert.Throws<InvalidOperationException>(fun () -> optimizer.validateStateDict (Map.remove "m.Weight" state))
-        |> ignore
+        let rejects filename tensors =
+            let invalidPath = Path.Combine(dir, filename)
+            SafeTensors.save tensors invalidPath
+            use reader = SafeTensors.openFile invalidPath
 
-        Assert.Throws<InvalidOperationException>(fun () ->
-            optimizer.validateStateDict (Map.add "unexpected" (torch.ones ([| 1L |])) state))
-        |> ignore
+            Assert.Throws<InvalidOperationException>(fun () -> optimizer.prepareLoadState reader |> ignore)
+            |> ignore
 
-        Assert.Throws<InvalidOperationException>(fun () ->
-            optimizer.validateStateDict (Map.add "m.Weight" (torch.ones ([| 1L |])) state))
-        |> ignore
+        rejects "missing.safetensors" (Map.remove "m.Weight" state)
+        rejects "unexpected.safetensors" (Map.add "unexpected" (torch.ones ([| 1L |])) state)
+        rejects "shape.safetensors" (Map.add "m.Weight" (torch.ones ([| 1L |])) state)
 
         let wrongDType = torch.zeros (state["m.Weight"].shape, dtype = torch.float64)
+        rejects "dtype.safetensors" (Map.add "m.Weight" wrongDType state)
 
-        Assert.Throws<InvalidOperationException>(fun () -> optimizer.validateStateDict (Map.add "m.Weight" wrongDType state))
-        |> ignore)
+        let negativeStep = torch.tensor ([| -1 |], dtype = torch.int32)
+        rejects "negative-step.safetensors" (Map.add "step" negativeStep state))
 
 [<Fact>]
 let ``AdamW step reduces loss`` () =
@@ -157,7 +165,7 @@ let ``AdamW step reduces loss`` () =
     let x = torch.randn ([| 8L; 4L |], dtype = torch.float32, device = torch.CPU)
     let target = torch.randn ([| 8L; 2L |], dtype = torch.float32, device = torch.CPU)
 
-    let opt = AdamW.createWithLr 0.01 (Model.trainableParams linear)
+    let opt = AdamW.createWithLr 0.01 (trainableParams linear)
 
 
     let getLoss () =

@@ -2,14 +2,13 @@
 
 ## Architecture Overview
 
-Toro is an F# machine learning framework with PyTorch-style semantics, built on TorchSharp (.NET 10). The monorepo contains 6 library packages under `src/`, 6 test projects, 10 examples, and a React Router v7 documentation site. Models are plain F# records composed via interfaces and computation expressions.
+Toro is an F# machine learning framework with PyTorch-style semantics, built on TorchSharp (.NET 10). The monorepo contains 6 library packages under `src/`, 6 test projects, 14 examples, and a React Router v7 documentation site. Models are plain F# records composed via interfaces and computation expressions.
 
 ## Package Dependency Graph
 
 ```mermaid
 flowchart TD
     Toro --> Toro.NN
-    Toro --> Toro.Hub
     Toro --> Toro.Vision
     Toro --> Toro.Text
     Toro.NN --> Toro.GNN
@@ -23,8 +22,8 @@ Core tensor API wrapping TorchSharp. Namespace: `Toro`.
 
 | File | Role |
 |------|------|
-| `Tensor.fs` | `Tensor` type alias, `TIdx` indexing DU, comparison operators, `scoped { }` CE, `Toro.noGrad`/`inferenceMode` |
-| `SafeTensors.fs` | SafeTensors file read/write/metadata |
+| `Tensor.fs` | `Tensor` type alias, `TIdx` indexing DU, comparison operators, automatic and explicit scoped CEs, `Toro.noGrad`/`inferenceMode` |
+| `SafeTensors.fs` | SafeTensors file read/write/metadata and single-file or sharded readers |
 
 ### Toro.NN — `src/Toro.NN/`
 
@@ -34,7 +33,7 @@ Neural network layers, training utilities. Namespace: `Toro.NN`.
 |------|------|
 | `Module.fs` | `IModule<'In,'Out>` interface (base composable layer) |
 | `Init.fs` | Weight initialization functions |
-| `Model.fs` | Reflection-based parameter discovery, save/load (SafeTensors) |
+| `Model.fs` | Reflection or descriptor-based `ModelState` discovery, validation, and persistence |
 | `Layer/Linear.fs` | Dense layer |
 | `Layer/Conv.fs` | Conv1d, Conv2d |
 | `Layer/Embedding.fs` | Embedding layer |
@@ -70,7 +69,7 @@ Graph neural networks. Namespace: `Toro.GNN`.
 
 ### Toro.Hub — `src/Toro.Hub/`
 
-Hugging Face Hub client. Namespace: `Toro.Hub`. Not published to NuGet.
+Single-file Hugging Face Hub downloader. Namespace: `Toro.Hub`.
 
 | File | Role |
 |------|------|
@@ -97,20 +96,20 @@ Text tokenization. Namespace: `Toro.Text`.
 
 ## Design Patterns
 
-- **Record-based models**: Models are F# records holding tensors and sub-modules. No class inheritance. `Model.namedParams` discovers all parameters via reflection (walks records, lists, tuples, unions).
+- **Record-based models**: Models are F# records holding tensors and sub-modules. `Model.state` uses attribute-driven reflection; `Model.stateWith` accepts an explicit descriptor. Both produce the same validated `ModelState`.
 - **`IModule<'In,'Out>`**: Single `forward` method interface. Most layers implement the shorthand `IModule` (= `IModule<Tensor, Tensor>`).
-- **`scoped { }` CE**: Wraps body in `torch.NewDisposeScope()`. Intermediate tensors are auto-disposed; return-value tensors are kept alive (reflection-based traversal of records/tuples/unions).
+- **Tensor scopes**: `scoped { }` auto-keeps return-value tensors; `scopedExplicit { }` retains only tensors passed to `Tensor.keep`.
 - **`sequential { }` CE**: Builds a `Sequential` record from a list of `IModule` layers; folds `forward` left-to-right.
 - **`pipeline { }` CE**: Composes arbitrary `'a -> 'b` functions and `IModule.forward` calls via `>>`.
-- **Optimizers as records**: `SGD`, `Adam`, `AdamW` are records with `step()`, `zeroGrad()`, `toOps()`. State managed internally; serializable to directory.
-- **SafeTensors for persistence**: Models save/load via SafeTensors format. `Model.loadInto` validates shapes/dtypes from header before reading tensor data.
+- **Named optimizer state**: SGD and AdamW implement `IOptimizer`; AdamW state is keyed by canonical parameter name.
+- **SafeTensors for persistence**: `ModelState` and checkpoint loading validate all metadata before reading and copying one tensor at a time.
 
 ## Project Layout
 
 ```
 src/           — 6 library packages
 tests/         — 6 test projects (xUnit + FsUnit, TorchSharp-cpu)
-examples/      — 10 runnable console apps
+examples/      — 14 runnable console apps
 docs/          — React Router v7 site (pnpm, MDX)
 scripts/       — API doc generation (FSDocs → MDX)
 .github/       — CI (ci.yml), docs deploy (docs.yml), NuGet release (release.yml)

@@ -62,8 +62,12 @@ let main _argv =
     printfn "  Train samples: %d" trainDataset.Count
 
     let gan = createGan ()
-    let optG = AdamW.createWithLr lrG (Model.trainableParams gan.Gen)
-    let optD = AdamW.createWithLr lrD (Model.trainableParams gan.Disc)
+
+    let optG =
+        AdamW.createWithLr lrG (gan.Gen |> Model.state |> ModelState.trainableParams)
+
+    let optD =
+        AdamW.createWithLr lrD (gan.Disc |> Model.state |> ModelState.trainableParams)
 
     printfn ""
     printfn "Generator:     z(%d) -> 256 -> 512 -> 784 (tanh)" latentDim

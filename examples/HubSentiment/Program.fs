@@ -262,8 +262,8 @@ let main argv =
 
     printfn "Downloading %s at %s ..." repoId revision
 
-    let weights =
-        Hub.loadSafeTensors {
+    let weightPath =
+        Hub.download {
             RepoId = repoId
             Revision = revision
             Filename = "model.safetensors"
@@ -272,10 +272,13 @@ let main argv =
 
     let tokenizer = loadTokenizer repoId revision |> Async.RunSynchronously
 
-    printfn "Downloaded %d tensors, tokenizer ready" (weights: Map<string, Tensor>).Count
-
     let model = createModel ()
-    let report = weights |> Model.loadFromDictWith nameMapping Lenient model
+    use reader = SafeTensors.openFile weightPath
+    printfn "Downloaded %d tensors, tokenizer ready" reader.Metadata.Count
+
+    let report =
+        ModelState.loadSafeTensorsWith nameMapping Lenient (Model.state model) reader
+
     printfn "Model loaded (%d params, %d skipped)" report.Loaded.Length report.Missing.Length
     printfn ""
 

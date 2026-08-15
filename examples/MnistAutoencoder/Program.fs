@@ -66,7 +66,7 @@ let main _argv =
     printfn "  Test samples:  %d" testDataset.Count
 
     let model = createModel latentDim
-    let opt = AdamW.createWithLr lr (Model.trainableParams model)
+    let opt = AdamW.createWithLr lr (model |> Model.state |> ModelState.trainableParams)
 
     printfn ""
     printfn "Autoencoder: 784 -> 256 -> %d -> 256 -> 784" latentDim

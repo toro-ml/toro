@@ -178,11 +178,10 @@ let loadModel () =
         Hub.download (hubFile "model.safetensors")
         |> Async.RunSynchronously
 
+    use reader = SafeTensors.openFile weightPath
+
     let report =
-        scoped {
-            let weights = SafeTensors.load weightPath
-            return weights |> Model.loadFromDictWith nameMapping Strict model
-        }
+        ModelState.loadSafeTensorsWith nameMapping Strict (Model.state model) reader
 
     model, report
 

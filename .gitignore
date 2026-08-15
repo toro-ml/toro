@@ -503,3 +503,5 @@ docs/app/content/api-*.mdx
 
 # Example outputs
 *.safetensors
+
+.serena/

@@ -13,6 +13,8 @@ dotnet add package Toro.Vision
 dotnet add package TorchSharp-cpu
 ```
 
+Applications using Skia transforms must also reference the SkiaSharp native-assets package for their target runtime, such as `SkiaSharp.NativeAssets.Linux` on Linux.
+
 ## Quick Example
 
 ```fsharp

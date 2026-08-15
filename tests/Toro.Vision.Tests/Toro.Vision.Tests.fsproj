@@ -11,4 +11,8 @@
     <ProjectReference Include="../../src/Toro.Vision/Toro.Vision.fsproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.119.4" Condition="$([MSBuild]::IsOSPlatform('Linux'))" />
+  </ItemGroup>
+
 </Project>

@@ -76,7 +76,8 @@ let model = {
     Fc2 = Linear.init 16 1 torch.float32 torch.CPU
 }
 
-let optimizer = AdamW.createWithLr 0.01 (Model.trainableParams model)
+let modelState = Model.state model
+let optimizer = AdamW.createWithLr 0.01 (ModelState.trainableParams modelState)
 
 for epoch in 1..500 do
     scoped {
@@ -110,8 +111,8 @@ type NormalizedScale = {
 }
 ```
 
-`Model.namedState` returns canonical names for parameters and buffers.
-`Model.trainableParams` returns the named, gradient-enabled parameters accepted by `SGD` and `AdamW`.
+`Model.state` creates a validated state view.
+`ModelState.namedState` returns canonical names for parameters and buffers, while `ModelState.trainableParams` returns the gradient-enabled parameters accepted by `SGD` and `AdamW`.
 Shared tensors are registered once, preventing duplicate optimizer updates and duplicate checkpoint entries.
 
 ## External weights
@@ -131,7 +132,7 @@ let mapping =
 
 let report =
     weights
-    |> Model.loadFromDictWith mapping Strict model
+    |> ModelState.loadFromDictWith mapping Strict (Model.state model)
 ```
 
 Name ambiguity, target collisions, missing keys, unexpected keys, shapes, and dtypes are validated before tensors are copied.

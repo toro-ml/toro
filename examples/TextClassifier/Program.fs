@@ -120,7 +120,9 @@ let main _argv =
     printfn ""
 
     let model = createModel ()
-    let opt = AdamW.createWithLr 1e-3 (Model.trainableParams model)
+
+    let opt =
+        AdamW.createWithLr 1e-3 (model |> Model.state |> ModelState.trainableParams)
 
     for epoch in 1..100 do
         scoped {

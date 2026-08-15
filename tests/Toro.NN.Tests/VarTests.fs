@@ -59,6 +59,24 @@ let private parameter value requiresGrad =
 let private names (tensors: NamedTensor list) = tensors |> List.map _.Name
 let private tensorSum (tensor: Tensor) = (tensor.sum ()).ToSingle()
 
+let private namedState model =
+    model |> Model.state |> ModelState.namedState
+
+let private namedParams model =
+    model |> Model.state |> ModelState.namedParams
+
+let private namedBuffers model =
+    model |> Model.state |> ModelState.namedBuffers
+
+let private trainableParams model =
+    model |> Model.state |> ModelState.trainableParams
+
+let private loadFromDict mode model tensors =
+    ModelState.loadFromDict mode (Model.state model) tensors
+
+let private loadFromDictWith mapping mode model tensors =
+    ModelState.loadFromDictWith mapping mode (Model.state model) tensors
+
 let private withTempDir action =
     let dir = Path.Combine(Path.GetTempPath(), $"toro-model-{Guid.NewGuid()}")
 
@@ -78,19 +96,17 @@ let ``named state classifies parameters buffers frozen values and ignored values
         Ignored = parameter 4.0 true
     }
 
-    Model.namedState model
+    namedState model
     |> List.map (fun item -> item.Name, item.Kind)
     |> should equal [ "Trainable", Parameter; "Frozen", Parameter; "Running", Buffer ]
 
-    Model.namedParams model
+    namedParams model
     |> names
     |> should equal [ "Trainable"; "Frozen" ]
 
-    Model.namedBuffers model
-    |> names
-    |> should equal [ "Running" ]
+    namedBuffers model |> names |> should equal [ "Running" ]
 
-    Model.trainableParams model
+    trainableParams model
     |> names
     |> should equal [ "Trainable" ]
 
@@ -99,7 +115,7 @@ let ``named state rejects unclassified tensors with their path`` () =
     let model = { Value = parameter 1.0 true }
 
     let error =
-        Assert.Throws<InvalidOperationException>(fun () -> Model.namedState model |> ignore)
+        Assert.Throws<InvalidOperationException>(fun () -> namedState model |> ignore)
 
     Assert.Contains("Value", error.Message)
 
@@ -108,7 +124,7 @@ let ``named state rejects conflicting field attributes`` () =
     let model: ConflictingAttributes = { Value = parameter 1.0 true }
 
     let error =
-        Assert.Throws<InvalidOperationException>(fun () -> Model.namedState model |> ignore)
+        Assert.Throws<InvalidOperationException>(fun () -> namedState model |> ignore)
 
     Assert.Contains("Value", error.Message)
 
@@ -116,7 +132,7 @@ let ``named state rejects conflicting field attributes`` () =
 let ``named state canonicalizes shared tensors to the first path`` () =
     let shared = parameter 1.0 true
     let model = { First = shared; Second = shared }
-    Model.namedState model |> names |> should equal [ "First" ]
+    namedState model |> names |> should equal [ "First" ]
 
 [<Fact>]
 let ``named state rejects conflicting roles for a shared tensor`` () =
@@ -125,7 +141,7 @@ let ``named state rejects conflicting roles for a shared tensor`` () =
     let model: SharedRoles = { Parameter = shared; Buffer = shared }
 
     let error =
-        Assert.Throws<InvalidOperationException>(fun () -> Model.namedState model |> ignore)
+        Assert.Throws<InvalidOperationException>(fun () -> namedState model |> ignore)
 
     Assert.Contains("Parameter", error.Message)
     Assert.Contains("Buffer", error.Message)
@@ -139,7 +155,7 @@ let ``namedParams keeps established record option tuple union and list names`` (
         Layers = [ Linear.initNoBias 1 1 torch.float32 torch.CPU ]
     |}
 
-    Model.namedParams model
+    namedParams model
     |> names
     |> should equal [
         "Branch.TwoLayers.0.Weight"
@@ -157,7 +173,7 @@ let ``parameter attributes propagate through option and tuple containers`` () =
         Pair = parameter 2.0 true, parameter 3.0 true
     }
 
-    Model.namedParams model
+    namedParams model
     |> names
     |> should equal [ "Optional"; "Pair.0"; "Pair.1" ]
 
@@ -169,7 +185,7 @@ let ``namedParams preserves Sequential layer names and order`` () =
             Linear.initNoBias 2 1 torch.float32 torch.CPU
         }
 
-    Model.namedParams model
+    namedParams model
     |> names
     |> should equal [ "Layers.0.Weight"; "Layers.1.Weight" ]
 
@@ -179,7 +195,7 @@ let ``namedParams sorts string dictionary keys ordinally`` () =
     dictionary.Add("z", Linear.initNoBias 2 1 torch.float32 torch.CPU)
     dictionary.Add("A", Linear.initNoBias 4 2 torch.float32 torch.CPU)
 
-    Model.namedParams dictionary
+    namedParams dictionary
     |> names
     |> should equal [ "A.Weight"; "z.Weight" ]
 
@@ -187,18 +203,18 @@ let ``namedParams sorts string dictionary keys ordinally`` () =
 let ``named state rejects unstable enumerables and invalid dictionaries`` () =
     let sequence = seq { Linear.initNoBias 2 1 torch.float32 torch.CPU }
 
-    Assert.Throws<InvalidOperationException>(fun () -> Model.namedState sequence |> ignore)
+    Assert.Throws<InvalidOperationException>(fun () -> namedState sequence |> ignore)
     |> ignore
 
     let nonString = Dictionary<int, Linear>()
     nonString.Add(0, Linear.initNoBias 2 1 torch.float32 torch.CPU)
 
-    Assert.Throws<InvalidOperationException>(fun () -> Model.namedState nonString |> ignore)
+    Assert.Throws<InvalidOperationException>(fun () -> namedState nonString |> ignore)
     |> ignore
 
     let dotted = Map [ "invalid.name", Linear.initNoBias 2 1 torch.float32 torch.CPU ]
 
-    Assert.Throws<InvalidOperationException>(fun () -> Model.namedState dotted |> ignore)
+    Assert.Throws<InvalidOperationException>(fun () -> namedState dotted |> ignore)
     |> ignore
 
 [<Fact>]
@@ -207,7 +223,7 @@ let ``named state rejects cycles with the active path`` () =
     items.Add items
 
     let error =
-        Assert.Throws<InvalidOperationException>(fun () -> Model.namedState items |> ignore)
+        Assert.Throws<InvalidOperationException>(fun () -> namedState items |> ignore)
 
     Assert.Contains("0", error.Message)
 
@@ -216,19 +232,60 @@ let ``type plan caches do not change discovery results`` () =
     let first = Linear.init 4 2 torch.float32 torch.CPU
     let second = Linear.init 4 2 torch.float32 torch.CPU
 
-    Model.namedState first
+    namedState first
     |> names
-    |> should equal (Model.namedState second |> names)
+    |> should equal (namedState second |> names)
+
+[<Fact>]
+let ``explicit descriptor defines stable names without reflection`` () =
+    let model = {
+        Trainable = parameter 1.0 true
+        Frozen = parameter 2.0 false
+        Running = parameter 3.0 false
+        Ignored = parameter 4.0 true
+    }
+
+    let mutable parameterEnumerations = 0
+    let mutable bufferEnumerations = 0
+    let mutable disposed = false
+
+    let descriptor = {
+        NamedParameters =
+            fun value ->
+                seq {
+                    parameterEnumerations <- parameterEnumerations + 1
+                    yield "external.weight", value.Trainable
+                    yield "external.frozen", value.Frozen
+                }
+        NamedBuffers =
+            fun value ->
+                seq {
+                    bufferEnumerations <- bufferEnumerations + 1
+                    yield "external.running", value.Running
+                }
+        Dispose = fun _ -> disposed <- true
+    }
+
+    let state = Model.stateWith descriptor model
+
+    ModelState.namedState state
+    |> names
+    |> should equal [ "external.weight"; "external.frozen"; "external.running" ]
+
+    parameterEnumerations |> should equal 1
+    bufferEnumerations |> should equal 1
+    ModelDescriptor.dispose descriptor model
+    disposed |> should equal true
 
 [<Fact>]
 let ``BatchNorm exposes affine values as parameters and running state as buffers`` () =
     let batchNorm = BatchNorm.initDefault 4 torch.float32 torch.CPU
 
-    Model.namedParams batchNorm
+    namedParams batchNorm
     |> names
     |> should equal [ "Weight"; "Bias" ]
 
-    Model.namedBuffers batchNorm
+    namedBuffers batchNorm
     |> names
     |> should equal [ "RunningMean"; "RunningVar" ]
 
@@ -238,7 +295,7 @@ let ``Model save and load round-trips parameters and buffers`` () =
         let path = Path.Combine(dir, "model.safetensors")
         let source = BatchNorm.initDefault 4 torch.float32 torch.CPU
         source.RunningMean.copyInPlace (torch.full_like (source.RunningMean, 7.0))
-        Model.save source path
+        ModelState.save (Model.state source) path
 
         SafeTensors.loadMeta path
         |> Map.keys
@@ -246,7 +303,8 @@ let ``Model save and load round-trips parameters and buffers`` () =
         |> should equal [ "Bias"; "RunningMean"; "RunningVar"; "Weight" ]
 
         let target = BatchNorm.initDefault 4 torch.float32 torch.CPU
-        let report = Model.loadInto target path Strict
+        use reader = SafeTensors.openFile path
+        let report = ModelState.loadSafeTensors Strict (Model.state target) reader
 
         report.Loaded
         |> should equal [ "Weight"; "Bias"; "RunningMean"; "RunningVar" ]
@@ -262,7 +320,7 @@ let ``Strict load validates all tensors before changing any tensor`` () =
 
     Assert.Throws<InvalidOperationException>(fun () ->
         Map [ "Weight", replacementWeight; "Bias", invalidBias ]
-        |> Model.loadFromDict Strict model
+        |> loadFromDict Strict model
         |> ignore)
     |> ignore
 
@@ -277,7 +335,7 @@ let ``Lenient load changes only matching canonical state`` () =
 
     let report =
         Map [ "Weight", replacementWeight; "Bias", invalidBias ]
-        |> Model.loadFromDict Lenient model
+        |> loadFromDict Lenient model
 
     report.Loaded |> should equal [ "Weight" ]
 
@@ -299,10 +357,7 @@ let ``NameMapping collisions are rejected before model changes`` () =
         NameMapping.create [ NameRule.rename "first" "Weight"; NameRule.rename "second" "Weight" ]
 
     let error =
-        Assert.Throws<InvalidOperationException>(fun () ->
-            tensors
-            |> Model.loadFromDictWith mapping Strict model
-            |> ignore)
+        Assert.Throws<InvalidOperationException>(fun () -> tensors |> loadFromDictWith mapping Strict model |> ignore)
 
     Assert.Contains("first", error.Message)
     Assert.Contains("second", error.Message)
@@ -318,7 +373,7 @@ let ``NameMapping can intentionally ignore source suffixes in Strict mode`` () =
 
     let report =
         Map [ "Weight", replacement; "external.norm.num_batches_tracked", externalState ]
-        |> Model.loadFromDictWith mapping Strict model
+        |> loadFromDictWith mapping Strict model
 
     report.Loaded |> should equal [ "Weight" ]
 
@@ -339,7 +394,7 @@ let ``Ambiguous NameMapping rules fail before model changes`` () =
     let error =
         Assert.Throws<InvalidOperationException>(fun () ->
             Map [ "external", replacement ]
-            |> Model.loadFromDictWith mapping Strict model
+            |> loadFromDictWith mapping Strict model
             |> ignore)
 
     Assert.Contains("matches multiple", error.Message)
@@ -360,7 +415,7 @@ let ``Model save writes a shared tensor only under its canonical name`` () =
         let path = Path.Combine(dir, "model.safetensors")
         let shared = parameter 4.0 true
         let model = { First = shared; Second = shared }
-        Model.save model path
+        ModelState.save (Model.state model) path
 
         SafeTensors.loadMeta path
         |> Map.keys

@@ -5,7 +5,6 @@ open System.IO
 open System.Security.Cryptography
 open System.Text
 open FsHttp
-open Toro
 
 /// Reference to one file at an explicit Hugging Face Hub repository revision.
 type HubFile = {
@@ -130,11 +129,4 @@ module Hub =
                 else
                     let! body = response |> Response.toTextAsync
                     return failwith $"HTTP {statusCode}: {body}"
-        }
-
-    /// Download a .safetensors file from Hugging Face Hub and load it as a tensor dictionary.
-    let loadSafeTensors (file: HubFile) : Async<Map<string, Tensor>> =
-        async {
-            let! path = download file
-            return SafeTensors.load path
         }

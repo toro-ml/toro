@@ -188,9 +188,55 @@ type ScopedBuilder() =
     member this.For(sequence: seq<'a>, body) =
         this.Using(sequence.GetEnumerator(), fun enum -> this.While(enum.MoveNext, this.Delay(fun () -> body enum.Current)))
 
+/// Computation expression that disposes every tensor created in its scope unless
+/// the tensor is moved to the outer scope explicitly with <c>Tensor.keep</c>.
+/// Unlike <c>scoped</c>, the return value is not traversed automatically.
+type ExplicitScopedBuilder() =
+    member _.Return(x) = x
+    member _.ReturnFrom(x) = x
+    member _.Zero() = ()
+
+    member _.Combine(_: unit, f: unit -> 'b) : 'b = f ()
+
+    member _.Delay(f: unit -> 'a) = f
+
+    member _.Run(f: unit -> 'a) : 'a =
+        use _scope = torch.NewDisposeScope()
+        f ()
+
+    member _.TryWith(body, handler) =
+        try
+            body ()
+        with ex ->
+            handler ex
+
+    member _.TryFinally(body, finalizer) =
+        try
+            body ()
+        finally
+            finalizer ()
+
+    member _.Using(resource: #System.IDisposable, body) =
+        try
+            body resource
+        finally
+            if not (isNull (box resource)) then
+                resource.Dispose()
+
+    member _.While(guard, body) =
+        while guard () do
+            body () |> ignore
+
+    member this.For(sequence: seq<'a>, body) =
+        this.Using(sequence.GetEnumerator(), fun enum -> this.While(enum.MoveNext, this.Delay(fun () -> body enum.Current)))
+
 [<AutoOpen>]
 module ScopedCE =
     /// Computation expression that wraps the body in a
     /// <c>torch.NewDisposeScope()</c>. Intermediate tensors are disposed
     /// automatically when the block completes.
     let scoped = ScopedBuilder()
+
+    /// Computation expression that disposes intermediate tensors without inspecting
+    /// the return value. Call <c>Tensor.keep</c> for each tensor that must survive.
+    let scopedExplicit = ExplicitScopedBuilder()

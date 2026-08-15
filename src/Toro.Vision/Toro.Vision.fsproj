@@ -25,8 +25,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="SkiaSharp" Version="3.*" />
-    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.*" />
+    <PackageReference Include="SkiaSharp" Version="3.119.4" />
     <PackageReference Include="TorchVision" Version="0.107.0" />
     <ProjectReference Include="../Toro/Toro.fsproj" />
   </ItemGroup>

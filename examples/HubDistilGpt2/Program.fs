@@ -182,7 +182,7 @@ let loadModel () =
 
             return
                 transformed
-                |> Model.loadFromDictWith nameMapping Strict model
+                |> ModelState.loadFromDictWith nameMapping Strict (Model.state model)
         }
 
     model, report

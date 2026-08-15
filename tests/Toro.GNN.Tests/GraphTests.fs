@@ -14,25 +14,33 @@ let private mkEdgeIndex (data: int64 array2d) = (TorchSharp.torch.tensor data)
 let ``GNN layers expose explicitly classified named parameters`` () =
     let gcn = GCNConv.init 4 8 torch.float32 torch.CPU
 
-    Model.namedParams gcn
+    gcn
+    |> Model.state
+    |> ModelState.namedParams
     |> List.map _.Name
     |> should equal [ "Weight"; "Bias" ]
 
     let gat = GATConv.initDefault 4 8 torch.float32 torch.CPU
 
-    Model.namedParams gat
+    gat
+    |> Model.state
+    |> ModelState.namedParams
     |> List.map _.Name
     |> should equal [ "Weight"; "AttSrc"; "AttTgt"; "Bias" ]
 
     let sage = SAGEConv.init 4 8 torch.float32 torch.CPU
 
-    Model.namedParams sage
+    sage
+    |> Model.state
+    |> ModelState.namedParams
     |> List.map _.Name
     |> should equal [ "WeightSelf"; "WeightNeighbor"; "Bias" ]
 
     let graphNorm = GraphNorm.init 4 torch.float32 torch.CPU
 
-    Model.namedParams graphNorm
+    graphNorm
+    |> Model.state
+    |> ModelState.namedParams
     |> List.map _.Name
     |> should equal [ "Gamma"; "Beta"; "Alpha" ]
 
@@ -41,7 +49,7 @@ let ``GraphData is rejected as unclassified runtime data`` () =
     let graph =
         GraphData.create (torch.randn ([| 2L; 3L |], dtype = torch.float32)) (mkEdgeIndex (array2D [| [| 0L |]; [| 1L |] |]))
 
-    Assert.Throws<System.InvalidOperationException>(fun () -> Model.namedState graph |> ignore)
+    Assert.Throws<System.InvalidOperationException>(fun () -> graph |> Model.state |> ignore)
     |> ignore
 
 

@@ -38,11 +38,11 @@ Exact probabilities can vary with the TorchSharp and LibTorch versions.
 
 ## How it works
 
-1. `Hub.loadSafeTensors` downloads the weights at the pinned revision.
+1. `Hub.download` downloads the weights at the pinned revision.
 2. F# records define the ResNet-18 stem, residual blocks, stages, and classifier.
 3. `NameMapping` rewrites Hugging Face stage, block, and layer paths into Toro model paths.
 4. `NameRule.ignoreSuffix "num_batches_tracked"` explicitly excludes the PyTorch BatchNorm counters that Toro does not store.
-5. `Model.loadFromDictWith` uses `Strict` mode to validate all remaining parameter and buffer names, shapes, and dtypes before copying tensors.
+5. `ModelState.loadSafeTensorsWith` uses `Strict` mode to validate all remaining parameter and buffer names, shapes, and dtypes before copying tensors one at a time.
 6. The pinned preprocessing configuration supplies resize size, crop ratio, channel means, and channel standard deviations.
 7. `ResizeShortestEdge`, center crop, ImageNet normalization, and softmax produce the top five labels.
 

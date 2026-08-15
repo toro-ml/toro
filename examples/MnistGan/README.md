@@ -15,6 +15,6 @@ MNIST is downloaded automatically on first run. After training, `generated.png` 
 ## Concepts
 
 - Separate Generator and Discriminator networks
-- Two optimizers with independent `Model.trainableParams`
+- Two optimizers with independent `ModelState.trainableParams`
 - `Loss.binaryCrossEntropyWithLogit` for adversarial training
 - `Tensor.detach` to stop gradients through generated samples

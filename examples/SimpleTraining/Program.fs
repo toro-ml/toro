@@ -28,7 +28,8 @@ let main _argv =
             l2
         }
 
-    let opt = AdamW.createWithLr 0.01 (Model.trainableParams model)
+    let opt =
+        AdamW.createWithLr 0.01 (model |> Model.state |> ModelState.trainableParams)
 
     printfn "Training XOR with AdamW..."
 

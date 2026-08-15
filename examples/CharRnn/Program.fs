@@ -89,7 +89,7 @@ let main _argv =
     printfn ""
 
     let model = createModel ()
-    let opt = AdamW.createWithLr lr (Model.trainableParams model)
+    let opt = AdamW.createWithLr lr (model |> Model.state |> ModelState.trainableParams)
 
     for epoch in 1..epochs do
         let mutable totalLoss = 0.0

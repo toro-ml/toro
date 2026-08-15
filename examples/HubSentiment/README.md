@@ -4,9 +4,9 @@ Load a pre-trained [DistilBERT](https://huggingface.co/distilbert/distilbert-bas
 
 This example shows how to:
 
-- Download safetensors weights with `Hub.loadSafeTensors`
+- Download safetensors weights with `Hub.download`
 - Map HF-style parameter names to Toro record field paths
-- Load weights into a custom model with `Model.loadFromDict`
+- Load weights into a custom model with `ModelState.loadSafeTensorsWith`
 
 ## Run
 
@@ -31,7 +31,7 @@ Model loaded
 
 ## How it works
 
-1. **Download** — `Hub.loadSafeTensors` fetches `model.safetensors` (268 MB) and `Hub.download` fetches `vocab.txt` from HF Hub. Both files are cached in `~/.cache/toro/hub/`.
+1. **Download** — `Hub.download` fetches `model.safetensors` (268 MB) and `vocab.txt` from HF Hub. Both files are cached in `~/.cache/toro/hub/`.
 2. **Tokenize** — A greedy longest-match WordPiece tokenizer splits input text into subword token IDs using the downloaded vocabulary.
 3. **Name mapping** — `buildNameMap` translates 104 HF-style safetensors keys (e.g. `distilbert.transformer.layer.0.attention.q_lin.weight`) to Toro parameter paths (e.g. `Layers.0.Attention.Q.Weight`).
 4. **Model** — DistilBERT uses post-norm (Attn → Add → Norm), which differs from `Toro.NN.TransformerBlock` (pre-norm). Custom record types (`DistilBertAttention`, `DistilBertLayer`, `DistilBertClassifier`) implement the exact architecture.

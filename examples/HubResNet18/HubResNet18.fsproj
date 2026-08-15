@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <PackageReference Include="TorchSharp-cpu" Version="0.107.0" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.119.4" Condition="$([MSBuild]::IsOSPlatform('Linux'))" />
   </ItemGroup>
 
 </Project>

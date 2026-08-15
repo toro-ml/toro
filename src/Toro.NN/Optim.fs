@@ -13,8 +13,9 @@ type IOptimizer =
     abstract learningRate: unit -> float
     abstract setLearningRate: float -> unit
     abstract saveState: string -> unit
-    abstract validateStateDict: Map<string, Tensor> -> unit
-    abstract loadStateDict: Map<string, Tensor> -> unit
+    /// Validate optimizer metadata and values without mutation, then return a commit function.
+    /// The reader must remain alive until the returned function completes.
+    abstract prepareLoadState: SafeTensorReader -> (unit -> unit)
 
 module private OptimizerValidation =
 
@@ -50,11 +51,11 @@ module private OptimizerValidation =
             if not (tensors.Add(box parameter.Tensor)) then
                 invalidArg
                     (nameof parameters)
-                    $"Optimizer input '{parameter.Name}' shares a Tensor with another parameter. Use canonical Model.trainableParams."
+                    $"Optimizer input '{parameter.Name}' shares a Tensor with another parameter. Use ModelState.trainableParams."
 
         parameters
 
-    let exactKeys optimizerKind expected (actual: Map<string, Tensor>) =
+    let exactKeys optimizerKind expected (actual: Map<string, 'Value>) =
         let actualKeys = actual |> Map.keys |> Set.ofSeq
         let missing = Set.difference expected actualKeys |> Set.toList
         let unexpected = Set.difference actualKeys expected |> Set.toList
@@ -62,12 +63,12 @@ module private OptimizerValidation =
         if missing <> [] || unexpected <> [] then
             invalidOp $"{optimizerKind} optimizer state key mismatch: missing=%A{missing}; unexpected=%A{unexpected}."
 
-    let tensor name (expected: Tensor) (actual: Tensor) =
-        if expected.shape <> actual.shape then
-            invalidOp $"Optimizer state '{name}' shape mismatch: expected %A{expected.shape}, got %A{actual.shape}."
+    let tensorMetadata name (expected: Tensor) (actual: TensorMeta) =
+        if expected.shape <> actual.Shape then
+            invalidOp $"Optimizer state '{name}' shape mismatch: expected %A{expected.shape}, got %A{actual.Shape}."
 
-        if expected.dtype <> actual.dtype then
-            invalidOp $"Optimizer state '{name}' dtype mismatch: expected {expected.dtype}, got {actual.dtype}."
+        if expected.dtype <> actual.DType then
+            invalidOp $"Optimizer state '{name}' dtype mismatch: expected {expected.dtype}, got {actual.DType}."
 
 type SGD = private {
     Parameters: NamedTensor list
@@ -94,10 +95,9 @@ type SGD = private {
 
     member _.saveState(filePath: string) = SafeTensors.save Map.empty filePath
 
-    member _.validateStateDict(tensors: Map<string, Tensor>) =
-        OptimizerValidation.exactKeys "SGD" Set.empty tensors
-
-    member this.loadStateDict(tensors: Map<string, Tensor>) = this.validateStateDict tensors
+    member _.prepareLoadState(reader: SafeTensorReader) =
+        OptimizerValidation.exactKeys "SGD" Set.empty reader.Metadata
+        fun () -> ()
 
     interface IOptimizer with
         member _.OptimizerKind = "SGD"
@@ -106,8 +106,7 @@ type SGD = private {
         member this.learningRate() = this.learningRate ()
         member this.setLearningRate lr = this.setLearningRate lr
         member this.saveState filePath = this.saveState filePath
-        member this.validateStateDict tensors = this.validateStateDict tensors
-        member this.loadStateDict tensors = this.loadStateDict tensors
+        member this.prepareLoadState reader = this.prepareLoadState reader
 
 module SGD =
 
@@ -207,37 +206,44 @@ type AdamW = private {
 
         SafeTensors.save tensors filePath
 
-    member this.validateStateDict(tensors: Map<string, Tensor>) =
+    member this.prepareLoadState(reader: SafeTensorReader) =
         let expectedKeys =
             this.ParameterStates
             |> List.collect (fun state -> [ $"m.{state.Parameter.Name}"; $"v.{state.Parameter.Name}" ])
             |> Set.ofList
             |> Set.add "step"
 
-        OptimizerValidation.exactKeys "AdamW" expectedKeys tensors
+        OptimizerValidation.exactKeys "AdamW" expectedKeys reader.Metadata
 
-        let step = tensors["step"]
+        let stepMetadata = reader.Metadata["step"]
 
-        if step.shape <> [| 1L |] then
-            invalidOp $"Optimizer state 'step' shape mismatch: expected [1], got %A{step.shape}."
+        if stepMetadata.Shape <> [| 1L |] then
+            invalidOp $"Optimizer state 'step' shape mismatch: expected [1], got %A{stepMetadata.Shape}."
 
-        if step.dtype <> torch.int32 then
-            invalidOp $"Optimizer state 'step' dtype mismatch: expected Int32, got {step.dtype}."
+        if stepMetadata.DType <> torch.int32 then
+            invalidOp $"Optimizer state 'step' dtype mismatch: expected Int32, got {stepMetadata.DType}."
 
         for state in this.ParameterStates do
             let mName = $"m.{state.Parameter.Name}"
             let vName = $"v.{state.Parameter.Name}"
-            OptimizerValidation.tensor mName state.M tensors[mName]
-            OptimizerValidation.tensor vName state.V tensors[vName]
+            OptimizerValidation.tensorMetadata mName state.M reader.Metadata[mName]
+            OptimizerValidation.tensorMetadata vName state.V reader.Metadata[vName]
 
-    member this.loadStateDict(tensors: Map<string, Tensor>) =
-        this.validateStateDict tensors
+        let step =
+            use tensor = reader.ReadTensor "step"
+            tensor.ToInt32()
 
-        for state in this.ParameterStates do
-            state.M.copyInPlace tensors[$"m.{state.Parameter.Name}"]
-            state.V.copyInPlace tensors[$"v.{state.Parameter.Name}"]
+        if step < 0 then
+            invalidOp $"Optimizer state 'step' must be non-negative, but is {step}."
 
-        this.StepCount <- tensors["step"].ToInt32()
+        fun () ->
+            for state in this.ParameterStates do
+                use m = reader.ReadTensor $"m.{state.Parameter.Name}"
+                state.M.copyInPlace m
+                use v = reader.ReadTensor $"v.{state.Parameter.Name}"
+                state.V.copyInPlace v
+
+            this.StepCount <- step
 
     interface IOptimizer with
         member _.OptimizerKind = "AdamW"
@@ -246,8 +252,7 @@ type AdamW = private {
         member this.learningRate() = this.learningRate ()
         member this.setLearningRate lr = this.setLearningRate lr
         member this.saveState filePath = this.saveState filePath
-        member this.validateStateDict tensors = this.validateStateDict tensors
-        member this.loadStateDict tensors = this.loadStateDict tensors
+        member this.prepareLoadState reader = this.prepareLoadState reader
 
 module AdamW =
 

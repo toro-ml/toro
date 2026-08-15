@@ -26,7 +26,8 @@ let l1 = Linear.init 2 16 F32 Cpu
 let l2 = Linear.init 16 1 F32 Cpu
 let model = sequential { l1; Relu; l2 }
 
-let opt = AdamW.createWithLr 0.01 (Model.trainableParams model)
+let state = Model.state model
+let opt = AdamW.createWithLr 0.01 (ModelState.trainableParams state)
 
 for epoch in 1..500 do
     scoped {

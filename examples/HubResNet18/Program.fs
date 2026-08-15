@@ -170,18 +170,15 @@ let main argv =
 
     printfn "Loading %s at %s ..." repoId revision
 
-    let weights =
-        Hub.loadSafeTensors (hubFile "model.safetensors")
+    let weightPath =
+        Hub.download (hubFile "model.safetensors")
         |> Async.RunSynchronously
 
     let model = createModel ()
+    use reader = SafeTensors.openFile weightPath
 
     let report =
-        try
-            weights |> Model.loadFromDictWith nameMapping Strict model
-        finally
-            for tensor in weights.Values do
-                tensor.Dispose()
+        ModelState.loadSafeTensorsWith nameMapping Strict (Model.state model) reader
 
     printfn "Loaded %d parameters and buffers; ignored %d source tensors." report.Loaded.Length report.Ignored.Length
 

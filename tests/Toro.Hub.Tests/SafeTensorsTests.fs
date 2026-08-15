@@ -20,6 +20,16 @@ let private withTempDir f =
             Directory.Delete(dir, true)
 
 let private tensorSum (t: Tensor) = (t.sum ()).ToSingle()
+let private state model = Model.state model
+
+let private namedParams model =
+    model |> state |> ModelState.namedParams
+
+let private loadFromDict mode model tensors =
+    ModelState.loadFromDict mode (state model) tensors
+
+let private loadFromDictWith mapping mode model tensors =
+    ModelState.loadFromDictWith mapping mode (state model) tensors
 
 [<Fact>]
 let ``SafeTensors round-trip torch.float32`` () =
@@ -100,7 +110,7 @@ let ``SafeTensors scalar tensor round-trip`` () =
 [<Fact>]
 let ``Model.loadFromDict with canonical names`` () =
     let linear = Linear.init 4 2 torch.float32 torch.CPU
-    let original = Model.namedParams linear
+    let original = namedParams linear
 
     let dict =
         original
@@ -108,7 +118,7 @@ let ``Model.loadFromDict with canonical names`` () =
         |> Map.ofList
 
     let linear2 = Linear.init 4 2 torch.float32 torch.CPU
-    let report = dict |> Model.loadFromDict Strict linear2
+    let report = dict |> loadFromDict Strict linear2
 
     report.Loaded.Length |> should equal 2
     report.Missing |> should be Empty
@@ -116,24 +126,16 @@ let ``Model.loadFromDict with canonical names`` () =
     report.ShapeMismatches |> should be Empty
     report.DTypeMismatches |> should be Empty
 
-    let w1 =
-        Model.namedParams linear
-        |> List.head
-        |> _.Tensor
-        |> tensorSum
+    let w1 = namedParams linear |> List.head |> _.Tensor |> tensorSum
 
-    let w2 =
-        Model.namedParams linear2
-        |> List.head
-        |> _.Tensor
-        |> tensorSum
+    let w2 = namedParams linear2 |> List.head |> _.Tensor |> tensorSum
 
     w2 |> should (equalWithin 1e-5f) w1
 
 [<Fact>]
 let ``Model.loadFromDictWith rewrites names`` () =
     let linear = Linear.init 4 2 torch.float32 torch.CPU
-    let original = Model.namedParams linear
+    let original = namedParams linear
 
     let renamedDict =
         original
@@ -144,24 +146,14 @@ let ``Model.loadFromDictWith rewrites names`` () =
 
     let linear2 = Linear.init 4 2 torch.float32 torch.CPU
 
-    let report =
-        renamedDict
-        |> Model.loadFromDictWith nameMapping Strict linear2
+    let report = renamedDict |> loadFromDictWith nameMapping Strict linear2
 
 
     report.Loaded.Length |> should equal 2
 
-    let w1 =
-        Model.namedParams linear
-        |> List.head
-        |> _.Tensor
-        |> tensorSum
+    let w1 = namedParams linear |> List.head |> _.Tensor |> tensorSum
 
-    let w2 =
-        Model.namedParams linear2
-        |> List.head
-        |> _.Tensor
-        |> tensorSum
+    let w2 = namedParams linear2 |> List.head |> _.Tensor |> tensorSum
 
     w2 |> should (equalWithin 1e-5f) w1
 
@@ -169,19 +161,11 @@ let ``Model.loadFromDictWith rewrites names`` () =
 let ``Model.loadFromDict Lenient reports missing keys`` () =
     let linear = Linear.init 4 2 torch.float32 torch.CPU
 
-    let before =
-        Model.namedParams linear
-        |> List.head
-        |> _.Tensor
-        |> tensorSum
+    let before = namedParams linear |> List.head |> _.Tensor |> tensorSum
 
-    let report = Map.empty |> Model.loadFromDict Lenient linear
+    let report = Map.empty |> loadFromDict Lenient linear
 
-    let after =
-        Model.namedParams linear
-        |> List.head
-        |> _.Tensor
-        |> tensorSum
+    let after = namedParams linear |> List.head |> _.Tensor |> tensorSum
 
     after |> should (equalWithin 1e-5f) before
     report.Loaded |> should be Empty
@@ -194,7 +178,7 @@ let ``Model.loadFromDict Strict fails on missing keys`` () =
     let linear = Linear.init 4 2 torch.float32 torch.CPU
 
     try
-        Map.empty |> Model.loadFromDict Strict linear |> ignore
+        Map.empty |> loadFromDict Strict linear |> ignore
         failwith "Expected exception for missing keys in Strict mode"
     with _ ->
         ()
@@ -202,7 +186,7 @@ let ``Model.loadFromDict Strict fails on missing keys`` () =
 [<Fact>]
 let ``Model.loadFromDict Strict fails on unexpected keys`` () =
     let linear = Linear.init 4 2 torch.float32 torch.CPU
-    let original = Model.namedParams linear
+    let original = namedParams linear
 
     let dict =
         original
@@ -213,7 +197,7 @@ let ``Model.loadFromDict Strict fails on unexpected keys`` () =
     let linear2 = Linear.init 4 2 torch.float32 torch.CPU
 
     try
-        dict |> Model.loadFromDict Strict linear2 |> ignore
+        dict |> loadFromDict Strict linear2 |> ignore
         failwith "Expected exception for unexpected keys in Strict mode"
     with _ ->
         ()
@@ -268,6 +252,58 @@ let ``SafeTensors loadSelected loads only requested tensors`` () =
         loaded |> Map.containsKey "b" |> should equal false)
 
 [<Fact>]
+let ``SafeTensorReader loads a sharded index one tensor at a time`` () =
+    withTempDir (fun dir ->
+        let source = Linear.init 4 2 torch.float32 torch.CPU
+        let sourceState = source |> state |> ModelState.namedState
+        let weight = sourceState |> List.find (fun item -> item.Name = "Weight")
+        let bias = sourceState |> List.find (fun item -> item.Name = "Bias")
+        let firstShard = "model-00001-of-00002.safetensors"
+        let secondShard = "model-00002-of-00002.safetensors"
+        SafeTensors.save (Map [ weight.Name, weight.Tensor ]) (Path.Combine(dir, firstShard))
+        SafeTensors.save (Map [ bias.Name, bias.Tensor ]) (Path.Combine(dir, secondShard))
+
+        let indexPath = Path.Combine(dir, "model.safetensors.index.json")
+
+        File.WriteAllText(
+            indexPath,
+            $"""{{"metadata":{{"total_size":40}},"weight_map":{{"Weight":"{firstShard}","Bias":"{secondShard}"}}}}"""
+        )
+
+        SafeTensors.indexShardFiles indexPath
+        |> should equal [ firstShard; secondShard ]
+
+        use reader = SafeTensors.openIndex indexPath
+        reader.Metadata |> Map.count |> should equal 2
+
+        let target = Linear.init 4 2 torch.float32 torch.CPU
+        let report = ModelState.loadSafeTensors Strict (state target) reader
+        report.Loaded |> should equal [ "Weight"; "Bias" ]
+
+        tensorSum target.Weight
+        |> should (equalWithin 1e-5f) (tensorSum source.Weight)
+
+        tensorSum target.Bias.Value
+        |> should (equalWithin 1e-5f) (tensorSum source.Bias.Value))
+
+[<Fact>]
+let ``SafeTensorReader rejects unsafe and inconsistent shard indexes`` () =
+    withTempDir (fun dir ->
+        let shard = "model-00001-of-00001.safetensors"
+        SafeTensors.save (Map [ "actual", torch.ones ([| 1L |]) ]) (Path.Combine(dir, shard))
+        let indexPath = Path.Combine(dir, "model.safetensors.index.json")
+
+        File.WriteAllText(indexPath, """{"weight_map":{"expected":"../outside.safetensors"}}""")
+
+        Assert.Throws<System.InvalidOperationException>(fun () -> SafeTensors.indexShardFiles indexPath |> ignore)
+        |> ignore
+
+        File.WriteAllText(indexPath, $"""{{"weight_map":{{"expected":"{shard}"}}}}""")
+
+        Assert.Throws<System.InvalidOperationException>(fun () -> SafeTensors.openIndex indexPath |> ignore)
+        |> ignore)
+
+[<Fact>]
 let ``Model.loadFromDict Lenient reports shape mismatch`` () =
     let linear = Linear.init 4 2 torch.float32 torch.CPU
 
@@ -277,7 +313,7 @@ let ``Model.loadFromDict Lenient reports shape mismatch`` () =
             "Bias", torch.randn ([| 2L |], dtype = torch.float32, device = torch.CPU)
         ]
 
-    let report = wrongShapeDict |> Model.loadFromDict Lenient linear
+    let report = wrongShapeDict |> loadFromDict Lenient linear
 
 
     report.ShapeMismatches.Length |> should equal 1
@@ -294,7 +330,7 @@ let ``Model.loadFromDict Lenient reports dtype mismatch`` () =
             "Bias", torch.randn ([| 2L |], dtype = torch.float32, device = torch.CPU)
         ]
 
-    let report = wrongDTypeDict |> Model.loadFromDict Lenient linear
+    let report = wrongDTypeDict |> loadFromDict Lenient linear
 
 
     report.DTypeMismatches.Length |> should equal 1
@@ -312,7 +348,7 @@ let ``Model.loadFromDict Strict fails on shape mismatch`` () =
         ]
 
     try
-        wrongShapeDict |> Model.loadFromDict Strict linear |> ignore
+        wrongShapeDict |> loadFromDict Strict linear |> ignore
 
         failwith "Expected exception for shape mismatch in Strict mode"
     with _ ->
@@ -329,7 +365,7 @@ let ``Model.loadFromDict Strict fails on dtype mismatch`` () =
         ]
 
     try
-        wrongDTypeDict |> Model.loadFromDict Strict linear |> ignore
+        wrongDTypeDict |> loadFromDict Strict linear |> ignore
 
         failwith "Expected exception for dtype mismatch in Strict mode"
     with _ ->
@@ -344,6 +380,21 @@ let private writeSafeTensorsRaw (path: string) (headerJson: string) (data: byte 
     bw.Write(uint64 headerBytes.Length)
     bw.Write(headerBytes)
     bw.Write(data)
+
+[<Fact>]
+let ``SafeTensors rejects duplicate tensor names`` () =
+    withTempDir (fun dir ->
+        let path = Path.Combine(dir, "duplicate.safetensors")
+
+        let header =
+            """{"same":{"dtype":"F32","shape":[1],"data_offsets":[0,4]},"same":{"dtype":"F32","shape":[1],"data_offsets":[0,4]}}"""
+
+        writeSafeTensorsRaw path header (Array.zeroCreate 4)
+
+        let error =
+            Assert.Throws<System.InvalidOperationException>(fun () -> SafeTensors.openFile path |> ignore)
+
+        error.Message |> should haveSubstring "duplicate key")
 
 [<Fact>]
 let ``SafeTensors rejects negative shape dimension`` () =

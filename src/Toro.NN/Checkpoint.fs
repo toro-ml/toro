@@ -54,12 +54,12 @@ module Checkpoint =
         manifest
 
     /// Save canonical model state, optimizer state, and a Version 2 manifest.
-    let save (model: 'T) (optimizer: IOptimizer) (epoch: int) (dirPath: string) : unit =
+    let save (modelState: ModelState) (optimizer: IOptimizer) (epoch: int) (dirPath: string) : unit =
         if epoch < 0 then
             invalidArg (nameof epoch) "Checkpoint epoch must be non-negative."
 
         Directory.CreateDirectory dirPath |> ignore
-        Model.save model (modelPath dirPath)
+        ModelState.save modelState (modelPath dirPath)
         optimizer.saveState (optimizerPath dirPath)
 
         let manifest = {
@@ -76,21 +76,19 @@ module Checkpoint =
 
     /// Validate a Version 2 checkpoint completely, then commit model state,
     /// optimizer state, and learning rate in that order. Return the restored epoch.
-    let load (model: 'T) (optimizer: IOptimizer) (dirPath: string) : int =
+    let load (modelState: ModelState) (optimizer: IOptimizer) (dirPath: string) : int =
         let manifest = readAndValidateManifest optimizer dirPath
 
-        scoped {
-            let modelTensors = SafeTensors.load (modelPath dirPath)
-            let optimizerTensors = SafeTensors.load (optimizerPath dirPath)
+        use modelReader = SafeTensors.openFile (modelPath dirPath)
+        use optimizerReader = SafeTensors.openFile (optimizerPath dirPath)
 
-            let _, commitModel =
-                Model.prepareLoadFromDict NameMapping.identity Strict model modelTensors
+        let _, commitModel =
+            ModelState.prepareLoadSafeTensors NameMapping.identity Strict modelState modelReader
 
-            optimizer.validateStateDict optimizerTensors
+        let commitOptimizer = optimizer.prepareLoadState optimizerReader
 
-            commitModel ()
-            optimizer.loadStateDict optimizerTensors
-            optimizer.setLearningRate manifest.LearningRate
-        }
+        commitModel ()
+        commitOptimizer ()
+        optimizer.setLearningRate manifest.LearningRate
 
         manifest.Epoch

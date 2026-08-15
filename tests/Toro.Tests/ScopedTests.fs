@@ -584,6 +584,25 @@ let ``E1 scoped disposes intermediate tensors`` () =
 
     aInner.IsInvalid |> should equal true
 
+[<Fact>]
+let ``E2 scopedExplicit only preserves explicitly kept tensors`` () =
+    let disposed =
+        scopedExplicit {
+            let tensor = torch.ones ([| 2L |], dtype = torch.float32, device = torch.CPU)
+            return tensor
+        }
+
+    disposed.IsInvalid |> should equal true
+
+    let kept =
+        scopedExplicit {
+            let tensor = torch.ones ([| 2L |], dtype = torch.float32, device = torch.CPU)
+            return Tensor.keep tensor
+        }
+
+    kept.IsInvalid |> should equal false
+    scalarF32 kept |> should (equalWithin 1e-5f) 2.0f
+
 // E3
 [<Fact>]
 let ``E3 scoped with Tensor.keep preserves tensor`` () =

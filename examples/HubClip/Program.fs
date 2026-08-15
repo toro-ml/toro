@@ -277,16 +277,14 @@ let hubFile filename = {
 let loadModel () =
     let model = createModel ()
 
-    let weights =
-        Hub.loadSafeTensors (hubFile "model.safetensors")
+    let weightPath =
+        Hub.download (hubFile "model.safetensors")
         |> Async.RunSynchronously
 
+    use reader = SafeTensors.openFile weightPath
+
     let report =
-        try
-            weights |> Model.loadFromDictWith nameMapping Strict model
-        finally
-            for tensor in weights.Values do
-                tensor.Dispose()
+        ModelState.loadSafeTensorsWith nameMapping Strict (Model.state model) reader
 
     model, report
 
