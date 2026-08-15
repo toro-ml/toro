@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import TypedDict, cast
 
 import torch
+from transformers.cache_utils import Cache
 from transformers.models.auto.tokenization_auto import AutoTokenizer
 from transformers.models.gpt2.modeling_gpt2 import GPT2LMHeadModel
 from transformers.models.llama.modeling_llama import LlamaForCausalLM
@@ -76,11 +77,19 @@ def greedy_generate(
     max_new_tokens: int,
 ) -> torch.Tensor:
     generated = input_ids
+    current_input = input_ids
+    past_key_values: Cache | None = None
 
     for _ in range(max_new_tokens):
-        output = model.forward(input_ids=generated, use_cache=False)
+        output = model.forward(input_ids=current_input, past_key_values=past_key_values, use_cache=True)
         next_token = output.logits[:, -1, :].argmax(dim=-1, keepdim=True)
         generated = torch.cat((generated, next_token), dim=1)
+
+        if output.past_key_values is None:
+            raise RuntimeError("The model did not return a key/value cache.")
+
+        past_key_values = output.past_key_values
+        current_input = next_token
 
         if next_token.item() == eos_token_id:
             break
@@ -96,7 +105,13 @@ def run_reference(spec: ModelSpec, prompt: str, max_new_tokens: int) -> Referenc
 
     model_type = LlamaForCausalLM if spec.chat else GPT2LMHeadModel
 
-    model = model_type.from_pretrained(spec.repo, revision=spec.revision, dtype=spec.dtype, use_safetensors=True)
+    model = model_type.from_pretrained(
+        spec.repo,
+        revision=spec.revision,
+        dtype=spec.dtype,
+        use_safetensors=True,
+        attn_implementation="eager",
+    )
     inputs = encode_prompt(tokenizer, spec, prompt)
     input_ids = inputs["input_ids"]
 

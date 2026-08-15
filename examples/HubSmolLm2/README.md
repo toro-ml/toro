@@ -39,15 +39,16 @@ uv sync --dev --extra cpu
 uv run python llm_reference.py smollm2 "What is 84 * 3 / 2?" 16
 ```
 
-The reference uses `use_cache=False`, matching the Toro example's full-sequence recomputation.
+Both implementations prefill once and then decode one token at a time with a key/value cache.
+The Python reference selects Transformers' eager attention so grouped-query attention uses the same explicit K/V expansion as TorchSharp.
 Its generated IDs are `[2068, 5482, 451, 28, 392, 808, 737, 288, 21000, 260, 4352, 2972, 260, 38612, 30, 1116]`, which decode to the same response shown above.
 
 ## Implementation
 
-- The Llama architecture, rotary position embedding, grouped-query attention, SwiGLU MLP, and chat template remain inside the example.
-- `NameMapping` rewrites Hugging Face layer paths to Toro record paths.
-- `ModelState.loadSafeTensorsWith` validates the complete BF16 state and copies one tensor at a time.
+- `Toro.Models` provides the Llama architecture, rotary position embedding, grouped-query attention, SwiGLU MLP, and fixed-capacity KV cache.
+- The model descriptor uses Hugging Face weight names directly, independently of the F# record layout.
+- `SmolLm2.loadFromDirectory` validates the config and complete BF16 state, then copies one tensor at a time.
 - `BpeConfig.ByteLevel` and `ByteLevelPreTokenizer` configure the model's GPT-2 tokenizer and chat tokens.
-- Generation uses greedy decoding and recomputes the full sequence for each token.
+- The example handles only revision-pinned downloads, tokenization, the chat template, greedy decoding, and output.
 
 The example is intended to demonstrate integration on a CPU. It does not provide an optimized LLM inference runtime.

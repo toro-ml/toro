@@ -4,6 +4,7 @@
     <Project Path="src/Toro.NN/Toro.NN.fsproj" />
     <Project Path="src/Toro.GNN/Toro.GNN.fsproj" />
     <Project Path="src/Toro.Hub/Toro.Hub.fsproj" />
+    <Project Path="src/Toro.Models/Toro.Models.fsproj" />
     <Project Path="src/Toro.Vision/Toro.Vision.fsproj" />
     <Project Path="src/Toro.Text/Toro.Text.fsproj" />
   </Folder>
@@ -12,6 +13,7 @@
     <Project Path="tests/Toro.NN.Tests/Toro.NN.Tests.fsproj" />
     <Project Path="tests/Toro.GNN.Tests/Toro.GNN.Tests.fsproj" />
     <Project Path="tests/Toro.Hub.Tests/Toro.Hub.Tests.fsproj" />
+    <Project Path="tests/Toro.Models.Tests/Toro.Models.Tests.fsproj" />
     <Project Path="tests/Toro.Vision.Tests/Toro.Vision.Tests.fsproj" />
     <Project Path="tests/Toro.Text.Tests/Toro.Text.Tests.fsproj" />
   </Folder>

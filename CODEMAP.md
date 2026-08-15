@@ -2,7 +2,7 @@
 
 ## Architecture Overview
 
-Toro is an F# machine learning framework with PyTorch-style semantics, built on TorchSharp (.NET 10). The monorepo contains 6 library packages under `src/`, 6 test projects, 14 examples, and a React Router v7 documentation site. Models are plain F# records composed via interfaces and computation expressions.
+Toro is an F# machine learning framework with PyTorch-style semantics, built on TorchSharp (.NET 10). The monorepo contains 7 library packages under `src/`, 7 test projects, 14 examples, and a React Router v7 documentation site. Models are plain F# records composed via interfaces and computation expressions.
 
 ## Package Dependency Graph
 
@@ -12,6 +12,7 @@ flowchart TD
     Toro --> Toro.Vision
     Toro --> Toro.Text
     Toro.NN --> Toro.GNN
+    Toro.NN --> Toro.Models
 ```
 
 ## Package Index
@@ -75,6 +76,14 @@ Single-file Hugging Face Hub downloader. Namespace: `Toro.Hub`.
 |------|------|
 | `Hub.fs` | Download models/weights from HF Hub |
 
+### Toro.Models — `src/Toro.Models/`
+
+Reusable pretrained model implementations. Namespace: `Toro.Models`.
+
+| File | Role |
+|------|------|
+| `SmolLm2.fs` | SmolLM2 config, F# record model, Hugging Face-named descriptor, local loader, and fixed-capacity KV cache |
+
 ### Toro.Vision — `src/Toro.Vision/`
 
 Image I/O and transforms. Namespace: `Toro.Vision`.
@@ -103,12 +112,13 @@ Text tokenization. Namespace: `Toro.Text`.
 - **`pipeline { }` CE**: Composes arbitrary `'a -> 'b` functions and `IModule.forward` calls via `>>`.
 - **Named optimizer state**: SGD and AdamW implement `IOptimizer`; AdamW state is keyed by canonical parameter name.
 - **SafeTensors for persistence**: `ModelState` and checkpoint loading validate all metadata before reading and copying one tensor at a time.
+- **Pretrained models**: `Toro.Models` owns reusable architectures and local asset loaders without depending on Hub, tokenizers, or HTTP.
 
 ## Project Layout
 
 ```
-src/           — 6 library packages
-tests/         — 6 test projects (xUnit + FsUnit, TorchSharp-cpu)
+src/           — 7 library packages
+tests/         — 7 test projects (xUnit + FsUnit, TorchSharp-cpu)
 examples/      — 14 runnable console apps
 docs/          — React Router v7 site (pnpm, MDX)
 scripts/       — API doc generation (FSDocs → MDX)
@@ -124,7 +134,7 @@ scripts/       — API doc generation (FSDocs → MDX)
 
 - All public APIs carry `///` XML doc comments.
 - Each example has its own `README.md`.
-- CI publishes 5 packages to NuGet on `v*.*.*` tag (Hub excluded).
+- CI publishes 6 packages to NuGet on `v*.*.*` tag (Hub excluded).
 - TorchSharp version pinned at 0.107.0 across all projects.
 
 ## Maintenance

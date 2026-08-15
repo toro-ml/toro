@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <Compile Include="SmolLm2Tests.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Toro/Toro.fsproj" />
+    <ProjectReference Include="../../src/Toro.NN/Toro.NN.fsproj" />
+    <ProjectReference Include="../../src/Toro.Models/Toro.Models.fsproj" />
+  </ItemGroup>
+
+</Project>

@@ -14,7 +14,7 @@ permissions:
   id-token: write
 
 env:
-  RELEASE_PACKAGES: Toro Toro.NN Toro.GNN Toro.Text Toro.Vision # Toro.Hub
+  RELEASE_PACKAGES: Toro Toro.NN Toro.GNN Toro.Text Toro.Vision # Toro.Models Toro.Hub
 
 jobs:
   format:

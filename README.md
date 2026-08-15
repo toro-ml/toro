@@ -28,7 +28,7 @@ dotnet add package Toro.NN
 dotnet add package TorchSharp-cpu
 ```
 
-Add `Toro.GNN`, `Toro.Text`, or `Toro.Vision` when the application needs those features.
+Add `Toro.GNN`, `Toro.Models`, `Toro.Text`, or `Toro.Vision` when the application needs those features.
 
 ## First model
 
@@ -164,6 +164,7 @@ The [MnistTraining](examples/MnistTraining) example saves CPU Torch RNG state an
 | [`Toro`](src/Toro) | Tensor extensions, scoped ownership, and SafeTensors |
 | [`Toro.NN`](src/Toro.NN) | Model state, layers, optimizers, schedulers, and checkpoints |
 | [`Toro.GNN`](src/Toro.GNN) | Graph data, message passing, graph convolutions, and pooling |
+| [`Toro.Models`](src/Toro.Models) | Reusable pretrained model implementations and local loaders |
 | [`Toro.Text`](src/Toro.Text) | Tokenization and tensor encoding |
 | [`Toro.Vision`](src/Toro.Vision) | Image loading and tensor transforms |
 
