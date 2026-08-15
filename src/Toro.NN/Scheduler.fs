@@ -12,6 +12,13 @@ type LrSchedule =
     | CyclicLR of baseLr: float * maxLr: float * stepSizeUp: int * stepSizeDown: int
 
 module LrSchedule =
+
+    let rec private restartPosition multiplier position cycleLength =
+        if position < cycleLength then
+            position, cycleLength
+        else
+            restartPosition multiplier (position - cycleLength) (cycleLength * multiplier)
+
     /// Pure function: compute the learning rate at a given step.
     let lrAt (baseLr: float) (schedule: LrSchedule) (step: int) : float =
         match schedule with
@@ -42,14 +49,8 @@ module LrSchedule =
                 let cosVal = cos (System.Math.PI * pct)
                 minLr + 0.5 * (maxLr - minLr) * (1.0 + cosVal)
         | CosineAnnealingWarmRestarts(t0, tMult, etaMin) ->
-            let mutable tCur = step
-            let mutable tI = t0
-
-            while tCur >= tI do
-                tCur <- tCur - tI
-                tI <- tI * tMult
-
-            let t = float tCur / float tI
+            let position, cycleLength = restartPosition tMult step t0
+            let t = float position / float cycleLength
 
             etaMin
             + 0.5 * (baseLr - etaMin) * (1.0 + cos (System.Math.PI * t))

@@ -1,7 +1,6 @@
 namespace Toro.Models
 
 open System
-open System.Collections.Generic
 open System.IO
 open System.Text.Json
 open TorchSharp
@@ -99,7 +98,7 @@ type SmolLm2 = {
 
 /// A fixed-capacity, per-layer SmolLM2 key/value cache.
 type SmolLm2Cache internal (config: SmolLm2Config, batchSize: int64, capacity: int64, dtype, device) =
-    let validated =
+    do
         SmolLm2Config.validate config
 
         if batchSize <= 0L then
@@ -110,69 +109,39 @@ type SmolLm2Cache internal (config: SmolLm2Config, batchSize: int64, capacity: i
 
     let headSize = config.HiddenSize / config.NumAttentionHeads
 
-    let keys =
-        Array.init config.NumHiddenLayers (fun _ ->
-            torch.empty ([| batchSize; config.NumKeyValueHeads; capacity; headSize |], dtype = dtype, device = device))
-
-    let values =
-        Array.init config.NumHiddenLayers (fun _ ->
-            torch.empty ([| batchSize; config.NumKeyValueHeads; capacity; headSize |], dtype = dtype, device = device))
-
-    let mutable length = 0L
-    let mutable disposed = false
-
-    let ensureAvailable () =
-        if disposed then
-            raise (ObjectDisposedException(nameof SmolLm2Cache))
-
-    do ignore validated
+    let storage =
+        new FixedKvCache(
+            nameof SmolLm2Cache,
+            config.NumHiddenLayers,
+            batchSize,
+            config.NumKeyValueHeads,
+            capacity,
+            headSize,
+            dtype,
+            device
+        )
 
     /// Number of batch items stored by this cache.
-    member _.BatchSize = batchSize
+    member _.BatchSize = storage.BatchSize
 
     /// Maximum number of tokens stored by this cache.
-    member _.Capacity = capacity
+    member _.Capacity = storage.Capacity
 
     /// Number of tokens currently stored by this cache.
-    member _.Length = length
+    member _.Length = storage.Length
 
     /// Remove all logical entries without reallocating storage.
-    member _.Reset() =
-        ensureAvailable ()
-        length <- 0L
+    member _.Reset() = storage.Reset()
 
-    member internal _.Validate(batch: int64, sequenceLength: int64) =
-        ensureAvailable ()
-
-        if batch <> batchSize then
-            invalidArg (nameof batch) $"Cache batch size is {batchSize}, but input batch size is {batch}."
-
-        if length + sequenceLength > capacity then
-            invalidOp $"KV cache capacity {capacity} is too small for {length + sequenceLength} tokens."
+    member internal _.Validate(batch: int64, sequenceLength: int64) = storage.Validate(batch, sequenceLength)
 
     member internal _.Append(layerIndex: int, start: int64, key: Tensor, value: Tensor) =
-        ensureAvailable ()
+        storage.Append(layerIndex, start, key, value)
 
-        if start <> length then
-            invalidOp $"KV cache append started at {start}, but the current length is {length}."
-
-        let sequenceLength = key.shape[2]
-        use keyDestination = keys[layerIndex].narrow (2L, start, sequenceLength)
-        use valueDestination = values[layerIndex].narrow (2L, start, sequenceLength)
-        keyDestination.copyInPlace key
-        valueDestination.copyInPlace value
-        keys[layerIndex].narrow (2L, 0L, start + sequenceLength), values[layerIndex].narrow (2L, 0L, start + sequenceLength)
-
-    member internal _.Advance(sequenceLength: int64) =
-        ensureAvailable ()
-        length <- length + sequenceLength
+    member internal _.Advance(sequenceLength: int64) = storage.Advance sequenceLength
 
     interface IDisposable with
-        member _.Dispose() =
-            if not disposed then
-                disposed <- true
-                keys |> Array.iter _.Dispose()
-                values |> Array.iter _.Dispose()
+        member _.Dispose() = (storage :> IDisposable).Dispose()
 
 /// Tensor inputs accepted by SmolLM2.
 type SmolLm2Input = CausalLmInput<SmolLm2Cache>
@@ -182,57 +151,18 @@ type SmolLm2Output = CausalLmOutput<SmolLm2Cache>
 
 module private ConfigJson =
 
-    let private property (root: JsonElement) (name: string) : JsonElement =
-        match root.TryGetProperty name with
-        | true, value -> value
-        | false, _ -> invalidOp $"SmolLM2 config is missing '{name}'."
-
-    let private int64Value (root: JsonElement) (name: string) =
-        let value = property root name
-
-        match value.TryGetInt64() with
-        | true, result -> result
-        | false, _ -> invalidOp $"SmolLM2 config '{name}' must be an integer."
-
-    let private floatValue (root: JsonElement) (name: string) =
-        let value = property root name
-
-        if value.ValueKind <> JsonValueKind.Number then
-            invalidOp $"SmolLM2 config '{name}' must be a number."
-
-        value.GetDouble()
-
-    let private boolValue (root: JsonElement) (name: string) =
-        let value = property root name
-
-        match value.ValueKind with
-        | JsonValueKind.True -> true
-        | JsonValueKind.False -> false
-        | _ -> invalidOp $"SmolLM2 config '{name}' must be a boolean."
-
-    let private stringValue (root: JsonElement) (name: string) =
-        let value = property root name
-
-        if value.ValueKind <> JsonValueKind.String then
-            invalidOp $"SmolLM2 config '{name}' must be a string."
-
-        value.GetString()
+    let private label = "SmolLM2"
+    let private property root name = JsonConfig.property label root name
+    let private int64Value root name = JsonConfig.int64Value label root name
+    let private floatValue root name = JsonConfig.floatValue label root name
+    let private boolValue root name = JsonConfig.boolValue label root name
+    let private stringValue root name = JsonConfig.stringValue label root name
 
     let load (path: string) =
         use document = JsonDocument.Parse(File.ReadAllText path)
         let root = document.RootElement
 
-        if root.ValueKind <> JsonValueKind.Object then
-            invalidOp "SmolLM2 config must be a JSON object."
-
-        let duplicates =
-            root.EnumerateObject()
-            |> Seq.groupBy _.Name
-            |> Seq.tryFind (fun (_, values) -> Seq.length values > 1)
-
-        match duplicates with
-        | Some(name, _) -> invalidOp $"SmolLM2 config contains duplicate key '{name}'."
-        | None -> ()
+        JsonConfig.validateObject label root
 
         if stringValue root "model_type" <> "llama" then
             invalidOp "SmolLM2 config 'model_type' must be 'llama'."
@@ -334,13 +264,7 @@ module SmolLm2 =
     let descriptor: ModelDescriptor<SmolLm2> = {
         NamedParameters = namedParameters
         NamedBuffers = fun _ -> Seq.empty
-        Dispose =
-            fun model ->
-                let seen = HashSet<obj>(ReferenceEqualityComparer.Instance)
-
-                for _, tensor in namedParameters model do
-                    if seen.Add(box tensor) then
-                        tensor.Dispose()
+        Dispose = TensorOwner.disposeDistinct namedParameters
     }
 
     /// Create a SmolLM2 model from a validated configuration.
@@ -396,37 +320,6 @@ module SmolLm2 =
 
     let private applyRotaryEmbedding (input: Tensor) (cosines: Tensor) (sines: Tensor) =
         input * cosines + rotateHalf input * sines
-
-    let private attentionMask (input: SmolLm2Input) batchSize sequenceLength start totalLength =
-        let paddingMask =
-            input.AttentionMask
-            |> Option.map (fun mask ->
-                if mask.shape <> [| batchSize; totalLength |] then
-                    invalidArg (nameof input.AttentionMask) $"Attention mask shape must be [{batchSize}, {totalLength}]."
-
-                mask.to_type(torch.ScalarType.Bool).unsqueeze(1L).unsqueeze (1L))
-
-        let needsExplicitCausalMask = start > 0L && sequenceLength > 1L
-
-        match paddingMask, needsExplicitCausalMask with
-        | None, false -> None, start = 0L
-        | Some padding, false when sequenceLength = 1L -> Some padding, false
-        | padding, _ ->
-            let keyPositions =
-                torch.arange (totalLength, dtype = torch.int64, device = input.InputIds.device)
-
-            let queryPositions =
-                torch.arange (start, start + sequenceLength, dtype = torch.int64, device = input.InputIds.device)
-
-            let causal =
-                (keyPositions.unsqueeze (0L)
-                 .<=. queryPositions.unsqueeze (1L))
-                    .unsqueeze(0L)
-                    .unsqueeze (0L)
-
-            match padding with
-            | Some value -> Some(causal.logical_and value), false
-            | None -> Some causal, false
 
     let private attentionForward
         (config: SmolLm2Config)
@@ -493,65 +386,39 @@ module SmolLm2 =
 
     /// Run SmolLM2. When a cache is supplied, only new tokens should be passed after prefill.
     let forward (input: SmolLm2Input) (model: SmolLm2) : SmolLm2Output =
-        if input.InputIds.dtype <> torch.int64 then
-            invalidArg (nameof input.InputIds) "SmolLM2 input IDs must use int64 dtype."
-
-        if input.InputIds.shape.Length <> 2 then
-            invalidArg (nameof input.InputIds) "SmolLM2 input IDs must have shape [batch, sequence]."
-
-        let batchSize = input.InputIds.shape[0]
-        let sequenceLength = input.InputIds.shape[1]
-
-        if batchSize <= 0L || sequenceLength <= 0L then
-            invalidArg (nameof input.InputIds) "SmolLM2 input dimensions must be positive."
-
-        let cacheStart = input.Cache |> Option.map _.Length |> Option.defaultValue 0L
-
-        input.Cache
-        |> Option.iter (fun cache -> cache.Validate(batchSize, sequenceLength))
-
-        if cacheStart + sequenceLength > model.Config.MaxPositionEmbeddings then
-            invalidArg (nameof input.InputIds) $"SmolLM2 accepts at most {model.Config.MaxPositionEmbeddings} positions."
-
-        let positionIds =
-            match input.PositionIds with
-            | None ->
-                torch.arange (cacheStart, cacheStart + sequenceLength, dtype = torch.int64, device = input.InputIds.device)
-            | Some positions ->
-                if positions.dtype <> torch.int64 then
-                    invalidArg (nameof input.PositionIds) "SmolLM2 position IDs must use int64 dtype."
-
-                let validShape =
-                    positions.shape = [| sequenceLength |]
-                    || positions.shape = [| batchSize; sequenceLength |]
-
-                if not validShape then
-                    invalidArg
-                        (nameof input.PositionIds)
-                        "SmolLM2 position IDs must have shape [sequence] or [batch, sequence]."
-
-                positions
-
-        let totalLength = cacheStart + sequenceLength
-
-        let mask, isCausal =
-            attentionMask input batchSize sequenceLength cacheStart totalLength
+        let prepared =
+            CausalInput.prepare
+                "SmolLM2"
+                model.Config.MaxPositionEmbeddings
+                (fun (cache: SmolLm2Cache) -> cache.Length)
+                (fun (cache: SmolLm2Cache) batchSize sequenceLength -> cache.Validate(batchSize, sequenceLength))
+                input
 
         let dtype = model.TokenEmbedding.Embeddings.dtype
         let device = input.InputIds.device
-        let cosines, sines = rotaryEmbedding model.Config positionIds dtype device
+        let cosines, sines = rotaryEmbedding model.Config prepared.PositionIds dtype device
         let hidden = model.TokenEmbedding.forward input.InputIds
 
         let hidden =
             (hidden, List.indexed model.Blocks)
             ||> List.fold (fun state (index, layer) ->
-                blockForward model.Config index layer state cosines sines mask isCausal input.Cache cacheStart)
+                blockForward
+                    model.Config
+                    index
+                    layer
+                    state
+                    cosines
+                    sines
+                    prepared.AttentionMask
+                    prepared.IsCausal
+                    input.Cache
+                    prepared.CacheStart)
 
         let hidden = model.FinalNorm.forward hidden
         let logits = hidden.matmul (model.TokenEmbedding.Embeddings.t ())
 
         input.Cache
-        |> Option.iter (fun cache -> cache.Advance sequenceLength)
+        |> Option.iter (fun cache -> cache.Advance prepared.SequenceLength)
 
         { Logits = logits; Cache = input.Cache }
 
@@ -568,37 +435,10 @@ module SmolLm2 =
 
     /// Load config and a strict single-file or sharded SafeTensors state from a local directory.
     let loadFromDirectory (directory: string) (device: torch.Device) : SmolLm2 * LoadReport =
-        if String.IsNullOrWhiteSpace directory then
-            invalidArg (nameof directory) "Model directory must not be empty."
-
-        let directory = Path.GetFullPath directory
-
-        if not (Directory.Exists directory) then
-            invalidArg (nameof directory) $"Model directory does not exist: '{directory}'."
-
-        let configPath = Path.Combine(directory, "config.json")
-
-        if not (File.Exists configPath) then
-            invalidOp $"SmolLM2 config is missing: '{configPath}'."
-
-        let singlePath = Path.Combine(directory, "model.safetensors")
-        let indexPath = Path.Combine(directory, "model.safetensors.index.json")
-
-        let reader =
-            match File.Exists singlePath, File.Exists indexPath with
-            | true, false -> SafeTensors.openFile singlePath
-            | false, true -> SafeTensors.openIndex indexPath
-            | true, true -> invalidOp "Model directory contains both single-file and sharded SafeTensors state."
-            | false, false -> invalidOp "Model directory contains neither model.safetensors nor model.safetensors.index.json."
-
+        let configPath, reader = LocalModelAssets.openReader "SmolLM2" directory
         use reader = reader
         let config = ConfigJson.load configPath
-
-        let dtype =
-            match Map.tryFind "model.embed_tokens.weight" reader.Metadata with
-            | Some metadata -> metadata.DType
-            | None -> invalidOp "SmolLM2 state is missing 'model.embed_tokens.weight'."
-
+        let dtype = LocalModelAssets.dtype "SmolLM2" "model.embed_tokens.weight" reader
         let model = create config dtype device
 
         try

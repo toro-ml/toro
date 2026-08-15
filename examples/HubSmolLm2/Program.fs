@@ -58,34 +58,35 @@ let formatPrompt (messages: ChatMessage list) =
     |> fun prompt -> prompt + "<|im_start|>assistant\n"
 
 let generate (model: SmolLm2) (tokenizer: Tokenizer) maxNewTokens (userPrompt: string) =
-    use client =
-        CausalLmChatClient.create {
-            ModelId = repoId
-            Model = SmolLm2.asCausalLm model
-            FormatPrompt = formatPrompt
-            Encode = tokenizer.encode >> List.map int64
-            Decode = List.map int >> tokenizer.decode
-            DefaultMaxOutputTokens = 32
-        }
+    task {
+        use client =
+            CausalLmChatClient.create {
+                ModelId = repoId
+                Model = SmolLm2.asCausalLm model
+                FormatPrompt = formatPrompt
+                Encode = tokenizer.encode >> List.map int64
+                Decode = List.map int >> tokenizer.decode
+                DefaultMaxOutputTokens = 32
+            }
 
-    let options = ChatOptions()
-    options.MaxOutputTokens <- Nullable maxNewTokens
+        let options = ChatOptions()
+        options.MaxOutputTokens <- Nullable maxNewTokens
 
-    let updates =
-        client.GetStreamingResponseAsync([ ChatMessage(ChatRole.User, userPrompt) ], options, CancellationToken.None)
+        let updates =
+            client.GetStreamingResponseAsync([ ChatMessage(ChatRole.User, userPrompt) ], options, CancellationToken.None)
 
-    let enumerator = updates.GetAsyncEnumerator()
-
-    try
-        let mutable hasNext = enumerator.MoveNextAsync().AsTask().GetAwaiter().GetResult()
+        use enumerator = updates.GetAsyncEnumerator()
+        let mutable hasNext = true
 
         while hasNext do
-            printf "%s" enumerator.Current.Text
-            hasNext <- enumerator.MoveNextAsync().AsTask().GetAwaiter().GetResult()
-    finally
-        enumerator.DisposeAsync().AsTask().GetAwaiter().GetResult()
+            let! next = enumerator.MoveNextAsync()
+            hasNext <- next
 
-    printfn ""
+            if hasNext then
+                printf "%s" enumerator.Current.Text
+
+        printfn ""
+    }
 
 [<EntryPoint>]
 let main argv =
@@ -107,7 +108,10 @@ let main argv =
         printfn "Loaded %d tensors." report.Loaded.Length
         printfn "Prompt: %s" prompt
         printfn ""
+
         generate model tokenizer maxNewTokens prompt
+        |> _.GetAwaiter().GetResult()
+
         0
     finally
         SmolLm2.dispose model

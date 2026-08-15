@@ -1,7 +1,6 @@
 namespace Toro.Extensions.AI
 
 open System
-open System.Collections.Generic
 open System.Threading
 open System.Threading.Tasks
 open Microsoft.Extensions.AI
@@ -30,43 +29,34 @@ module private Request =
         GenerationOptions: GenerationOptions
     }
 
-    let private unsupported name condition =
-        if condition then
-            invalidOp $"Chat option '{name}' is not supported by Toro.Extensions.AI."
-
     let private validateMessage index (message: ChatMessage) =
         if isNull message then
             invalidArg "messages" $"Chat message at index {index} is null."
 
-        if
-            message.Role <> ChatRole.System
-            && message.Role <> ChatRole.User
-            && message.Role <> ChatRole.Assistant
-        then
+        let supportedRole =
+            [ ChatRole.System; ChatRole.User; ChatRole.Assistant ]
+            |> List.contains message.Role
+
+        if not supportedRole then
             invalidOp $"Chat role '{message.Role}' at index {index} is not supported."
 
         if isNull message.Contents then
             invalidArg "messages" $"Chat message contents at index {index} are null."
 
-        for content in message.Contents do
-            match content with
-            | :? TextContent -> ()
+        message.Contents
+        |> Seq.tryFind (function
+            | :? TextContent -> false
+            | _ -> true)
+        |> Option.iter (function
             | null -> invalidOp $"Null chat content at message index {index} is not supported."
-            | _ -> invalidOp $"Chat content '{content.GetType().Name}' at message index {index} is not supported."
+            | content -> invalidOp $"Chat content '{content.GetType().Name}' at message index {index} is not supported.")
 
     let private sampling (options: ChatOptions) =
-        if
-            not options.Temperature.HasValue
-            || options.Temperature.Value = 0.0f
-        then
-            Greedy
-        elif
-            options.Temperature.Value > 0.0f
-            && Single.IsFinite options.Temperature.Value
-        then
-            Temperature(float options.Temperature.Value)
-        else
-            invalidOp "Chat temperature must be finite and non-negative."
+        match Option.ofNullable options.Temperature with
+        | None
+        | Some 0.0f -> Greedy
+        | Some temperature when temperature > 0.0f && Single.IsFinite temperature -> Temperature(float temperature)
+        | Some _ -> invalidOp "Chat temperature must be finite and non-negative."
 
     let private validateOptions modelId (options: ChatOptions) =
         if
@@ -75,30 +65,27 @@ module private Request =
         then
             invalidOp $"Requested model '{options.ModelId}' does not match chat client model '{modelId}'."
 
-        unsupported "TopP" options.TopP.HasValue
-        unsupported "TopK" options.TopK.HasValue
-        unsupported "FrequencyPenalty" options.FrequencyPenalty.HasValue
-        unsupported "PresencePenalty" options.PresencePenalty.HasValue
-        unsupported "Seed" options.Seed.HasValue
-
-        unsupported
-            "ResponseFormat"
-            (not (isNull options.ResponseFormat)
-             && options.ResponseFormat <> ChatResponseFormat.Text)
-
-        unsupported
-            "StopSequences"
-            (not (isNull options.StopSequences)
-             && options.StopSequences.Count > 0)
-
-        unsupported "Tools" (not (isNull options.Tools) && options.Tools.Count > 0)
-        unsupported "ToolMode" (not (isNull options.ToolMode))
-        unsupported "ConversationId" (not (String.IsNullOrWhiteSpace options.ConversationId))
-
-        unsupported
-            "AdditionalProperties"
-            (not (isNull options.AdditionalProperties)
-             && options.AdditionalProperties.Count > 0)
+        [
+            "TopP", options.TopP.HasValue
+            "TopK", options.TopK.HasValue
+            "FrequencyPenalty", options.FrequencyPenalty.HasValue
+            "PresencePenalty", options.PresencePenalty.HasValue
+            "Seed", options.Seed.HasValue
+            "ResponseFormat",
+            not (isNull options.ResponseFormat)
+            && options.ResponseFormat <> ChatResponseFormat.Text
+            "StopSequences",
+            not (isNull options.StopSequences)
+            && options.StopSequences.Count > 0
+            "Tools", not (isNull options.Tools) && options.Tools.Count > 0
+            "ToolMode", not (isNull options.ToolMode)
+            "ConversationId", not (String.IsNullOrWhiteSpace options.ConversationId)
+            "AdditionalProperties",
+            not (isNull options.AdditionalProperties)
+            && options.AdditionalProperties.Count > 0
+        ]
+        |> List.tryFind snd
+        |> Option.iter (fun (name, _) -> invalidOp $"Chat option '{name}' is not supported by Toro.Extensions.AI.")
 
     let prepare (config: CausalLmChatClientConfig<'Cache>) messages options cancellationToken =
         if isNull messages then
@@ -136,10 +123,9 @@ module private Request =
             invalidOp "The formatted chat prompt produced no token IDs."
 
         let maxOutputTokens =
-            if options.MaxOutputTokens.HasValue then
-                options.MaxOutputTokens.Value
-            else
-                config.DefaultMaxOutputTokens
+            options.MaxOutputTokens
+            |> Option.ofNullable
+            |> Option.defaultValue config.DefaultMaxOutputTokens
 
         if maxOutputTokens < 0 then
             invalidOp "Maximum output-token count must be non-negative."
@@ -164,6 +150,11 @@ module private Response =
         else
             ChatFinishReason.Length
 
+    let withoutEos eosTokenIds tokenIds =
+        match List.rev tokenIds with
+        | tokenId :: rest when Set.contains tokenId eosTokenIds -> List.rev rest, true
+        | _ -> tokenIds, false
+
     let create (modelId: string) eos (text: string) : ChatResponse =
         let message = ChatMessage(ChatRole.Assistant, text)
         let response = ChatResponse(message)
@@ -182,144 +173,119 @@ module private Response =
         update.FinishReason <- finishReason
         update
 
-type private StreamingEnumerator<'Cache>
-    (
-        config: CausalLmChatClientConfig<'Cache>,
-        prepared: Request.Prepared,
-        requestCancellationToken: CancellationToken,
-        enumerationCancellationToken: CancellationToken
-    ) =
+module private StreamingText =
 
-    let cancellation =
-        CancellationTokenSource.CreateLinkedTokenSource(requestCancellationToken, enumerationCancellationToken)
-
-    let cancellationToken = cancellation.Token
-
-    let options = {
-        prepared.GenerationOptions with
-            CancellationToken = cancellationToken
+    type State = {
+        TokenIdsReversed: int64 list
+        Emitted: string
     }
 
-    let session = Generation.createSession options prepared.PromptTokenIds config.Model
-    let generated = ResizeArray<int64>()
-    let mutable emittedText = ""
-    let mutable current = Unchecked.defaultof<ChatResponseUpdate>
-    let mutable firstUpdate = true
-    let mutable completed = false
-    let mutable disposed = false
+    let empty = { TokenIdsReversed = []; Emitted = "" }
 
-    let dispose () =
-        if not disposed then
-            disposed <- true
-            (session :> IDisposable).Dispose()
-            cancellation.Dispose()
-
-    let nextUpdate () =
-        if disposed || completed then
-            false
+    let rec private stablePrefixLength minimumLength (decoded: string) length =
+        if length > minimumLength && decoded[length - 1] = '\uFFFD' then
+            stablePrefixLength minimumLength decoded (length - 1)
         else
-            let mutable ready = false
+            length
 
-            while not ready do
-                cancellationToken.ThrowIfCancellationRequested()
+    let append (decode: int64 list -> string) tokenId eos finished (state: State) =
+        let tokenIdsReversed =
+            if eos then
+                state.TokenIdsReversed
+            else
+                tokenId :: state.TokenIdsReversed
 
-                if session.IsFinished then
-                    current <-
-                        Response.update
-                            config.ModelId
-                            (if firstUpdate then
-                                 Nullable ChatRole.Assistant
-                             else
-                                 Nullable())
-                            (Nullable ChatFinishReason.Length)
-                            ""
+        let decoded = tokenIdsReversed |> List.rev |> decode
 
-                    firstUpdate <- false
-                    completed <- true
-                    ready <- true
-                else
-                    let tokenId = session.Step() |> Option.get
-                    let eos = Set.contains tokenId config.Model.EosTokenIds
+        if isNull decoded then
+            invalidOp "The token decoder returned null."
 
-                    if not eos then
-                        generated.Add tokenId
+        if not (decoded.StartsWith(state.Emitted, StringComparison.Ordinal)) then
+            invalidOp "The token decoder changed text that was already emitted."
 
-                    let decoded = config.Decode(generated |> Seq.toList)
+        let nextEmittedLength =
+            if finished then
+                decoded.Length
+            else
+                stablePrefixLength state.Emitted.Length decoded decoded.Length
 
-                    if isNull decoded then
-                        invalidOp "The token decoder returned null."
+        let delta =
+            decoded.Substring(state.Emitted.Length, nextEmittedLength - state.Emitted.Length)
 
-                    if not (decoded.StartsWith(emittedText, StringComparison.Ordinal)) then
-                        invalidOp "The token decoder changed text that was already emitted."
+        {
+            TokenIdsReversed = tokenIdsReversed
+            Emitted = decoded.Substring(0, nextEmittedLength)
+        },
+        delta
 
-                    let stableLength =
-                        if session.IsFinished then
-                            decoded.Length
+module private Streaming =
+
+    type State =
+        | Active of text: StreamingText.State * firstUpdate: bool
+        | Completed
+
+    let private role firstUpdate =
+        if firstUpdate then
+            Nullable ChatRole.Assistant
+        else
+            Nullable()
+
+    let rec private nextVisible
+        (config: CausalLmChatClientConfig<'Cache>)
+        (cancellationToken: CancellationToken)
+        (session: GenerationSession<'Cache>)
+        (state: State)
+        =
+        match state with
+        | Completed -> None
+        | Active(textState, firstUpdate) ->
+            let complete update =
+                (session :> IDisposable).Dispose()
+                Some(update, Completed)
+
+            cancellationToken.ThrowIfCancellationRequested()
+
+            if session.IsFinished then
+                let update =
+                    Response.update config.ModelId (role firstUpdate) (Nullable ChatFinishReason.Length) ""
+
+                complete update
+            else
+                let tokenId =
+                    session.Step()
+                    |> Option.defaultWith (fun () -> invalidOp "Generation session ended before producing a token.")
+
+                let eos = Set.contains tokenId config.Model.EosTokenIds
+                let finished = session.IsFinished
+
+                let text, delta = StreamingText.append config.Decode tokenId eos finished textState
+
+                if delta.Length > 0 || finished then
+                    let finishReason =
+                        if finished then
+                            Nullable(Response.finishReason eos)
                         else
-                            let mutable length = decoded.Length
+                            Nullable()
 
-                            while (length > emittedText.Length
-                                   && decoded[length - 1] = '\uFFFD') do
-                                length <- length - 1
+                    let update = Response.update config.ModelId (role firstUpdate) finishReason delta
 
-                            length
+                    if finished then
+                        complete update
+                    else
+                        Some(update, Active(text, false))
+                else
+                    nextVisible config cancellationToken session (Active(text, firstUpdate))
 
-                    let delta = decoded.Substring(emittedText.Length, stableLength - emittedText.Length)
-                    emittedText <- decoded.Substring(0, stableLength)
+    let responses config (prepared: Request.Prepared) cancellationToken =
+        seq {
+            let options = {
+                prepared.GenerationOptions with
+                    CancellationToken = cancellationToken
+            }
 
-                    if delta.Length > 0 || session.IsFinished then
-                        let finishReason =
-                            if session.IsFinished then
-                                Nullable(Response.finishReason eos)
-                            else
-                                Nullable()
-
-                        current <-
-                            Response.update
-                                config.ModelId
-                                (if firstUpdate then
-                                     Nullable ChatRole.Assistant
-                                 else
-                                     Nullable())
-                                finishReason
-                                delta
-
-                        firstUpdate <- false
-
-                        if session.IsFinished then
-                            completed <- true
-
-                        ready <- true
-
-            if completed then
-                dispose ()
-
-            true
-
-    let runNextUpdate () =
-        try
-            nextUpdate ()
-        with _ ->
-            dispose ()
-            reraise ()
-
-    interface IAsyncEnumerator<ChatResponseUpdate> with
-        member _.Current = current
-
-        member _.MoveNextAsync() =
-            ValueTask<bool>(Task.Run(Func<bool>(runNextUpdate), cancellationToken))
-
-        member _.DisposeAsync() =
-            dispose ()
-            ValueTask()
-
-type private StreamingEnumerable<'Cache>
-    (config: CausalLmChatClientConfig<'Cache>, prepared: Request.Prepared, requestCancellationToken: CancellationToken) =
-
-    interface IAsyncEnumerable<ChatResponseUpdate> with
-        member _.GetAsyncEnumerator(enumerationCancellationToken) =
-            new StreamingEnumerator<_>(config, prepared, requestCancellationToken, enumerationCancellationToken)
-            :> IAsyncEnumerator<ChatResponseUpdate>
+            use session = Generation.createSession options prepared.PromptTokenIds config.Model
+            yield! Seq.unfold (nextVisible config cancellationToken session) (Active(StreamingText.empty, true))
+        }
 
 type private ToroChatClient<'Cache>(initialConfig: CausalLmChatClientConfig<'Cache>) as this =
     let callbackLock = obj ()
@@ -358,16 +324,7 @@ type private ToroChatClient<'Cache>(initialConfig: CausalLmChatClientConfig<'Cac
                     let tokenIds =
                         Generation.generate prepared.GenerationOptions prepared.PromptTokenIds config.Model
 
-                    let eos =
-                        tokenIds
-                        |> List.tryLast
-                        |> Option.exists (fun token -> Set.contains token config.Model.EosTokenIds)
-
-                    let responseTokenIds =
-                        if eos then
-                            tokenIds |> List.take (tokenIds.Length - 1)
-                        else
-                            tokenIds
+                    let responseTokenIds, eos = Response.withoutEos config.Model.EosTokenIds tokenIds
 
                     let text = config.Decode responseTokenIds
 
@@ -380,7 +337,8 @@ type private ToroChatClient<'Cache>(initialConfig: CausalLmChatClientConfig<'Cac
 
         member _.GetStreamingResponseAsync(messages, options, cancellationToken) =
             let prepared = Request.prepare config messages options cancellationToken
-            StreamingEnumerable(config, prepared, cancellationToken) :> IAsyncEnumerable<ChatResponseUpdate>
+
+            AsyncEnumerable.ofBackgroundSeq cancellationToken (Streaming.responses config prepared)
 
         member _.GetService(serviceType, serviceKey) =
             if isNull serviceType then

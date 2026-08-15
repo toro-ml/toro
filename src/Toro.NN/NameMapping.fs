@@ -157,25 +157,21 @@ module NameMapping =
         if Array.length sourceSegments <> Array.length pattern then
             None
         else
-            let captures = Dictionary<string, string>(StringComparer.Ordinal)
-            let mutable matches = true
-
-            for index in 0 .. pattern.Length - 1 do
-                match pattern[index] with
-                | PatternLiteral expected when sourceSegments[index] <> expected -> matches <- false
-                | PatternLiteral _ -> ()
-                | Capture name -> captures.Add(name, sourceSegments[index])
-
-            if matches then
+            (Some Map.empty, Array.zip pattern sourceSegments)
+            ||> Array.fold (fun captures (segment, value) ->
+                captures
+                |> Option.bind (fun captures ->
+                    match segment with
+                    | PatternLiteral expected when value <> expected -> None
+                    | PatternLiteral _ -> Some captures
+                    | Capture name -> Some(Map.add name value captures)))
+            |> Option.map (fun captures ->
                 template
                 |> Array.map (function
                     | TemplateLiteral value -> value
-                    | Reference name -> captures[name])
+                    | Reference name -> Map.find name captures)
                 |> String.concat "."
-                |> Rename
-                |> Some
-            else
-                None
+                |> Rename)
 
     let private tryResolve sourceName sourceSegments rule =
         match rule with

@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <Compile Include="CausalLm.fs" />
+    <Compile Include="Internals.fs" />
     <Compile Include="SmolLm2.fs" />
     <Compile Include="DistilGpt2.fs" />
   </ItemGroup>

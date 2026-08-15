@@ -129,9 +129,6 @@ type GenerationSession<'Cache> internal (model: CausalLm<'Cache>, promptTokenIds
 
     let cache = model.CreateCache 1L capacity
     let generated = ResizeArray<int64>()
-    let tokens = ResizeArray<int64>(prompt)
-    let mutable nextInput = prompt
-    let mutable finished = options.MaxNewTokens = 0
     let mutable disposed = false
 
     let ensureAvailable () =
@@ -147,6 +144,17 @@ type GenerationSession<'Cache> internal (model: CausalLm<'Cache>, promptTokenIds
 
             torch.multinomial(probabilities, 1L).ToInt64()
 
+    let isFinished () =
+        generated.Count >= options.MaxNewTokens
+        || (generated.Count > 0
+            && Set.contains generated[generated.Count - 1] model.EosTokenIds)
+
+    let nextInput () =
+        if generated.Count = 0 then
+            prompt
+        else
+            [| generated[generated.Count - 1] |]
+
     /// Tokens supplied as the prompt.
     member _.PromptTokenIds = prompt |> Array.toList
 
@@ -154,16 +162,21 @@ type GenerationSession<'Cache> internal (model: CausalLm<'Cache>, promptTokenIds
     member _.GeneratedTokenIds = generated |> Seq.toList
 
     /// Prompt and generated tokens accumulated by this session.
-    member _.TokenIds = tokens |> Seq.toList
+    member _.TokenIds =
+        seq {
+            yield! prompt
+            yield! generated
+        }
+        |> Seq.toList
 
     /// Whether EOS or the configured maximum token count has been reached.
-    member _.IsFinished = finished
+    member _.IsFinished = isFinished ()
 
     /// Generate at most one token. Returns None after the session has finished.
     member _.Step() : int64 option =
         ensureAvailable ()
 
-        if finished then
+        if isFinished () then
             None
         else
             options.CancellationToken.ThrowIfCancellationRequested()
@@ -172,7 +185,7 @@ type GenerationSession<'Cache> internal (model: CausalLm<'Cache>, promptTokenIds
                 Toro.inferenceMode (fun () ->
                     scoped {
                         let inputIds =
-                            (torch.tensor (nextInput, dtype = torch.int64, device = model.Device)).unsqueeze (0L)
+                            (torch.tensor (nextInput (), dtype = torch.int64, device = model.Device)).unsqueeze (0L)
 
                         let input = {
                             InputIds = inputIds
@@ -191,15 +204,6 @@ type GenerationSession<'Cache> internal (model: CausalLm<'Cache>, promptTokenIds
                     })
 
             generated.Add nextToken
-            tokens.Add nextToken
-            nextInput <- [| nextToken |]
-
-            if
-                Set.contains nextToken model.EosTokenIds
-                || generated.Count = options.MaxNewTokens
-            then
-                finished <- true
-
             Some nextToken
 
     /// Generate until EOS or the configured maximum token count is reached.
