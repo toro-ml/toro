@@ -62,6 +62,7 @@ let run () =
             "src/Toro.Text/Toro.Text.fsproj"
             "src/Toro.Vision/Toro.Vision.fsproj"
             "src/Toro.Models/Toro.Models.fsproj"
+            "src/Toro.Extensions.AI/Toro.Extensions.AI.fsproj"
             "src/Toro.Hub/Toro.Hub.fsproj"
         ]
         |> String.concat " "

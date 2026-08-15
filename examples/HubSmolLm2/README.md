@@ -47,6 +47,7 @@ Its generated IDs are `[2068, 5482, 451, 28, 392, 808, 737, 288, 21000, 260, 435
 
 - `Toro.Models` provides the Llama architecture, rotary position embedding, grouped-query attention, SwiGLU MLP, and fixed-capacity KV cache.
 - The common generation session performs prefill once and owns incremental decoding state.
+- `Toro.Extensions.AI` adapts the model and chat template to `Microsoft.Extensions.AI.IChatClient` and streams response updates.
 - The model descriptor uses Hugging Face weight names directly, independently of the F# record layout.
 - `SmolLm2.loadFromDirectory` validates the config and complete BF16 state, then copies one tensor at a time.
 - `BpeConfig.ByteLevel` and `ByteLevelPreTokenizer` configure the model's GPT-2 tokenizer and chat tokens.

@@ -10,6 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../../src/Toro.Extensions.AI/Toro.Extensions.AI.fsproj" />
     <ProjectReference Include="../../src/Toro.Models/Toro.Models.fsproj" />
     <ProjectReference Include="../../src/Toro.Text/Toro.Text.fsproj" />
     <ProjectReference Include="../../src/Toro.Hub/Toro.Hub.fsproj" />

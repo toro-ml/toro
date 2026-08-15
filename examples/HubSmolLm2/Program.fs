@@ -1,6 +1,9 @@
 open System
 open System.IO
+open System.Threading
+open Microsoft.Extensions.AI
 open TorchSharp
+open Toro.Extensions.AI
 open Toro.Hub
 open Toro.Models
 open Toro.Text
@@ -38,17 +41,51 @@ let loadTokenizer () =
             PreTokenizer = ByteLevelPreTokenizer
     }
 
-let chatPrompt userPrompt =
-    $"<|im_start|>system\nYou are a helpful AI assistant named SmolLM, trained by Hugging Face<|im_end|>\n<|im_start|>user\n{userPrompt}<|im_end|>\n<|im_start|>assistant\n"
+let formatPrompt (messages: ChatMessage list) =
+    let messages =
+        if
+            messages
+            |> List.exists (fun message -> message.Role = ChatRole.System)
+        then
+            messages
+        else
+            ChatMessage(ChatRole.System, "You are a helpful AI assistant named SmolLM, trained by Hugging Face")
+            :: messages
 
-let generate (model: SmolLm2) (tokenizer: Tokenizer) maxNewTokens userPrompt =
-    let promptTokenIds = tokenizer.encode (chatPrompt userPrompt) |> List.map int64
+    messages
+    |> List.map (fun message -> $"<|im_start|>{message.Role.Value}\n{message.Text}<|im_end|>\n")
+    |> String.concat ""
+    |> fun prompt -> prompt + "<|im_start|>assistant\n"
 
-    model
-    |> SmolLm2.asCausalLm
-    |> Generation.generate (GenerationOptions.greedy maxNewTokens) promptTokenIds
-    |> List.map int
-    |> tokenizer.decode
+let generate (model: SmolLm2) (tokenizer: Tokenizer) maxNewTokens (userPrompt: string) =
+    use client =
+        CausalLmChatClient.create {
+            ModelId = repoId
+            Model = SmolLm2.asCausalLm model
+            FormatPrompt = formatPrompt
+            Encode = tokenizer.encode >> List.map int64
+            Decode = List.map int >> tokenizer.decode
+            DefaultMaxOutputTokens = 32
+        }
+
+    let options = ChatOptions()
+    options.MaxOutputTokens <- Nullable maxNewTokens
+
+    let updates =
+        client.GetStreamingResponseAsync([ ChatMessage(ChatRole.User, userPrompt) ], options, CancellationToken.None)
+
+    let enumerator = updates.GetAsyncEnumerator()
+
+    try
+        let mutable hasNext = enumerator.MoveNextAsync().AsTask().GetAwaiter().GetResult()
+
+        while hasNext do
+            printf "%s" enumerator.Current.Text
+            hasNext <- enumerator.MoveNextAsync().AsTask().GetAwaiter().GetResult()
+    finally
+        enumerator.DisposeAsync().AsTask().GetAwaiter().GetResult()
+
+    printfn ""
 
 [<EntryPoint>]
 let main argv =
@@ -70,7 +107,7 @@ let main argv =
         printfn "Loaded %d tensors." report.Loaded.Length
         printfn "Prompt: %s" prompt
         printfn ""
-        printfn "%s" (generate model tokenizer maxNewTokens prompt)
+        generate model tokenizer maxNewTokens prompt
         0
     finally
         SmolLm2.dispose model

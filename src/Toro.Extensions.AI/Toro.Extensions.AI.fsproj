@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageId>Toro.Extensions.AI</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>ryushiaok</Authors>
+    <Description>Microsoft.Extensions.AI adapter for Toro causal language models</Description>
+    <PackageTags>fsharp;dotnet;ml;torchsharp;llm;microsoft-extensions-ai</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/toro-ml/toro</RepositoryUrl>
+    <RepositoryBranch>main</RepositoryBranch>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://toro-ml.github.io/toro</PackageProjectUrl>
+    <FsDocsLicenseLink>https://github.com/toro-ml/toro/blob/main/LICENSE</FsDocsLicenseLink>
+    <FsDocsReleaseNotesLink>https://github.com/toro-ml/toro/releases</FsDocsReleaseNotesLink>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="ChatClient.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Toro.Models/Toro.Models.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.AI.Abstractions" Version="10.8.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+</Project>

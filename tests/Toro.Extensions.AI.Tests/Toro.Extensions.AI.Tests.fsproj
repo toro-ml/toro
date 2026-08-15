@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <Compile Include="ChatClientTests.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Toro.Extensions.AI/Toro.Extensions.AI.fsproj" />
+  </ItemGroup>
+
+</Project>

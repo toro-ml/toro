@@ -2,7 +2,7 @@
 
 ## Architecture Overview
 
-Toro is an F# machine learning framework with PyTorch-style semantics, built on TorchSharp (.NET 10). The monorepo contains 7 library packages under `src/`, 7 test projects, 14 examples, and a React Router v7 documentation site. Models are plain F# records composed via interfaces and computation expressions.
+Toro is an F# machine learning framework with PyTorch-style semantics, built on TorchSharp (.NET 10). The monorepo contains 8 library packages under `src/`, 8 test projects, 14 examples, and a React Router v7 documentation site. Models are plain F# records composed via interfaces and computation expressions.
 
 ## Package Dependency Graph
 
@@ -13,6 +13,7 @@ flowchart TD
     Toro --> Toro.Text
     Toro.NN --> Toro.GNN
     Toro.NN --> Toro.Models
+    Toro.Models --> Toro.Extensions.AI
 ```
 
 ## Package Index
@@ -86,6 +87,14 @@ Reusable pretrained model implementations. Namespace: `Toro.Models`.
 | `SmolLm2.fs` | SmolLM2 config, F# record model, Hugging Face-named descriptor, local loader, and fixed-capacity GQA cache |
 | `DistilGpt2.fs` | DistilGPT-2 config, HF-layout Conv1D model, descriptor, local loader, and fixed-capacity KV cache |
 
+### Toro.Extensions.AI — `src/Toro.Extensions.AI/`
+
+Microsoft.Extensions.AI adapter. Namespace: `Toro.Extensions.AI`.
+
+| File | Role |
+|------|------|
+| `ChatClient.fs` | Text-only `IChatClient` adapter, request validation, streaming decode, and cancellation |
+
 ### Toro.Vision — `src/Toro.Vision/`
 
 Image I/O and transforms. Namespace: `Toro.Vision`.
@@ -115,12 +124,13 @@ Text tokenization. Namespace: `Toro.Text`.
 - **Named optimizer state**: SGD and AdamW implement `IOptimizer`; AdamW state is keyed by canonical parameter name.
 - **SafeTensors for persistence**: `ModelState` and checkpoint loading validate all metadata before reading and copying one tensor at a time.
 - **Pretrained models**: `Toro.Models` owns reusable architectures, local asset loaders, typed causal LM operations, and request-local generation sessions without depending on Hub, tokenizers, or HTTP.
+- **Extensions.AI adapter**: `Toro.Extensions.AI` maps Microsoft chat messages and options to request-local Toro generation sessions without owning model state.
 
 ## Project Layout
 
 ```
-src/           — 7 library packages
-tests/         — 7 test projects (xUnit + FsUnit, TorchSharp-cpu)
+src/           — 8 library packages
+tests/         — 8 test projects (xUnit + FsUnit, TorchSharp-cpu)
 examples/      — 14 runnable console apps
 docs/          — React Router v7 site (pnpm, MDX)
 scripts/       — API doc generation (FSDocs → MDX)
@@ -136,7 +146,7 @@ scripts/       — API doc generation (FSDocs → MDX)
 
 - All public APIs carry `///` XML doc comments.
 - Each example has its own `README.md`.
-- CI publishes 6 packages to NuGet on `v*.*.*` tag (Hub excluded).
+- CI publishes all 8 library packages to NuGet on `v*.*.*` tags.
 - TorchSharp version pinned at 0.107.0 across all projects.
 
 ## Maintenance
