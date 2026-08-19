@@ -36,7 +36,7 @@ let loadTokenizer () =
     Tokenizer.fromBpe {
         BpeConfig.create paths[0] paths[1] with
             ByteLevel = true
-            SpecialTokens = [ "<|endoftext|>", 0; "<|im_start|>", 1; "<|im_end|>", 2 ]
+            SpecialTokens = [ "<|endoftext|>", 0L; "<|im_start|>", 1L; "<|im_end|>", 2L ]
             UnknownToken = Some "<|endoftext|>"
             PreTokenizer = ByteLevelPreTokenizer
     }
@@ -64,8 +64,8 @@ let generate (model: SmolLm2) (tokenizer: Tokenizer) maxNewTokens (userPrompt: s
                 ModelId = repoId
                 Model = SmolLm2.asCausalLm model
                 FormatPrompt = formatPrompt
-                Encode = tokenizer.encode >> List.map int64
-                Decode = List.map int >> tokenizer.decode
+                Encode = tokenizer.encode
+                Decode = tokenizer.decode
                 DefaultMaxOutputTokens = 32
             }
 

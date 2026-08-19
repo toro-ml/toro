@@ -19,8 +19,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Tokenizer.fs" />
-    <Compile Include="Encode.fs" />
+    <Compile Include="MicrosoftML.fs" />
+    <Compile Include="Collation.fs" />
   </ItemGroup>
 
   <ItemGroup>

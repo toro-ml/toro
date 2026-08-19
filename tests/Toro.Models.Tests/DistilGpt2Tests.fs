@@ -6,7 +6,7 @@ open Toro.Models
 open Toro.NN
 open Xunit
 
-let private config = {
+let private config: DistilGpt2Config = {
     VocabSize = 32L
     EmbeddingSize = 8L
     IntermediateSize = 16L
@@ -89,3 +89,29 @@ let ``cached decode matches full sequence forward`` () =
         Assert.Equal(4L, cache.Length)
     finally
         DistilGpt2.dispose model
+
+[<Fact>]
+let ``checkpoint loader uses the family model descriptor`` () =
+    let directory =
+        System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"toro-distilgpt2-{System.Guid.NewGuid():N}")
+
+    System.IO.Directory.CreateDirectory(directory) |> ignore
+    let source = DistilGpt2.create config torch.float32 torch.CPU
+
+    try
+        let configJson =
+            """{"model_type":"gpt2","activation_function":"gelu_new","n_embd":8,"n_positions":16,"n_ctx":16,"n_inner":16,"vocab_size":32,"n_layer":2,"n_head":2,"layer_norm_epsilon":0.00001,"bos_token_id":1,"eos_token_id":2}"""
+
+        System.IO.File.WriteAllText(System.IO.Path.Combine(directory, "config.json"), configJson)
+
+        ModelState.save (DistilGpt2.state source) (System.IO.Path.Combine(directory, "model.safetensors"))
+
+        let loaded, report = DistilGpt2.loadFromDirectory directory torch.CPU
+
+        try
+            Assert.Equal(28, report.Loaded.Length)
+        finally
+            DistilGpt2.dispose loaded
+    finally
+        DistilGpt2.dispose source
+        System.IO.Directory.Delete(directory, true)

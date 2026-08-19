@@ -1,82 +1,10 @@
 namespace Toro.Models
 
 open System
-open System.IO
-open System.Text.Json
 open TorchSharp
 open Toro
+open Toro.Models
 open Toro.NN
-
-/// Configuration values used by a DistilGPT-2 causal language model.
-type DistilGpt2Config = {
-    VocabSize: int64
-    EmbeddingSize: int64
-    IntermediateSize: int64
-    NumHiddenLayers: int
-    NumAttentionHeads: int64
-    MaxPositionEmbeddings: int64
-    LayerNormEps: float
-    BosTokenId: int64
-    EosTokenId: int64
-}
-
-/// Validation operations for DistilGPT-2 configurations.
-module DistilGpt2Config =
-
-    /// Validate dimensions and constants required by the implemented architecture.
-    let validate (config: DistilGpt2Config) =
-        if
-            config.VocabSize <= 0L
-            || config.EmbeddingSize <= 0L
-            || config.IntermediateSize <= 0L
-            || config.NumHiddenLayers <= 0
-            || config.NumAttentionHeads <= 0L
-            || config.MaxPositionEmbeddings <= 0L
-            || config.LayerNormEps <= 0.0
-            || not (Double.IsFinite config.LayerNormEps)
-        then
-            invalidArg (nameof config) "DistilGPT-2 dimensions and constants must be finite and positive."
-
-        if config.EmbeddingSize % config.NumAttentionHeads <> 0L then
-            invalidArg (nameof config) "Embedding size must be divisible by the number of attention heads."
-
-        if
-            config.BosTokenId < 0L
-            || config.BosTokenId >= config.VocabSize
-        then
-            invalidArg (nameof config) "BOS token ID must be within the vocabulary."
-
-        if
-            config.EosTokenId < 0L
-            || config.EosTokenId >= config.VocabSize
-        then
-            invalidArg (nameof config) "EOS token ID must be within the vocabulary."
-
-/// A GPT-2 Conv1D projection stored in Hugging Face [input, output] weight layout.
-type Gpt2Conv1D = {
-    Weight: Tensor
-    Bias: Tensor
-} with
-
-    /// Apply the affine projection without transposing its stored weight.
-    member this.forward(input: Tensor) = input.matmul this.Weight + this.Bias
-
-/// Projection layers in one DistilGPT-2 self-attention block.
-type DistilGpt2Attention = { Qkv: Gpt2Conv1D; Output: Gpt2Conv1D }
-
-/// Projection layers in one DistilGPT-2 feed-forward block.
-type DistilGpt2Mlp = {
-    Input: Gpt2Conv1D
-    Output: Gpt2Conv1D
-}
-
-/// One DistilGPT-2 transformer block.
-type DistilGpt2Block = {
-    Norm1: LayerNorm
-    Attention: DistilGpt2Attention
-    Norm2: LayerNorm
-    Mlp: DistilGpt2Mlp
-}
 
 /// A DistilGPT-2 causal language model with tied input and output embeddings.
 type DistilGpt2 = {
@@ -87,126 +15,23 @@ type DistilGpt2 = {
     FinalNorm: LayerNorm
 }
 
-/// A fixed-capacity, per-layer DistilGPT-2 key/value cache.
-type DistilGpt2Cache internal (config: DistilGpt2Config, batchSize: int64, capacity: int64, dtype, device) =
-    do
-        DistilGpt2Config.validate config
-
-        if batchSize <= 0L then
-            invalidArg (nameof batchSize) "Cache batch size must be positive."
-
-        if capacity <= 0L || capacity > config.MaxPositionEmbeddings then
-            invalidArg (nameof capacity) $"Cache capacity must be between 1 and {config.MaxPositionEmbeddings}."
-
-    let headSize = config.EmbeddingSize / config.NumAttentionHeads
-
-    let storage =
-        new FixedKvCache(
-            nameof DistilGpt2Cache,
-            config.NumHiddenLayers,
-            batchSize,
-            config.NumAttentionHeads,
-            capacity,
-            headSize,
-            dtype,
-            device
-        )
-
-    /// Number of batch items stored by this cache.
-    member _.BatchSize = storage.BatchSize
-
-    /// Maximum number of tokens stored by this cache.
-    member _.Capacity = storage.Capacity
-
-    /// Number of tokens currently stored by this cache.
-    member _.Length = storage.Length
-
-    /// Remove all logical entries without reallocating storage.
-    member _.Reset() = storage.Reset()
-
-    member internal _.Validate(batch: int64, sequenceLength: int64) = storage.Validate(batch, sequenceLength)
-
-    member internal _.Append(layerIndex: int, start: int64, key: Tensor, value: Tensor) =
-        storage.Append(layerIndex, start, key, value)
-
-    member internal _.Advance(sequenceLength: int64) = storage.Advance sequenceLength
-
-    interface IDisposable with
-        member _.Dispose() = (storage :> IDisposable).Dispose()
-
-/// Tensor inputs accepted by DistilGPT-2.
-type DistilGpt2Input = CausalLmInput<DistilGpt2Cache>
-
-/// Tensor outputs produced by DistilGPT-2.
-type DistilGpt2Output = CausalLmOutput<DistilGpt2Cache>
-
-module private DistilGpt2ConfigJson =
-
-    let private label = "DistilGPT-2"
-    let private tryProperty root name = JsonConfig.tryProperty root name
-
-    let private int64Element name value =
-        JsonConfig.int64Element label name value
-
-    let private int64Value root name = JsonConfig.int64Value label root name
-    let private floatValue root name = JsonConfig.floatValue label root name
-    let private stringValue root name = JsonConfig.stringValue label root name
-
-    let load (path: string) =
-        use document = JsonDocument.Parse(File.ReadAllText path)
-        let root = document.RootElement
-
-        JsonConfig.validateObject label root
-
-        if stringValue root "model_type" <> "gpt2" then
-            invalidOp "DistilGPT-2 config 'model_type' must be 'gpt2'."
-
-        if stringValue root "activation_function" <> "gelu_new" then
-            invalidOp "DistilGPT-2 config 'activation_function' must be 'gelu_new'."
-
-        let embeddingSize = int64Value root "n_embd"
-        let maxPositions = int64Value root "n_positions"
-
-        if int64Value root "n_ctx" <> maxPositions then
-            invalidOp "DistilGPT-2 n_ctx must equal n_positions."
-
-        let intermediateSize =
-            match tryProperty root "n_inner" with
-            | Some value when value.ValueKind <> JsonValueKind.Null -> int64Element "n_inner" value
-            | _ -> 4L * embeddingSize
-
-        let config = {
-            VocabSize = int64Value root "vocab_size"
-            EmbeddingSize = embeddingSize
-            IntermediateSize = intermediateSize
-            NumHiddenLayers = int (int64Value root "n_layer")
-            NumAttentionHeads = int64Value root "n_head"
-            MaxPositionEmbeddings = maxPositions
-            LayerNormEps = floatValue root "layer_norm_epsilon"
-            BosTokenId = int64Value root "bos_token_id"
-            EosTokenId = int64Value root "eos_token_id"
-        }
-
-        DistilGpt2Config.validate config
-        config
-
-/// Construction, state, loading, cache, and forward operations for DistilGPT-2.
+/// Construction, state, cache, and forward operations for DistilGPT-2.
 module DistilGpt2 =
 
-    let private parameter shape dtype device initializer =
+    let private parameter shape dtype device initializer : Tensor =
         Init.toParam shape dtype device initializer
 
-    let private embedding size hiddenSize dtype device = {
+    let private embedding size hiddenSize dtype device : Embedding = {
         Embeddings = parameter [| size; hiddenSize |] dtype device (Init.Randn(0.0, 0.02))
         HiddenSize = hiddenSize
     }
 
-    let private conv1d inputSize outputSize dtype device = {
+    let private conv1d inputSize outputSize dtype device : DistilGpt2Conv1D = {
         Weight = parameter [| inputSize; outputSize |] dtype device (Init.Randn(0.0, 0.02))
         Bias = parameter [| outputSize |] dtype device (Init.Const 0.0)
     }
 
-    let private norm config dtype device =
+    let private norm (config: DistilGpt2Config) dtype device =
         LayerNorm.init
             config.EmbeddingSize
             {
@@ -216,7 +41,7 @@ module DistilGpt2 =
             dtype
             device
 
-    let private block config dtype device = {
+    let private block (config: DistilGpt2Config) dtype device : DistilGpt2Block = {
         Norm1 = norm config dtype device
         Attention = {
             Qkv = conv1d config.EmbeddingSize (3L * config.EmbeddingSize) dtype device
@@ -277,7 +102,8 @@ module DistilGpt2 =
         }
 
     /// Create a validated named state view using Hugging Face weight names.
-    let state (model: DistilGpt2) = Model.stateWith descriptor model
+    let state (model: DistilGpt2) =
+        Toro.NN.Model.stateWith descriptor model
 
     /// Dispose tensors owned by a DistilGPT-2 model.
     let dispose (model: DistilGpt2) =
@@ -329,7 +155,7 @@ module DistilGpt2 =
         attended.permute([| 0L; 2L; 1L; 3L |]).contiguous().reshape ([| batchSize; sequenceLength; config.EmbeddingSize |])
         |> attention.Output.forward
 
-    let private blockForward config layerIndex block input mask isCausal cache cacheStart =
+    let private blockForward config layerIndex (block: DistilGpt2Block) input mask isCausal cache cacheStart =
         let attended =
             input
             |> block.Norm1.forward
@@ -392,11 +218,14 @@ module DistilGpt2 =
         Forward = fun input -> forward input model
     }
 
+    /// Load and validate a Hugging Face config.json file.
+    let loadConfig (path: string) = DistilGpt2Checkpoint.loadConfig path
+
     /// Load config and a strict single-file or sharded SafeTensors state from a local directory.
     let loadFromDirectory (directory: string) (device: torch.Device) : DistilGpt2 * LoadReport =
         let configPath, reader = LocalModelAssets.openReader "DistilGPT-2" directory
         use reader = reader
-        let config = DistilGpt2ConfigJson.load configPath
+        let config = loadConfig configPath
         let dtype = LocalModelAssets.dtype "DistilGPT-2" "transformer.wte.weight" reader
         let model = create config dtype device
         let mapping = NameMapping.create [ NameRule.ignoreSuffix "attn.bias" ]

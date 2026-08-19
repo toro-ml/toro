@@ -33,13 +33,13 @@ let loadTokenizer eosTokenId =
     Tokenizer.fromBpe {
         BpeConfig.create paths[0] paths[1] with
             ByteLevel = true
-            SpecialTokens = [ "<|endoftext|>", int eosTokenId ]
+            SpecialTokens = [ "<|endoftext|>", eosTokenId ]
             UnknownToken = Some "<|endoftext|>"
             PreTokenizer = ByteLevelPreTokenizer
     }
 
 let generate (model: DistilGpt2) (tokenizer: Tokenizer) maxNewTokens prompt =
-    let promptTokenIds = tokenizer.encode prompt |> List.map int64
+    let promptTokenIds = tokenizer.encode prompt
 
     let generatedTokenIds =
         model
@@ -47,7 +47,6 @@ let generate (model: DistilGpt2) (tokenizer: Tokenizer) maxNewTokens prompt =
         |> Generation.generate (GenerationOptions.greedy maxNewTokens) promptTokenIds
 
     List.append promptTokenIds generatedTokenIds
-    |> List.map int
     |> tokenizer.decode
 
 [<EntryPoint>]

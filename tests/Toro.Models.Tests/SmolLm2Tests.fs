@@ -6,7 +6,7 @@ open Toro.Models
 open Toro.NN
 open Xunit
 
-let private config = {
+let private config: SmolLm2Config = {
     VocabSize = 32L
     HiddenSize = 8L
     IntermediateSize = 16L
@@ -92,3 +92,29 @@ let ``cached decode matches full sequence forward`` () =
         Assert.Equal(4L, cache.Length)
     finally
         SmolLm2.dispose model
+
+[<Fact>]
+let ``checkpoint loader uses the family model descriptor`` () =
+    let directory =
+        System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"toro-smollm2-{System.Guid.NewGuid():N}")
+
+    System.IO.Directory.CreateDirectory(directory) |> ignore
+    let source = SmolLm2.create config torch.float32 torch.CPU
+
+    try
+        let configJson =
+            """{"model_type":"llama","hidden_act":"silu","tie_word_embeddings":true,"attention_bias":false,"mlp_bias":false,"attention_dropout":0.0,"rope_interleaved":false,"rope_scaling":null,"vocab_size":32,"hidden_size":8,"intermediate_size":16,"num_hidden_layers":2,"num_attention_heads":2,"num_key_value_heads":1,"max_position_embeddings":16,"rms_norm_eps":0.00001,"rope_theta":10000.0,"bos_token_id":1,"eos_token_id":2}"""
+
+        System.IO.File.WriteAllText(System.IO.Path.Combine(directory, "config.json"), configJson)
+
+        ModelState.save (SmolLm2.state source) (System.IO.Path.Combine(directory, "model.safetensors"))
+
+        let loaded, report = SmolLm2.loadFromDirectory directory torch.CPU
+
+        try
+            Assert.Equal(20, report.Loaded.Length)
+        finally
+            SmolLm2.dispose loaded
+    finally
+        SmolLm2.dispose source
+        System.IO.Directory.Delete(directory, true)

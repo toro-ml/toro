@@ -286,8 +286,7 @@ let main argv =
         let logits =
             Toro.noGrad (fun () ->
                 let ids = tokenizer.encode text
-                let withSpecial = 101 :: ids @ [ 102 ]
-                let data = withSpecial |> List.map int64 |> List.toArray
+                let data = 101L :: ids @ [ 102L ] |> List.toArray
 
                 let input =
                     torch.tensor (data, dtype = torch.int64, device = torch.CPU)

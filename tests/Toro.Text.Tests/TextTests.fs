@@ -7,8 +7,6 @@ open TorchSharp
 open Toro.Text
 open TestHelper
 
-// --- Tokenizer.wrap and  ---
-
 [<Fact>]
 let ``Tokenizer wrap exposes Inner`` () =
     let vocab = [| "hello"; "world"; "[UNK]" |]
@@ -44,7 +42,7 @@ let ``Tokenizer encode and decode round-trip`` () =
     let mlTok = Microsoft.ML.Tokenizers.WordPieceTokenizer.Create(vocabStream, opts)
     let tok = Tokenizer.wrap mlTok
     let ids = tok.encode "hello world"
-    ids |> should equal [ 0; 1 ]
+    ids |> should equal [ 0L; 1L ]
     let decoded = tok.decode ids
     decoded |> should equal "hello world"
 
@@ -85,7 +83,7 @@ let ``fromWordPiece with config creates working tokenizer`` () =
             }
 
         let ids = tok.encode "hello world"
-        ids |> should equal [ 0; 1 ]
+        ids |> should equal [ 0L; 1L ]
     finally
         System.IO.File.Delete(path)
 
@@ -102,7 +100,7 @@ let ``fromWordPiece with LowerCase normalizer`` () =
             }
 
         let ids = tok.encode "HELLO WORLD"
-        ids |> should equal [ 0; 1 ]
+        ids |> should equal [ 0L; 1L ]
     finally
         System.IO.File.Delete(path)
 
@@ -119,14 +117,14 @@ let ``fromWordPiece with Regex pre-tokenizer`` () =
             }
 
         let ids = tok.encode "hello!"
-        ids |> should equal [ 0; 2 ]
+        ids |> should equal [ 0L; 2L ]
     finally
         System.IO.File.Delete(path)
 
-// --- Encode module ---
+// --- Collation module ---
 
 [<Fact>]
-let ``Encode.toTensor produces correct shape`` () =
+let ``Collation.toTensor produces correct shape`` () =
     let path = writeVocabFile [| "a"; "b"; "c"; "d"; "[UNK]" |]
 
     try
@@ -136,13 +134,14 @@ let ``Encode.toTensor produces correct shape`` () =
                     SpecialTokens = [ "[UNK]", 4 ]
             }
 
-        let t = Encode.toTensor tok "a b" 5 0 torch.CPU
+        let options = CollationOptions.create 5 0L
+        let t = Collation.toTensor tok "a b" options torch.CPU
         t.shape |> should equal [| 5L |]
     finally
         System.IO.File.Delete(path)
 
 [<Fact>]
-let ``Encode.batch produces correct shapes`` () =
+let ``Collation.batch produces correct shapes and lengths`` () =
     let path = writeVocabFile [| "a"; "b"; "c"; "d"; "[UNK]" |]
 
     try
@@ -152,23 +151,61 @@ let ``Encode.batch produces correct shapes`` () =
                     SpecialTokens = [ "[UNK]", 4 ]
             }
 
-        let struct (ids, mask) = Encode.batch tok [ "a b"; "c" ] 4 0 torch.CPU
-        ids.shape |> should equal [| 2L; 4L |]
-        mask.shape |> should equal [| 2L; 4L |]
+        let options = CollationOptions.create 4 0L
+        let batch = Collation.batch tok [ "a b"; "c" ] options torch.CPU
+        batch.InputIds.shape |> should equal [| 2L; 4L |]
+        batch.AttentionMask.shape |> should equal [| 2L; 4L |]
+        batch.Lengths |> should equal [| 2L; 1L |]
     finally
         System.IO.File.Delete(path)
 
 [<Fact>]
-let ``Encode.attentionMask marks pad positions as zero`` () =
-    let data: int64 array = [| 1L; 2L; 0L; 0L |]
-    let t = torch.tensor (data, device = torch.CPU)
+let ``Collation supports left padding and left truncation`` () =
+    let path = writeVocabFile [| "a"; "b"; "c"; "d"; "[UNK]" |]
 
-    let mask = Encode.attentionMask t 0
-    let m0 = mask.at [ I 0 ] |> scalarF32
-    let m1 = mask.at [ I 1 ] |> scalarF32
-    let m2 = mask.at [ I 2 ] |> scalarF32
-    let m3 = mask.at [ I 3 ] |> scalarF32
-    m0 |> should (equalWithin 1e-5) 1.0f
-    m1 |> should (equalWithin 1e-5) 1.0f
-    m2 |> should (equalWithin 1e-5) 0.0f
-    m3 |> should (equalWithin 1e-5) 0.0f
+    try
+        let tokenizer =
+            Tokenizer.fromWordPiece {
+                WordPieceConfig.create path with
+                    SpecialTokens = [ "[UNK]", 4L ]
+            }
+
+        let options = {
+            CollationOptions.create 3 9L with
+                PaddingSide = PaddingSide.Left
+                TruncationSide = TruncationSide.Left
+        }
+
+        let short = Collation.batch tokenizer [ "a" ] options torch.CPU
+        let shortIds = short.InputIds.flatten().data<int64>().ToArray()
+        let shortMask = short.AttentionMask.flatten().data<bool>().ToArray()
+        shortIds |> should equal [| 9L; 9L; 0L |]
+        shortMask |> should equal [| false; false; true |]
+
+        let long = Collation.batch tokenizer [ "a b c d" ] options torch.CPU
+
+        long.InputIds.flatten().data<int64>().ToArray()
+        |> should equal [| 1L; 2L; 3L |]
+
+        long.Lengths |> should equal [| 4L |]
+    finally
+        System.IO.File.Delete(path)
+
+[<Fact>]
+let ``Collation rejects invalid length and empty batch`` () =
+    let path = writeVocabFile [| "a"; "[UNK]" |]
+
+    try
+        let tokenizer =
+            Tokenizer.fromWordPiece {
+                WordPieceConfig.create path with
+                    SpecialTokens = [ "[UNK]", 1L ]
+            }
+
+        let invalid = CollationOptions.create 0 0L
+        shouldFail (fun () -> Collation.toTensor tokenizer "a" invalid torch.CPU |> ignore)
+
+        let valid = CollationOptions.create 2 0L
+        shouldFail (fun () -> Collation.batch tokenizer [] valid torch.CPU |> ignore)
+    finally
+        System.IO.File.Delete(path)

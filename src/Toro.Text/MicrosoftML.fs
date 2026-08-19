@@ -1,33 +1,48 @@
 namespace Toro.Text
 
+open System
 open System.Collections.Generic
 open System.Collections.ObjectModel
 
-/// Text normalizer configuration.
+/// Text tokenizer with token IDs represented as 64-bit integers.
+type Tokenizer internal (encode: string -> int64 list, decode: int64 list -> string, countTokens: string -> int, backend: obj) =
+
+    /// Encode text to token IDs.
+    member _.encode(text: string) : int64 list = encode text
+
+    /// Decode token IDs to text.
+    member _.decode(ids: int64 list) : string = decode ids
+
+    /// Count the number of tokens in text.
+    member _.countTokens(text: string) : int = countTokens text
+
+    member internal _.Backend = backend
+
+/// Text normalizer configuration for Microsoft.ML.Tokenizers.
 type TextNormalizer =
     | NoNormalizer
     | LowerCase
     | CustomNormalizer of Microsoft.ML.Tokenizers.Normalizer
 
-/// Text pre-tokenizer configuration.
+/// Text pre-tokenizer configuration for Microsoft.ML.Tokenizers.
 type TextPreTokenizer =
     | DefaultPreTokenizer
     | ByteLevelPreTokenizer
     | Regex of pattern: string
     | CustomPreTokenizer of Microsoft.ML.Tokenizers.PreTokenizer
 
-/// Configuration for Tiktoken (OpenAI) tokenizers.
+/// Configuration for a Microsoft.ML.Tokenizers Tiktoken tokenizer.
 type TiktokenConfig = {
     Model: string
-    ExtraSpecialTokens: (string * int) list
+    ExtraSpecialTokens: (string * int64) list
 }
 
-/// Configuration for BPE tokenizers, including optional byte-level encoding.
+/// Configuration for a Microsoft.ML.Tokenizers BPE tokenizer.
 type BpeConfig = {
     VocabPath: string
     MergesPath: string
     ByteLevel: bool
-    SpecialTokens: (string * int) list
+    SpecialTokens: (string * int64) list
     UnknownToken: string option
     ContinuingSubwordPrefix: string option
     EndOfWordSuffix: string option
@@ -36,10 +51,10 @@ type BpeConfig = {
     Normalizer: TextNormalizer
 }
 
-/// Configuration for WordPiece (BERT) tokenizers.
+/// Configuration for a Microsoft.ML.Tokenizers WordPiece tokenizer.
 type WordPieceConfig = {
     VocabPath: string
-    SpecialTokens: (string * int) list
+    SpecialTokens: (string * int64) list
     UnknownToken: string
     MaxInputCharsPerWord: int option
     ContinuingSubwordPrefix: string option
@@ -47,16 +62,22 @@ type WordPieceConfig = {
     Normalizer: TextNormalizer
 }
 
-/// Configuration for SentencePiece tokenizers.
+/// Configuration for a Microsoft.ML.Tokenizers SentencePiece tokenizer.
 type SentencePieceConfig = { ModelPath: string }
 
+/// Constructors for Tiktoken configuration.
 module TiktokenConfig =
+
+    /// Create a Tiktoken configuration.
     let create (model: string) : TiktokenConfig = {
         Model = model
         ExtraSpecialTokens = []
     }
 
+/// Constructors for BPE configuration.
 module BpeConfig =
+
+    /// Create a BPE configuration.
     let create (vocabPath: string) (mergesPath: string) : BpeConfig = {
         VocabPath = vocabPath
         MergesPath = mergesPath
@@ -70,7 +91,10 @@ module BpeConfig =
         Normalizer = NoNormalizer
     }
 
+/// Constructors for WordPiece configuration.
 module WordPieceConfig =
+
+    /// Create a WordPiece configuration.
     let create (vocabPath: string) : WordPieceConfig = {
         VocabPath = vocabPath
         SpecialTokens = []
@@ -81,43 +105,42 @@ module WordPieceConfig =
         Normalizer = NoNormalizer
     }
 
+/// Constructors for SentencePiece configuration.
 module SentencePieceConfig =
+
+    /// Create a SentencePiece configuration.
     let create (modelPath: string) : SentencePieceConfig = { ModelPath = modelPath }
 
-/// Tokenizer wrapping Microsoft.ML.Tokenizers. Provides F#-idiomatic encode/decode
-/// and exposes the underlying instance via .Inner for advanced scenarios.
-type Tokenizer internal (inner: Microsoft.ML.Tokenizers.Tokenizer) =
-
-    /// Underlying Microsoft.ML.Tokenizers instance (escape hatch).
-    member _.Inner = inner
-
-    /// Encode text to token IDs.
-    member _.encode(text: string) : int list =
-        inner.EncodeToIds(text, true, true)
-        |> Seq.map int
-        |> Seq.toList
-
-    /// Decode token IDs to text.
-    member _.decode(ids: int list) : string = inner.Decode(ids :> seq<int>)
-
-    /// Count the number of tokens in text without allocating the ID list.
-    member _.countTokens(text: string) : int = inner.CountTokens(text, true, true)
-
+/// Microsoft.ML.Tokenizers adapters and factories.
 module Tokenizer =
+
     let private emptySpecialTokens =
         ReadOnlyDictionary(dict []) :> IReadOnlyDictionary<string, int>
 
-    let private toSpecialTokensDict (tokens: (string * int) list) =
+    let private backendId parameterName tokenId =
+        if
+            tokenId < int64 Int32.MinValue
+            || tokenId > int64 Int32.MaxValue
+        then
+            invalidArg parameterName $"Token ID {tokenId} is outside the Microsoft.ML.Tokenizers Int32 range."
+
+        int tokenId
+
+    let private toSpecialTokensDict (tokens: (string * int64) list) =
         if tokens.IsEmpty then
             null
         else
-            ReadOnlyDictionary(dict tokens) :> IReadOnlyDictionary<string, int>
+            tokens
+            |> Seq.map (fun (token, tokenId) -> token, backendId (nameof tokens) tokenId)
+            |> dict
+            |> ReadOnlyDictionary
+            :> IReadOnlyDictionary<string, int>
 
     let private toNormalizer =
         function
         | NoNormalizer -> null
         | LowerCase -> Microsoft.ML.Tokenizers.LowerCaseNormalizer() :> Microsoft.ML.Tokenizers.Normalizer
-        | CustomNormalizer n -> n
+        | CustomNormalizer normalizer -> normalizer
 
     let private toPreTokenizer specialTokens =
         let specialTokens =
@@ -137,18 +160,35 @@ module Tokenizer =
         | Regex pattern ->
             Microsoft.ML.Tokenizers.RegexPreTokenizer(System.Text.RegularExpressions.Regex(pattern), specialTokens)
             :> Microsoft.ML.Tokenizers.PreTokenizer
-        | CustomPreTokenizer p -> p
+        | CustomPreTokenizer preTokenizer -> preTokenizer
 
-    /// Create from a Tiktoken config.
+    /// Wrap a Microsoft.ML.Tokenizers tokenizer.
+    let wrap (inner: Microsoft.ML.Tokenizers.Tokenizer) : Tokenizer =
+        if isNull inner then
+            nullArg (nameof inner)
+
+        let encode (text: string) =
+            inner.EncodeToIds(text, true, true)
+            |> Seq.map int64
+            |> Seq.toList
+
+        let decode (ids: int64 list) =
+            ids |> Seq.map (backendId (nameof ids)) |> inner.Decode
+
+        Tokenizer(encode, decode, (fun (text: string) -> inner.CountTokens(text, true, true)), inner)
+
+    /// Return the wrapped Microsoft.ML.Tokenizers instance.
+    let inner (tokenizer: Tokenizer) : Microsoft.ML.Tokenizers.Tokenizer =
+        tokenizer.Backend :?> Microsoft.ML.Tokenizers.Tokenizer
+
+    /// Create a Tiktoken tokenizer.
     let fromTiktoken (config: TiktokenConfig) : Tokenizer =
         let extra = toSpecialTokensDict config.ExtraSpecialTokens
 
-        let inner =
-            Microsoft.ML.Tokenizers.TiktokenTokenizer.CreateForModel(config.Model, extra)
+        Microsoft.ML.Tokenizers.TiktokenTokenizer.CreateForModel(config.Model, extra)
+        |> wrap
 
-        Tokenizer(inner)
-
-    /// Create from a BPE config.
+    /// Create a BPE tokenizer.
     let fromBpe (config: BpeConfig) : Tokenizer =
         let options =
             Microsoft.ML.Tokenizers.BpeOptions(config.VocabPath, config.MergesPath)
@@ -162,46 +202,35 @@ module Tokenizer =
         options.ContinuingSubwordPrefix <- config.ContinuingSubwordPrefix |> Option.toObj
         options.EndOfWordSuffix <- config.EndOfWordSuffix |> Option.toObj
         options.FuseUnknownTokens <- config.FuseUnknownTokens
+        Microsoft.ML.Tokenizers.BpeTokenizer.Create(options) |> wrap
 
-        let inner = Microsoft.ML.Tokenizers.BpeTokenizer.Create(options)
-
-        Tokenizer(inner)
-
-    /// Create from a WordPiece config.
+    /// Create a WordPiece tokenizer.
     let fromWordPiece (config: WordPieceConfig) : Tokenizer =
-        let opts = Microsoft.ML.Tokenizers.WordPieceOptions()
+        let options = Microsoft.ML.Tokenizers.WordPieceOptions()
         let specialTokens = toSpecialTokensDict config.SpecialTokens
-        opts.SpecialTokens <- specialTokens
-        opts.UnknownToken <- config.UnknownToken
+        options.SpecialTokens <- specialTokens
+        options.UnknownToken <- config.UnknownToken
 
-        match config.ContinuingSubwordPrefix with
-        | Some p -> opts.ContinuingSubwordPrefix <- p
-        | None -> ()
+        config.ContinuingSubwordPrefix
+        |> Option.iter (fun prefix -> options.ContinuingSubwordPrefix <- prefix)
 
-        match config.MaxInputCharsPerWord with
-        | Some n -> opts.MaxInputCharsPerWord <- n
-        | None -> ()
+        config.MaxInputCharsPerWord
+        |> Option.iter (fun maxChars -> options.MaxInputCharsPerWord <- maxChars)
 
-        let norm = toNormalizer config.Normalizer
+        toNormalizer config.Normalizer
+        |> Option.ofObj
+        |> Option.iter (fun normalizer -> options.Normalizer <- normalizer)
 
-        if not (isNull norm) then
-            opts.Normalizer <- norm
+        toPreTokenizer specialTokens config.PreTokenizer
+        |> Option.ofObj
+        |> Option.iter (fun preTokenizer -> options.PreTokenizer <- preTokenizer)
 
-        let pre = toPreTokenizer specialTokens config.PreTokenizer
+        Microsoft.ML.Tokenizers.WordPieceTokenizer.Create(config.VocabPath, options)
+        |> wrap
 
-        if not (isNull pre) then
-            opts.PreTokenizer <- pre
-
-        let inner =
-            Microsoft.ML.Tokenizers.WordPieceTokenizer.Create(config.VocabPath, opts)
-
-        Tokenizer(inner)
-
-    /// Create from a SentencePiece config.
+    /// Create a SentencePiece tokenizer.
     let fromSentencePiece (config: SentencePieceConfig) : Tokenizer =
         use stream = System.IO.File.OpenRead(config.ModelPath)
-        let inner = Microsoft.ML.Tokenizers.SentencePieceTokenizer.Create(stream)
-        Tokenizer(inner)
 
-    /// Wrap an existing Microsoft.ML.Tokenizers.Tokenizer instance.
-    let wrap (inner: Microsoft.ML.Tokenizers.Tokenizer) : Tokenizer = Tokenizer(inner)
+        Microsoft.ML.Tokenizers.SentencePieceTokenizer.Create(stream)
+        |> wrap

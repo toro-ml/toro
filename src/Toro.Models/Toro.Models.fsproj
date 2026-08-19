@@ -20,9 +20,21 @@
 
   <ItemGroup>
     <Compile Include="CausalLm.fs" />
-    <Compile Include="Internals.fs" />
-    <Compile Include="SmolLm2.fs" />
-    <Compile Include="DistilGpt2.fs" />
+    <Compile Include="Sampling.fs" />
+    <Compile Include="Generation.fs" />
+    <Compile Include="Internals/JsonConfig.fs" />
+    <Compile Include="Internals/LocalModelAssets.fs" />
+    <Compile Include="Internals/TensorOwner.fs" />
+    <Compile Include="Internals/FixedKvCache.fs" />
+    <Compile Include="Internals/CausalInput.fs" />
+    <Compile Include="SmolLm2/Types.fs" />
+    <Compile Include="SmolLm2/Cache.fs" />
+    <Compile Include="SmolLm2/Checkpoint.fs" />
+    <Compile Include="SmolLm2/Model.fs" />
+    <Compile Include="DistilGpt2/Types.fs" />
+    <Compile Include="DistilGpt2/Cache.fs" />
+    <Compile Include="DistilGpt2/Checkpoint.fs" />
+    <Compile Include="DistilGpt2/Model.fs" />
   </ItemGroup>
 
   <ItemGroup>

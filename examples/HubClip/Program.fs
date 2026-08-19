@@ -298,7 +298,7 @@ let loadTokenizer () =
     Tokenizer.fromBpe {
         BpeConfig.create paths[0] paths[1] with
             ByteLevel = true
-            SpecialTokens = [ "<|startoftext|>", int bosTokenId; "<|endoftext|>", int eosTokenId ]
+            SpecialTokens = [ "<|startoftext|>", bosTokenId; "<|endoftext|>", eosTokenId ]
             UnknownToken = Some "<|endoftext|>"
             EndOfWordSuffix = Some "</w>"
             PreTokenizer =
@@ -308,7 +308,7 @@ let loadTokenizer () =
 
 let encodePrompt (tokenizer: Tokenizer) label =
     let prompt = $"a photo of a {label}"
-    let body = tokenizer.encode prompt |> List.map int64
+    let body = tokenizer.encode prompt
     let tokens = bosTokenId :: body @ [ eosTokenId ]
 
     if int64 tokens.Length > maxPositions then

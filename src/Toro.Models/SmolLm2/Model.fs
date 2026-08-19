@@ -1,92 +1,10 @@
 namespace Toro.Models
 
 open System
-open System.IO
-open System.Text.Json
 open TorchSharp
 open Toro
+open Toro.Models
 open Toro.NN
-
-/// Configuration values used by a SmolLM2 causal language model.
-type SmolLm2Config = {
-    VocabSize: int64
-    HiddenSize: int64
-    IntermediateSize: int64
-    NumHiddenLayers: int
-    NumAttentionHeads: int64
-    NumKeyValueHeads: int64
-    MaxPositionEmbeddings: int64
-    RmsNormEps: float
-    RopeTheta: float
-    BosTokenId: int64
-    EosTokenId: int64
-}
-
-/// Validation operations for SmolLM2 configurations.
-module SmolLm2Config =
-
-    /// Validate dimensions and constants required by the implemented architecture.
-    let validate (config: SmolLm2Config) =
-        if
-            config.VocabSize <= 0L
-            || config.HiddenSize <= 0L
-            || config.IntermediateSize <= 0L
-            || config.NumHiddenLayers <= 0
-            || config.NumAttentionHeads <= 0L
-            || config.NumKeyValueHeads <= 0L
-            || config.MaxPositionEmbeddings <= 0L
-            || config.RmsNormEps <= 0.0
-            || not (Double.IsFinite config.RmsNormEps)
-            || config.RopeTheta <= 0.0
-            || not (Double.IsFinite config.RopeTheta)
-        then
-            invalidArg (nameof config) "SmolLM2 dimensions and numeric constants must be finite and positive."
-
-        if config.HiddenSize % config.NumAttentionHeads <> 0L then
-            invalidArg (nameof config) "SmolLM2 hidden size must be divisible by the number of attention heads."
-
-        let headSize = config.HiddenSize / config.NumAttentionHeads
-
-        if headSize % 2L <> 0L then
-            invalidArg (nameof config) "SmolLM2 attention head size must be even for rotary embedding."
-
-        if config.NumAttentionHeads % config.NumKeyValueHeads <> 0L then
-            invalidArg (nameof config) "SmolLM2 attention heads must be divisible by key/value heads."
-
-        if
-            config.BosTokenId < 0L
-            || config.BosTokenId >= config.VocabSize
-        then
-            invalidArg (nameof config) "SmolLM2 BOS token ID must be within the vocabulary."
-
-        if
-            config.EosTokenId < 0L
-            || config.EosTokenId >= config.VocabSize
-        then
-            invalidArg (nameof config) "SmolLM2 EOS token ID must be within the vocabulary."
-
-/// Projection layers in one SmolLM2 grouped-query attention block.
-type SmolLm2Attention = {
-    Query: Linear
-    Key: Linear
-    Value: Linear
-    Output: Linear
-}
-
-/// Projection layers in one SmolLM2 SwiGLU feed-forward block.
-type SmolLm2Mlp = {
-    Gate: Linear
-    Up: Linear
-    Down: Linear
-}
-
-/// One SmolLM2 transformer block.
-type SmolLm2Block = {
-    InputNorm: RmsNorm
-    Attention: SmolLm2Attention
-    PostAttentionNorm: RmsNorm
-    Mlp: SmolLm2Mlp
-}
 
 /// A SmolLM2 causal language model with tied input and output embeddings.
 type SmolLm2 = {
@@ -96,124 +14,13 @@ type SmolLm2 = {
     FinalNorm: RmsNorm
 }
 
-/// A fixed-capacity, per-layer SmolLM2 key/value cache.
-type SmolLm2Cache internal (config: SmolLm2Config, batchSize: int64, capacity: int64, dtype, device) =
-    do
-        SmolLm2Config.validate config
-
-        if batchSize <= 0L then
-            invalidArg (nameof batchSize) "Cache batch size must be positive."
-
-        if capacity <= 0L || capacity > config.MaxPositionEmbeddings then
-            invalidArg (nameof capacity) $"Cache capacity must be between 1 and {config.MaxPositionEmbeddings}."
-
-    let headSize = config.HiddenSize / config.NumAttentionHeads
-
-    let storage =
-        new FixedKvCache(
-            nameof SmolLm2Cache,
-            config.NumHiddenLayers,
-            batchSize,
-            config.NumKeyValueHeads,
-            capacity,
-            headSize,
-            dtype,
-            device
-        )
-
-    /// Number of batch items stored by this cache.
-    member _.BatchSize = storage.BatchSize
-
-    /// Maximum number of tokens stored by this cache.
-    member _.Capacity = storage.Capacity
-
-    /// Number of tokens currently stored by this cache.
-    member _.Length = storage.Length
-
-    /// Remove all logical entries without reallocating storage.
-    member _.Reset() = storage.Reset()
-
-    member internal _.Validate(batch: int64, sequenceLength: int64) = storage.Validate(batch, sequenceLength)
-
-    member internal _.Append(layerIndex: int, start: int64, key: Tensor, value: Tensor) =
-        storage.Append(layerIndex, start, key, value)
-
-    member internal _.Advance(sequenceLength: int64) = storage.Advance sequenceLength
-
-    interface IDisposable with
-        member _.Dispose() = (storage :> IDisposable).Dispose()
-
-/// Tensor inputs accepted by SmolLM2.
-type SmolLm2Input = CausalLmInput<SmolLm2Cache>
-
-/// Tensor outputs produced by SmolLM2.
-type SmolLm2Output = CausalLmOutput<SmolLm2Cache>
-
-module private ConfigJson =
-
-    let private label = "SmolLM2"
-    let private property root name = JsonConfig.property label root name
-    let private int64Value root name = JsonConfig.int64Value label root name
-    let private floatValue root name = JsonConfig.floatValue label root name
-    let private boolValue root name = JsonConfig.boolValue label root name
-    let private stringValue root name = JsonConfig.stringValue label root name
-
-    let load (path: string) =
-        use document = JsonDocument.Parse(File.ReadAllText path)
-        let root = document.RootElement
-
-        JsonConfig.validateObject label root
-
-        if stringValue root "model_type" <> "llama" then
-            invalidOp "SmolLM2 config 'model_type' must be 'llama'."
-
-        if stringValue root "hidden_act" <> "silu" then
-            invalidOp "SmolLM2 config 'hidden_act' must be 'silu'."
-
-        if not (boolValue root "tie_word_embeddings") then
-            invalidOp "SmolLM2 requires tied word embeddings."
-
-        if boolValue root "attention_bias" then
-            invalidOp "SmolLM2 attention projection bias is not supported."
-
-        if boolValue root "mlp_bias" then
-            invalidOp "SmolLM2 MLP projection bias is not supported."
-
-        if floatValue root "attention_dropout" <> 0.0 then
-            invalidOp "SmolLM2 attention dropout must be zero."
-
-        if boolValue root "rope_interleaved" then
-            invalidOp "SmolLM2 interleaved rotary embedding is not supported."
-
-        let ropeScaling = property root "rope_scaling"
-
-        if ropeScaling.ValueKind <> JsonValueKind.Null then
-            invalidOp "SmolLM2 rope scaling is not supported."
-
-        let config = {
-            VocabSize = int64Value root "vocab_size"
-            HiddenSize = int64Value root "hidden_size"
-            IntermediateSize = int64Value root "intermediate_size"
-            NumHiddenLayers = int (int64Value root "num_hidden_layers")
-            NumAttentionHeads = int64Value root "num_attention_heads"
-            NumKeyValueHeads = int64Value root "num_key_value_heads"
-            MaxPositionEmbeddings = int64Value root "max_position_embeddings"
-            RmsNormEps = floatValue root "rms_norm_eps"
-            RopeTheta = floatValue root "rope_theta"
-            BosTokenId = int64Value root "bos_token_id"
-            EosTokenId = int64Value root "eos_token_id"
-        }
-
-        SmolLm2Config.validate config
-        config
-
-/// Construction, state, loading, cache, and forward operations for SmolLM2.
+/// Construction, state, cache, and forward operations for SmolLM2.
 module SmolLm2 =
 
-    let private norm config dtype device =
+    let private norm (config: SmolLm2Config) dtype device =
         RmsNorm.init config.HiddenSize config.RmsNormEps dtype device
 
-    let private block config dtype device = {
+    let private block (config: SmolLm2Config) dtype device : SmolLm2Block = {
         InputNorm = norm config dtype device
         Attention = {
             Query = Linear.initNoBias config.HiddenSize config.HiddenSize dtype device
@@ -279,7 +86,8 @@ module SmolLm2 =
         }
 
     /// Create a validated named state view using Hugging Face weight names.
-    let state (model: SmolLm2) : ModelState = Model.stateWith descriptor model
+    let state (model: SmolLm2) : ModelState =
+        Toro.NN.Model.stateWith descriptor model
 
     /// Dispose tensors owned by a SmolLM2 model.
     let dispose (model: SmolLm2) =
@@ -357,7 +165,7 @@ module SmolLm2 =
 
         let key, value =
             match cache with
-            | Some(cache: SmolLm2Cache) -> cache.Append(layerIndex, cacheStart, key, value)
+            | Some cache -> cache.Append(layerIndex, cacheStart, key, value)
             | None -> key, value
 
         let groups = config.NumAttentionHeads / config.NumKeyValueHeads
@@ -433,11 +241,14 @@ module SmolLm2 =
         Forward = fun input -> forward input model
     }
 
+    /// Load and validate a Hugging Face config.json file.
+    let loadConfig (path: string) = SmolLm2Checkpoint.loadConfig path
+
     /// Load config and a strict single-file or sharded SafeTensors state from a local directory.
     let loadFromDirectory (directory: string) (device: torch.Device) : SmolLm2 * LoadReport =
         let configPath, reader = LocalModelAssets.openReader "SmolLM2" directory
         use reader = reader
-        let config = ConfigJson.load configPath
+        let config = loadConfig configPath
         let dtype = LocalModelAssets.dtype "SmolLM2" "model.embed_tokens.weight" reader
         let model = create config dtype device
 
