@@ -64,6 +64,51 @@ let ``Tokenizer countTokens returns correct count`` () =
     let tok = Tokenizer.wrap mlTok
     tok.countTokens "hello world" |> should equal 2
 
+[<Fact>]
+let ``incremental decoder preserves WordPiece spacing`` () =
+    let vocab = [| "hello"; "world"; "[UNK]" |]
+
+    let vocabStream =
+        new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(vocab |> String.concat "\n"))
+
+    let options = Microsoft.ML.Tokenizers.WordPieceOptions(UnknownToken = "[UNK]")
+
+    let tokenizer =
+        Microsoft.ML.Tokenizers.WordPieceTokenizer.Create(vocabStream, options)
+        |> Tokenizer.wrap
+
+    let decoder = tokenizer.createDecoder ()
+
+    decoder.append 0L |> should equal "hello"
+    decoder.append 1L |> should equal " world"
+    decoder.complete () |> should equal ""
+
+[<Fact>]
+let ``incremental ByteLevel decoder waits for complete UTF-8`` () =
+    let vocabPath = System.IO.Path.GetTempFileName()
+    let mergesPath = System.IO.Path.GetTempFileName()
+
+    try
+        System.IO.File.WriteAllText(vocabPath, """{"ã":0,"ģ":1,"Ĥ":2}""")
+        System.IO.File.WriteAllText(mergesPath, "#version: 0.2\n")
+
+        let tokenizer =
+            Tokenizer.fromBpe {
+                BpeConfig.create vocabPath mergesPath with
+                    ByteLevel = true
+            }
+
+        let ids = tokenizer.encode "あ"
+        ids |> should equal [ 0L; 1L; 2L ]
+        let decoder = tokenizer.createDecoder ()
+        decoder.append ids[0] |> should equal ""
+        decoder.append ids[1] |> should equal ""
+        decoder.append ids[2] |> should equal "あ"
+        decoder.complete () |> should equal ""
+    finally
+        System.IO.File.Delete(vocabPath)
+        System.IO.File.Delete(mergesPath)
+
 // --- Config-based factories ---
 
 let private writeVocabFile (vocab: string array) =

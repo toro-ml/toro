@@ -1,11 +1,39 @@
 namespace Toro.Text
 
 open System
+open System.Buffers
 open System.Collections.Generic
 open System.Collections.ObjectModel
 
+/// Request-local state for decoding token IDs into text fragments.
+type IncrementalDecoder internal (append: int64 -> string, complete: unit -> string) =
+    let mutable completed = false
+
+    /// Decode one additional token ID into zero or more complete characters.
+    member _.append(tokenId: int64) =
+        if completed then
+            invalidOp "The incremental decoder has already completed."
+
+        append tokenId
+
+    /// Flush any remaining text. Subsequent calls return an empty string.
+    member _.complete() =
+        if completed then
+            ""
+        else
+            completed <- true
+            complete ()
+
 /// Text tokenizer with token IDs represented as 64-bit integers.
-type Tokenizer internal (encode: string -> int64 list, decode: int64 list -> string, countTokens: string -> int, backend: obj) =
+type Tokenizer
+    internal
+    (
+        encode: string -> int64 list,
+        decode: int64 list -> string,
+        countTokens: string -> int,
+        backend: obj,
+        createDecoder: unit -> IncrementalDecoder
+    ) =
 
     /// Encode text to token IDs.
     member _.encode(text: string) : int64 list = encode text
@@ -15,6 +43,9 @@ type Tokenizer internal (encode: string -> int64 list, decode: int64 list -> str
 
     /// Count the number of tokens in text.
     member _.countTokens(text: string) : int = countTokens text
+
+    /// Create request-local state for incremental token decoding.
+    member _.createDecoder() = createDecoder ()
 
     member internal _.Backend = backend
 
@@ -162,8 +193,74 @@ module Tokenizer =
             :> Microsoft.ML.Tokenizers.PreTokenizer
         | CustomPreTokenizer preTokenizer -> preTokenizer
 
-    /// Wrap a Microsoft.ML.Tokenizers tokenizer.
-    let wrap (inner: Microsoft.ML.Tokenizers.Tokenizer) : Tokenizer =
+    let rec private stablePrefixLength minimumLength (decoded: string) length =
+        if length > minimumLength && decoded[length - 1] = '\uFFFD' then
+            stablePrefixLength minimumLength decoded (length - 1)
+        else
+            length
+
+    let private differentialDecoder (decode: int64 list -> string) =
+        let tokenIds = ResizeArray<int64>()
+        let mutable emitted = ""
+
+        let next finished =
+            let decoded = tokenIds |> Seq.toList |> decode
+
+            if not (decoded.StartsWith(emitted, StringComparison.Ordinal)) then
+                invalidOp "The token decoder changed text that was already emitted."
+
+            let nextLength =
+                if finished then
+                    decoded.Length
+                else
+                    stablePrefixLength emitted.Length decoded decoded.Length
+
+            let delta = decoded.Substring(emitted.Length, nextLength - emitted.Length)
+            emitted <- decoded.Substring(0, nextLength)
+            delta
+
+        IncrementalDecoder(
+            (fun tokenId ->
+                tokenIds.Add tokenId
+                next false),
+            fun () -> next true
+        )
+
+    let private spanDecoder (inner: Microsoft.ML.Tokenizers.Tokenizer) =
+        let pending = ResizeArray<int>()
+
+        let decodePending () =
+            let mutable buffer = Array.zeroCreate<char> (max 128 (pending.Count * 8))
+            let mutable decoded = None
+
+            while decoded.IsNone do
+                let mutable idsConsumed = 0
+                let mutable charsWritten = 0
+
+                match inner.Decode(pending, buffer.AsSpan(), &idsConsumed, &charsWritten) with
+                | OperationStatus.Done ->
+                    pending.RemoveRange(0, idsConsumed)
+                    decoded <- Some(String(buffer, 0, charsWritten))
+                | OperationStatus.DestinationTooSmall -> buffer <- Array.zeroCreate (buffer.Length * 2)
+                | status -> invalidOp $"Incremental token decoding failed with status {status}."
+
+            decoded.Value
+
+        let append tokenId =
+            pending.Add(backendId (nameof tokenId) tokenId)
+            decodePending ()
+
+        let complete () =
+            if pending.Count = 0 then
+                ""
+            else
+                let decoded = inner.Decode pending
+                pending.Clear()
+                decoded
+
+        IncrementalDecoder(append, complete)
+
+    let private wrapWith decoderFactory (inner: Microsoft.ML.Tokenizers.Tokenizer) : Tokenizer =
         if isNull inner then
             nullArg (nameof inner)
 
@@ -175,7 +272,16 @@ module Tokenizer =
         let decode (ids: int64 list) =
             ids |> Seq.map (backendId (nameof ids)) |> inner.Decode
 
-        Tokenizer(encode, decode, (fun (text: string) -> inner.CountTokens(text, true, true)), inner)
+        Tokenizer(
+            encode,
+            decode,
+            (fun (text: string) -> inner.CountTokens(text, true, true)),
+            inner,
+            (fun () -> decoderFactory decode)
+        )
+
+    /// Wrap a Microsoft.ML.Tokenizers tokenizer.
+    let wrap (inner: Microsoft.ML.Tokenizers.Tokenizer) : Tokenizer = wrapWith differentialDecoder inner
 
     /// Return the wrapped Microsoft.ML.Tokenizers instance.
     let inner (tokenizer: Tokenizer) : Microsoft.ML.Tokenizers.Tokenizer =
@@ -185,8 +291,10 @@ module Tokenizer =
     let fromTiktoken (config: TiktokenConfig) : Tokenizer =
         let extra = toSpecialTokensDict config.ExtraSpecialTokens
 
-        Microsoft.ML.Tokenizers.TiktokenTokenizer.CreateForModel(config.Model, extra)
-        |> wrap
+        let inner =
+            Microsoft.ML.Tokenizers.TiktokenTokenizer.CreateForModel(config.Model, extra)
+
+        inner |> wrapWith (fun _ -> spanDecoder inner)
 
     /// Create a BPE tokenizer.
     let fromBpe (config: BpeConfig) : Tokenizer =
@@ -202,7 +310,12 @@ module Tokenizer =
         options.ContinuingSubwordPrefix <- config.ContinuingSubwordPrefix |> Option.toObj
         options.EndOfWordSuffix <- config.EndOfWordSuffix |> Option.toObj
         options.FuseUnknownTokens <- config.FuseUnknownTokens
-        Microsoft.ML.Tokenizers.BpeTokenizer.Create(options) |> wrap
+        let inner = Microsoft.ML.Tokenizers.BpeTokenizer.Create(options)
+
+        if config.ByteLevel then
+            inner |> wrapWith (fun _ -> spanDecoder inner)
+        else
+            wrap inner
 
     /// Create a WordPiece tokenizer.
     let fromWordPiece (config: WordPieceConfig) : Tokenizer =
