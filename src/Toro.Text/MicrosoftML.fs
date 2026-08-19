@@ -16,13 +16,62 @@ type IncrementalDecoder internal (append: int64 -> string, complete: unit -> str
 
         append tokenId
 
-    /// Flush any remaining text. Subsequent calls return an empty string.
+    /// Flush remaining complete text. Subsequent calls return an empty string.
     member _.complete() =
         if completed then
             ""
         else
+            let text = complete ()
             completed <- true
-            complete ()
+            text
+
+    /// Decode token IDs as they arrive and flush remaining complete text at the end.
+    member this.appendAll(tokenIds: int64 seq) =
+        seq {
+            for tokenId in tokenIds do
+                match this.append tokenId with
+                | "" -> ()
+                | text -> yield text
+
+            match this.complete () with
+            | "" -> ()
+            | text -> yield text
+        }
+
+/// Constructors for incremental token decoders.
+module IncrementalDecoder =
+
+    let rec private stablePrefixLength minimumLength (decoded: string) length =
+        if length > minimumLength && decoded[length - 1] = '\uFFFD' then
+            stablePrefixLength minimumLength decoded (length - 1)
+        else
+            length
+
+    /// Create a decoder that incrementally re-decodes the accumulated token IDs.
+    let fromDecode (decode: int64 list -> string) =
+        let tokenIds = ResizeArray<int64>()
+        let mutable emitted = ""
+
+        let next () =
+            let decoded = tokenIds |> Seq.toList |> decode
+
+            if isNull decoded then
+                invalidOp "The token decoder returned null."
+
+            if not (decoded.StartsWith(emitted, StringComparison.Ordinal)) then
+                invalidOp "The token decoder changed text that was already emitted."
+
+            let nextLength = stablePrefixLength emitted.Length decoded decoded.Length
+            let delta = decoded.Substring(emitted.Length, nextLength - emitted.Length)
+            emitted <- decoded.Substring(0, nextLength)
+            delta
+
+        IncrementalDecoder(
+            (fun tokenId ->
+                tokenIds.Add tokenId
+                next ()),
+            next
+        )
 
 /// Text tokenizer with token IDs represented as 64-bit integers.
 type Tokenizer
@@ -193,72 +242,33 @@ module Tokenizer =
             :> Microsoft.ML.Tokenizers.PreTokenizer
         | CustomPreTokenizer preTokenizer -> preTokenizer
 
-    let rec private stablePrefixLength minimumLength (decoded: string) length =
-        if length > minimumLength && decoded[length - 1] = '\uFFFD' then
-            stablePrefixLength minimumLength decoded (length - 1)
-        else
-            length
-
-    let private differentialDecoder (decode: int64 list -> string) =
-        let tokenIds = ResizeArray<int64>()
-        let mutable emitted = ""
-
-        let next finished =
-            let decoded = tokenIds |> Seq.toList |> decode
-
-            if not (decoded.StartsWith(emitted, StringComparison.Ordinal)) then
-                invalidOp "The token decoder changed text that was already emitted."
-
-            let nextLength =
-                if finished then
-                    decoded.Length
-                else
-                    stablePrefixLength emitted.Length decoded decoded.Length
-
-            let delta = decoded.Substring(emitted.Length, nextLength - emitted.Length)
-            emitted <- decoded.Substring(0, nextLength)
-            delta
-
-        IncrementalDecoder(
-            (fun tokenId ->
-                tokenIds.Add tokenId
-                next false),
-            fun () -> next true
-        )
-
     let private spanDecoder (inner: Microsoft.ML.Tokenizers.Tokenizer) =
         let pending = ResizeArray<int>()
 
-        let decodePending () =
-            let mutable buffer = Array.zeroCreate<char> (max 128 (pending.Count * 8))
-            let mutable decoded = None
+        let rec decodePending size =
+            let buffer = Array.zeroCreate<char> size
+            let mutable idsConsumed = 0
+            let mutable charsWritten = 0
 
-            while decoded.IsNone do
-                let mutable idsConsumed = 0
-                let mutable charsWritten = 0
+            match inner.Decode(pending, buffer.AsSpan(), &idsConsumed, &charsWritten) with
+            | OperationStatus.Done
+            | OperationStatus.NeedMoreData ->
+                pending.RemoveRange(0, idsConsumed)
+                String(buffer, 0, charsWritten)
+            | OperationStatus.DestinationTooSmall -> decodePending (max (size * 2) (size + 1))
+            | status -> invalidOp $"Incremental token decoding failed with status {status}."
 
-                match inner.Decode(pending, buffer.AsSpan(), &idsConsumed, &charsWritten) with
-                | OperationStatus.Done ->
-                    pending.RemoveRange(0, idsConsumed)
-                    decoded <- Some(String(buffer, 0, charsWritten))
-                | OperationStatus.DestinationTooSmall -> buffer <- Array.zeroCreate (buffer.Length * 2)
-                | status -> invalidOp $"Incremental token decoding failed with status {status}."
+        let decodeComplete () =
+            let text = decodePending (max 128 (pending.Count * 8))
+            pending.Clear()
+            text
 
-            decoded.Value
-
-        let append tokenId =
-            pending.Add(backendId (nameof tokenId) tokenId)
-            decodePending ()
-
-        let complete () =
-            if pending.Count = 0 then
-                ""
-            else
-                let decoded = inner.Decode pending
-                pending.Clear()
-                decoded
-
-        IncrementalDecoder(append, complete)
+        IncrementalDecoder(
+            (fun tokenId ->
+                pending.Add(backendId (nameof tokenId) tokenId)
+                decodePending (max 128 (pending.Count * 8))),
+            decodeComplete
+        )
 
     let private wrapWith decoderFactory (inner: Microsoft.ML.Tokenizers.Tokenizer) : Tokenizer =
         if isNull inner then
@@ -281,7 +291,8 @@ module Tokenizer =
         )
 
     /// Wrap a Microsoft.ML.Tokenizers tokenizer.
-    let wrap (inner: Microsoft.ML.Tokenizers.Tokenizer) : Tokenizer = wrapWith differentialDecoder inner
+    let wrap (inner: Microsoft.ML.Tokenizers.Tokenizer) : Tokenizer =
+        wrapWith IncrementalDecoder.fromDecode inner
 
     /// Return the wrapped Microsoft.ML.Tokenizers instance.
     let inner (tokenizer: Tokenizer) : Microsoft.ML.Tokenizers.Tokenizer =

@@ -14,6 +14,7 @@ flowchart TD
     Toro.NN --> Toro.GNN
     Toro.NN --> Toro.Models
     Toro.Models --> Toro.Extensions.AI
+    Toro.Text --> Toro.Extensions.AI
 ```
 
 ## Package Index
@@ -93,7 +94,7 @@ Microsoft.Extensions.AI adapter. Namespace: `Toro.Extensions.AI`.
 
 | File | Role |
 |------|------|
-| `ChatClient.fs` | Text-only `IChatClient` adapter, request validation, streaming decode, and cancellation |
+| `ChatClient.fs` | Text-only `IChatClient` adapter, request validation, incremental streaming decode, and cancellation |
 
 ### Toro.Vision — `src/Toro.Vision/`
 
@@ -111,8 +112,8 @@ Text tokenization. Namespace: `Toro.Text`.
 
 | File | Role |
 |------|------|
-| `Tokenizer.fs` | Wrapper over Microsoft.ML.Tokenizers |
-| `Encode.fs` | Encode text to tensor |
+| `MicrosoftML.fs` | Microsoft.ML.Tokenizers factories, public tokenizer façade, and incremental decoding |
+| `Collation.fs` | Encode text to padded tensors |
 
 ## Design Patterns
 
@@ -124,7 +125,7 @@ Text tokenization. Namespace: `Toro.Text`.
 - **Named optimizer state**: SGD and AdamW implement `IOptimizer`; AdamW state is keyed by canonical parameter name.
 - **SafeTensors for persistence**: `ModelState` and checkpoint loading validate all metadata before reading and copying one tensor at a time.
 - **Pretrained models**: `Toro.Models` owns reusable architectures, local asset loaders, typed causal LM operations, and request-local generation sessions without depending on Hub, tokenizers, or HTTP.
-- **Extensions.AI adapter**: `Toro.Extensions.AI` maps Microsoft chat messages and options to request-local Toro generation sessions without owning model state.
+- **Extensions.AI adapter**: `Toro.Extensions.AI` maps Microsoft chat messages and options to request-local Toro generation sessions and incremental token decoding without owning model state.
 
 ## Project Layout
 

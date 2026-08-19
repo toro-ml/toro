@@ -100,13 +100,13 @@ type GenerationSession<'Cache> internal (model: CausalLm<'Cache>, promptTokenIds
             generated.Add nextToken
             Some nextToken
 
+    /// Generate tokens until EOS or the configured maximum token count is reached.
+    member this.Tokens =
+        Seq.unfold (fun () -> this.Step() |> Option.map (fun tokenId -> tokenId, ())) ()
+
     /// Generate until EOS or the configured maximum token count is reached.
     member this.Generate() : int64 list =
-        ensureAvailable ()
-
-        while not this.IsFinished do
-            this.Step() |> ignore
-
+        this.Tokens |> Seq.iter ignore
         this.GeneratedTokenIds
 
     interface IDisposable with
@@ -121,6 +121,9 @@ module Generation =
     /// Create a request-local generation session. The caller owns the returned session.
     let createSession options promptTokenIds model =
         new GenerationSession<_>(model, promptTokenIds, options)
+
+    /// Enumerate generated token IDs until the session finishes.
+    let tokens (session: GenerationSession<'Cache>) = session.Tokens
 
     /// Generate token IDs and dispose the request-local cache before returning.
     let generate options promptTokenIds model =

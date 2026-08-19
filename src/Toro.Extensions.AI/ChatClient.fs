@@ -5,6 +5,7 @@ open System.Threading
 open System.Threading.Tasks
 open Microsoft.Extensions.AI
 open Toro.Models
+open Toro.Text
 
 /// Configuration for adapting a Toro causal language model to IChatClient.
 type CausalLmChatClientConfig<'Cache> = {
@@ -18,6 +19,8 @@ type CausalLmChatClientConfig<'Cache> = {
     Encode: string -> int64 list
     /// Decode generated token IDs into response text.
     Decode: int64 list -> string
+    /// Optional factory for request-local incremental decoding.
+    CreateDecoder: (unit -> IncrementalDecoder) option
     /// Maximum number of generated tokens when a request does not specify a limit.
     DefaultMaxOutputTokens: int
 }
@@ -173,108 +176,13 @@ module private Response =
         update.FinishReason <- finishReason
         update
 
-module private StreamingText =
-
-    type State = {
-        TokenIdsReversed: int64 list
-        Emitted: string
-    }
-
-    let empty = { TokenIdsReversed = []; Emitted = "" }
-
-    let rec private stablePrefixLength minimumLength (decoded: string) length =
-        if length > minimumLength && decoded[length - 1] = '\uFFFD' then
-            stablePrefixLength minimumLength decoded (length - 1)
-        else
-            length
-
-    let append (decode: int64 list -> string) tokenId eos finished (state: State) =
-        let tokenIdsReversed =
-            if eos then
-                state.TokenIdsReversed
-            else
-                tokenId :: state.TokenIdsReversed
-
-        let decoded = tokenIdsReversed |> List.rev |> decode
-
-        if isNull decoded then
-            invalidOp "The token decoder returned null."
-
-        if not (decoded.StartsWith(state.Emitted, StringComparison.Ordinal)) then
-            invalidOp "The token decoder changed text that was already emitted."
-
-        let nextEmittedLength =
-            if finished then
-                decoded.Length
-            else
-                stablePrefixLength state.Emitted.Length decoded decoded.Length
-
-        let delta =
-            decoded.Substring(state.Emitted.Length, nextEmittedLength - state.Emitted.Length)
-
-        {
-            TokenIdsReversed = tokenIdsReversed
-            Emitted = decoded.Substring(0, nextEmittedLength)
-        },
-        delta
-
 module private Streaming =
 
-    type State =
-        | Active of text: StreamingText.State * firstUpdate: bool
-        | Completed
-
-    let private role firstUpdate =
-        if firstUpdate then
+    let private role index =
+        if index = 0 then
             Nullable ChatRole.Assistant
         else
             Nullable()
-
-    let rec private nextVisible
-        (config: CausalLmChatClientConfig<'Cache>)
-        (cancellationToken: CancellationToken)
-        (session: GenerationSession<'Cache>)
-        (state: State)
-        =
-        match state with
-        | Completed -> None
-        | Active(textState, firstUpdate) ->
-            let complete update =
-                (session :> IDisposable).Dispose()
-                Some(update, Completed)
-
-            cancellationToken.ThrowIfCancellationRequested()
-
-            if session.IsFinished then
-                let update =
-                    Response.update config.ModelId (role firstUpdate) (Nullable ChatFinishReason.Length) ""
-
-                complete update
-            else
-                let tokenId =
-                    session.Step()
-                    |> Option.defaultWith (fun () -> invalidOp "Generation session ended before producing a token.")
-
-                let eos = Set.contains tokenId config.Model.EosTokenIds
-                let finished = session.IsFinished
-
-                let text, delta = StreamingText.append config.Decode tokenId eos finished textState
-
-                if delta.Length > 0 || finished then
-                    let finishReason =
-                        if finished then
-                            Nullable(Response.finishReason eos)
-                        else
-                            Nullable()
-
-                    let update = Response.update config.ModelId (role firstUpdate) finishReason delta
-
-                    if finished then
-                        complete update
-                    else
-                        Some(update, Active(text, false))
-                else
-                    nextVisible config cancellationToken session (Active(text, firstUpdate))
 
     let responses config (prepared: Request.Prepared) cancellationToken =
         seq {
@@ -284,7 +192,30 @@ module private Streaming =
             }
 
             use session = Generation.createSession options prepared.PromptTokenIds config.Model
-            yield! Seq.unfold (nextVisible config cancellationToken session) (Active(StreamingText.empty, true))
+
+            let decoder =
+                match config.CreateDecoder with
+                | Some create -> create ()
+                | None -> IncrementalDecoder.fromDecode config.Decode
+
+            let updates =
+                session.Tokens
+                |> Seq.filter (fun tokenId -> not (Set.contains tokenId config.Model.EosTokenIds))
+                |> decoder.appendAll
+                |> Seq.mapi (fun index text ->
+                    cancellationToken.ThrowIfCancellationRequested()
+                    Response.update config.ModelId (role index) (Nullable()) text)
+                |> Seq.cache
+
+            yield! updates
+
+            let finishReason =
+                session.GeneratedTokenIds
+                |> List.tryLast
+                |> Option.exists (fun tokenId -> Set.contains tokenId config.Model.EosTokenIds)
+                |> Response.finishReason
+
+            yield Response.update config.ModelId (role (Seq.length updates)) (Nullable finishReason) ""
         }
 
 type private ToroChatClient<'Cache>(initialConfig: CausalLmChatClientConfig<'Cache>) as this =
@@ -295,6 +226,9 @@ type private ToroChatClient<'Cache>(initialConfig: CausalLmChatClientConfig<'Cac
             FormatPrompt = fun messages -> lock callbackLock (fun () -> initialConfig.FormatPrompt messages)
             Encode = fun text -> lock callbackLock (fun () -> initialConfig.Encode text)
             Decode = fun tokenIds -> lock callbackLock (fun () -> initialConfig.Decode tokenIds)
+            CreateDecoder =
+                initialConfig.CreateDecoder
+                |> Option.map (fun create () -> lock callbackLock (fun () -> create ()))
     }
 
     let metadata = ChatClientMetadata("Toro", null, config.ModelId)

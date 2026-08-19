@@ -45,24 +45,12 @@ let generate (model: DistilGpt2) (tokenizer: Tokenizer) maxNewTokens prompt =
 
     seq {
         use session = Generation.createSession options promptTokenIds causalLm
-        let decoder = tokenizer.createDecoder ()
-
         yield tokenizer.decode promptTokenIds
 
-        while not session.IsFinished do
-            match session.Step() with
-            | None -> ()
-            | Some tokenId when Set.contains tokenId causalLm.EosTokenIds -> ()
-            | Some tokenId ->
-                let text = decoder.append tokenId
-
-                if text.Length > 0 then
-                    yield text
-
-        let remaining = decoder.complete ()
-
-        if remaining.Length > 0 then
-            yield remaining
+        yield!
+            session.Tokens
+            |> Seq.filter (fun tokenId -> not (Set.contains tokenId causalLm.EosTokenIds))
+            |> tokenizer.createDecoder().appendAll
     }
 
 [<EntryPoint>]

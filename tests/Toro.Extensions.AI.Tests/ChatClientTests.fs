@@ -70,6 +70,7 @@ let private createClient () =
             | [] -> ""
             | [ 1L ] -> "hello"
             | tokenIds -> invalidOp $"Unexpected generated tokens: {tokenIds}."
+        CreateDecoder = None
         DefaultMaxOutputTokens = 4
     }
 

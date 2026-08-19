@@ -25,6 +25,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../Toro.Models/Toro.Models.fsproj" />
+    <ProjectReference Include="../Toro.Text/Toro.Text.fsproj" />
   </ItemGroup>
 
   <ItemGroup>

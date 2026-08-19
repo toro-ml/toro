@@ -66,6 +66,7 @@ let generate (model: SmolLm2) (tokenizer: Tokenizer) maxNewTokens (userPrompt: s
                 FormatPrompt = formatPrompt
                 Encode = tokenizer.encode
                 Decode = tokenizer.decode
+                CreateDecoder = Some tokenizer.createDecoder
                 DefaultMaxOutputTokens = 32
             }
 

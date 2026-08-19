@@ -109,6 +109,73 @@ let ``incremental ByteLevel decoder waits for complete UTF-8`` () =
         System.IO.File.Delete(vocabPath)
         System.IO.File.Delete(mergesPath)
 
+[<Fact>]
+let ``incremental ByteLevel decoder complete withholds incomplete UTF-8`` () =
+    let vocabPath = System.IO.Path.GetTempFileName()
+    let mergesPath = System.IO.Path.GetTempFileName()
+
+    try
+        System.IO.File.WriteAllText(vocabPath, """{"ã":0,"ģ":1,"Ĥ":2}""")
+        System.IO.File.WriteAllText(mergesPath, "#version: 0.2\n")
+
+        let tokenizer =
+            Tokenizer.fromBpe {
+                BpeConfig.create vocabPath mergesPath with
+                    ByteLevel = true
+            }
+
+        let ids = tokenizer.encode "あ"
+
+        tokenizer.createDecoder().appendAll (ids |> List.truncate 2)
+        |> Seq.toList
+        |> should be Empty
+    finally
+        System.IO.File.Delete(vocabPath)
+        System.IO.File.Delete(mergesPath)
+
+[<Fact>]
+let ``incremental Tiktoken decoder waits for complete UTF-8`` () =
+    let tokenizer = Tokenizer.fromTiktoken (TiktokenConfig.create "gpt-4")
+    let ids = tokenizer.encode "⭐"
+    let prefixes = ids |> List.truncate (ids.Length - 1)
+    ids.Length |> should be (greaterThan 1)
+
+    let decoder = tokenizer.createDecoder ()
+
+    prefixes
+    |> List.map decoder.append
+    |> should equal (List.replicate prefixes.Length "")
+
+    decoder.append (List.last ids) |> should equal "⭐"
+    decoder.complete () |> should equal ""
+
+[<Fact>]
+let ``incremental Tiktoken decoder complete withholds incomplete UTF-8`` () =
+    let tokenizer = Tokenizer.fromTiktoken (TiktokenConfig.create "gpt-4")
+    let ids = tokenizer.encode "⭐"
+    ids.Length |> should be (greaterThan 1)
+
+    tokenizer.createDecoder().appendAll (ids |> List.truncate (ids.Length - 1))
+    |> Seq.toList
+    |> should be Empty
+
+[<Fact>]
+let ``incremental decoder appendAll yields complete fragments`` () =
+    let vocab = [| "hello"; "world"; "[UNK]" |]
+
+    let vocabStream =
+        new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(vocab |> String.concat "\n"))
+
+    let options = Microsoft.ML.Tokenizers.WordPieceOptions(UnknownToken = "[UNK]")
+
+    let tokenizer =
+        Microsoft.ML.Tokenizers.WordPieceTokenizer.Create(vocabStream, options)
+        |> Tokenizer.wrap
+
+    tokenizer.createDecoder().appendAll [ 0L; 1L ]
+    |> Seq.toList
+    |> should equal [ "hello"; " world" ]
+
 // --- Config-based factories ---
 
 let private writeVocabFile (vocab: string array) =
