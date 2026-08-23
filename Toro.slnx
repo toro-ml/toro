@@ -8,6 +8,7 @@
     <Project Path="src/Toro.Extensions.AI/Toro.Extensions.AI.fsproj" />
     <Project Path="src/Toro.Vision/Toro.Vision.fsproj" />
     <Project Path="src/Toro.Text/Toro.Text.fsproj" />
+    <Project Path="src/Toro.Tabular/Toro.Tabular.fsproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Toro.Tests/Toro.Tests.fsproj" />
@@ -18,6 +19,7 @@
     <Project Path="tests/Toro.Extensions.AI.Tests/Toro.Extensions.AI.Tests.fsproj" />
     <Project Path="tests/Toro.Vision.Tests/Toro.Vision.Tests.fsproj" />
     <Project Path="tests/Toro.Text.Tests/Toro.Text.Tests.fsproj" />
+    <Project Path="tests/Toro.Tabular.Tests/Toro.Tabular.Tests.fsproj" />
   </Folder>
   <Folder Name="/examples/">
     <Project Path="examples/SimpleTraining/SimpleTraining.fsproj" />
@@ -26,6 +28,7 @@
     <Project Path="examples/MnistCnn/MnistCnn.fsproj" />
     <Project Path="examples/MnistGan/MnistGan.fsproj" />
     <Project Path="examples/LinearRegression/LinearRegression.fsproj" />
+    <Project Path="examples/TabularRanking/TabularRanking.fsproj" />
     <Project Path="examples/CharRnn/CharRnn.fsproj" />
     <Project Path="examples/TextClassifier/TextClassifier.fsproj" />
     <Project Path="examples/SimpleGcn/SimpleGcn.fsproj" />

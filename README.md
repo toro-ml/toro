@@ -176,6 +176,7 @@ The [MnistTraining](examples/MnistTraining) example saves CPU Torch RNG state an
 | Example | Demonstrates |
 | --- | --- |
 | [LinearRegression](examples/LinearRegression) | Gradient descent with tensors |
+| [TabularRanking](examples/TabularRanking) | FastTree ranking over named tensor columns |
 | [SimpleTraining](examples/SimpleTraining) | XOR training with `sequential { }` |
 | [MnistTraining](examples/MnistTraining) | Reproducible CNN training and checkpoint resume |
 | [MnistCnn](examples/MnistCnn) | CNN composition with BatchNorm and Dropout |

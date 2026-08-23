@@ -2,7 +2,7 @@
 
 ## Architecture Overview
 
-Toro is an F# machine learning framework with PyTorch-style semantics, built on TorchSharp (.NET 10). The monorepo contains 8 library packages under `src/`, 8 test projects, 14 examples, and a React Router v7 documentation site. Models are plain F# records composed via interfaces and computation expressions.
+Toro is an F# machine learning framework with PyTorch-style semantics, built on TorchSharp (.NET 10). The monorepo contains 9 library packages under `src/`, 9 test projects, 15 examples, and a React Router v7 documentation site. Models are plain F# records composed via interfaces and computation expressions.
 
 ## Package Dependency Graph
 
@@ -11,6 +11,7 @@ flowchart TD
     Toro --> Toro.NN
     Toro --> Toro.Vision
     Toro --> Toro.Text
+    Toro --> Toro.Tabular
     Toro.NN --> Toro.GNN
     Toro.NN --> Toro.Models
     Toro.Models --> Toro.Extensions.AI
@@ -25,7 +26,7 @@ Core tensor API wrapping TorchSharp. Namespace: `Toro`.
 
 | File | Role |
 |------|------|
-| `Tensor.fs` | `Tensor` type alias, `TIdx` indexing DU, comparison operators, automatic and explicit scoped CEs, `Toro.noGrad`/`inferenceMode` |
+| `Tensor.fs` | `Tensor` type alias, `TIdx` indexing DU, comparison operators, automatic and explicit scoped CEs, `Toro.noGrad`/`inferenceMode`/`mapScoped` |
 | `SafeTensors.fs` | SafeTensors file read/write/metadata and single-file or sharded readers |
 
 ### Toro.NN — `src/Toro.NN/`
@@ -36,23 +37,24 @@ Neural network layers, training utilities. Namespace: `Toro.NN`.
 |------|------|
 | `Module.fs` | `IModule<'In,'Out>` interface (base composable layer) |
 | `Init.fs` | Weight initialization functions |
-| `Model.fs` | Reflection or descriptor-based `ModelState` discovery, validation, and persistence |
+| `Model.fs` | Reflection or descriptor-based `ModelState` discovery, validation, persistence, and dtype conversion |
 | `Layer/Linear.fs` | Dense layer |
 | `Layer/Conv.fs` | Conv1d, Conv2d |
 | `Layer/Embedding.fs` | Embedding layer |
 | `Layer/Dropout.fs` | Dropout |
 | `Layer/LayerNorm.fs`, `BatchNorm.fs`, `GroupNorm.fs`, `InstanceNorm.fs` | Normalization layers |
 | `Layer/Activation.fs` | Activation functions as modules |
-| `Layer/Pooling.fs` | Pooling layers |
+| `Layer/Pooling.fs` | Spatial pooling |
+| `Layer/SequencePool.fs` | Masked mean over token sequences |
 | `Block/Sequential.fs` | `sequential { }` CE for layer stacking |
 | `Block/Func.fs` | `pipeline { }` CE for function composition |
 | `Block/RNN.fs` | LSTM, GRU |
-| `Block/Attention.fs` | MultiHeadAttention, TransformerBlock |
+| `Block/Attention.fs` | MultiHeadAttention, PreNormTransformerBlock, PostNormTransformerBlock, `Attention.additiveMask` |
 | `Block/KvCache.fs` | KV cache for autoregressive inference |
 | `Loss.fs` | Loss functions |
 | `Metrics.fs` | Accuracy and other metrics |
 | `Optim.fs` | SGD, Adam, AdamW optimizers (record-based) |
-| `Scheduler.fs` | Learning rate schedulers |
+| `Scheduler.fs` | Learning rate schedulers, including linear warmup and warmup-then-decay |
 | `Clip.fs` | Gradient clipping |
 | `Checkpoint.fs` | Model + optimizer checkpointing |
 
@@ -112,14 +114,23 @@ Text tokenization. Namespace: `Toro.Text`.
 
 | File | Role |
 |------|------|
-| `MicrosoftML.fs` | Microsoft.ML.Tokenizers factories, public tokenizer façade, and incremental decoding |
-| `Collation.fs` | Encode text to padded tensors |
+| `MicrosoftML.fs` | Microsoft.ML.Tokenizers factories (including BERT and SentencePiece BOS/EOS/dummy-prefix options), custom encode/decode wrappers, public tokenizer façade, and incremental decoding |
+| `Collation.fs` | Encode text to padded tensors via CollationLength (Fixed or BatchMax) |
+
+### Toro.Tabular — `src/Toro.Tabular/`
+
+Named-column tables and FastTree ranking over tensors, using ML.NET. Namespace: `Toro.Tabular`.
+
+| File | Role |
+|------|------|
+| `Table.fs` | `Column` (`Floats` / `Ints` / `Vectors`), `Table.create`, `column`, and `features` stacking |
+| `Ranker.fs` | FastTree ranker over named columns; `IDataView` stays internal |
 
 ## Design Patterns
 
 - **Record-based models**: Models are F# records holding tensors and sub-modules. `Model.state` uses attribute-driven reflection; `Model.stateWith` accepts an explicit descriptor. Both produce the same validated `ModelState`.
 - **`IModule<'In,'Out>`**: Single `forward` method interface. Most layers implement the shorthand `IModule` (= `IModule<Tensor, Tensor>`).
-- **Tensor scopes**: `scoped { }` auto-keeps return-value tensors; `scopedExplicit { }` retains only tensors passed to `Tensor.keep`.
+- **Tensor scopes**: `scoped { }` auto-keeps return-value tensors; `scopedExplicit { }` retains only tensors passed to `Tensor.keep`. Nested `scoped` in long loops (or `Toro.mapScoped`) disposes per-item activations.
 - **`sequential { }` CE**: Builds a `Sequential` record from a list of `IModule` layers; folds `forward` left-to-right.
 - **`pipeline { }` CE**: Composes arbitrary `'a -> 'b` functions and `IModule.forward` calls via `>>`.
 - **Named optimizer state**: SGD and AdamW implement `IOptimizer`; AdamW state is keyed by canonical parameter name.
@@ -130,9 +141,9 @@ Text tokenization. Namespace: `Toro.Text`.
 ## Project Layout
 
 ```
-src/           — 8 library packages
-tests/         — 8 test projects (xUnit + FsUnit, TorchSharp-cpu)
-examples/      — 14 runnable console apps
+src/           — 9 library packages
+tests/         — 9 test projects (xUnit + FsUnit, TorchSharp-cpu)
+examples/      — 15 runnable console apps
 docs/          — React Router v7 site (pnpm, MDX)
 scripts/       — API doc generation (FSDocs → MDX)
 .github/       — CI (ci.yml), docs deploy (docs.yml), NuGet release (release.yml)
