@@ -11,13 +11,8 @@ module RNN =
         let s0 = zeroState (int input.shape[0])
 
         [ 0 .. seqLen - 1 ]
-        |> List.fold
-            (fun (state, revStates) i ->
-                let next = step (input.at [ A; I i ]) state
-                next, next :: revStates)
-            (s0, [])
-        |> snd
-        |> List.rev
+        |> List.scan (fun state i -> step (input.at [ A; I i ]) state) s0
+        |> List.tail
 
 // --- LSTM ---
 

@@ -90,17 +90,6 @@ module Tensor =
 
         t
 
-module Toro =
-    /// Run f with gradient tracking disabled.
-    let noGrad (f: unit -> 'a) : 'a =
-        use _scope = torch.no_grad ()
-        f ()
-
-    /// Run f in inference mode (faster than noGrad; disables view tracking).
-    let inferenceMode (f: unit -> 'a) : 'a =
-        use _scope = torch.inference_mode ()
-        f ()
-
 [<AutoOpen>]
 module internal DisposeScopeHelper =
     let private flags =
@@ -240,3 +229,20 @@ module ScopedCE =
     /// Computation expression that disposes intermediate tensors without inspecting
     /// the return value. Call <c>Tensor.keep</c> for each tensor that must survive.
     let scopedExplicit = ExplicitScopedBuilder()
+
+module Toro =
+    /// Run f with gradient tracking disabled.
+    let noGrad (f: unit -> 'a) : 'a =
+        use _scope = torch.no_grad ()
+        f ()
+
+    /// Run f in inference mode (faster than noGrad; disables view tracking).
+    let inferenceMode (f: unit -> 'a) : 'a =
+        use _scope = torch.inference_mode ()
+        f ()
+
+    /// Map `items` with `f`, wrapping each call in an inner `scoped` so
+    /// intermediate tensors from one item are disposed before the next item runs.
+    /// Tensors in each return value are kept.
+    let mapScoped (f: 'a -> 'b) (items: 'a array) : 'b array =
+        items |> Array.map (fun item -> scoped { return f item })

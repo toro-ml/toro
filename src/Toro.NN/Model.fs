@@ -632,3 +632,56 @@ module ModelState =
         let report, commit = prepareLoadSafeTensors mapping mode modelState reader
         commit ()
         report
+
+    /// Convert named state tensors to `dtype` and return a name-keyed map.
+    /// Returned tensors are owned by the caller. Same-dtype tensors are cloned so
+    /// conversion never aliases live model parameters.
+    let toDtype (dtype: torch.ScalarType) (state: ModelState) : Map<string, Tensor> =
+        scoped {
+            return
+                namedState state
+                |> List.map (fun item ->
+                    let converted =
+                        if item.Tensor.dtype = dtype then
+                            item.Tensor.clone ()
+                        else
+                            item.Tensor.to_type dtype
+
+                    item.Name, converted)
+                |> Map.ofList
+        }
+
+    /// Copy `source` into `target` after converting each tensor to the target tensor's dtype.
+    /// Names and shapes must match. Temporary converted tensors are disposed before return.
+    let convert (source: ModelState) (target: ModelState) : unit =
+        let sourceItems = namedState source
+        let targetItems = namedState target
+        let sourceNames = sourceItems |> List.map _.Name |> Set.ofList
+        let targetNames = targetItems |> List.map _.Name |> Set.ofList
+
+        if sourceNames <> targetNames then
+            let missing = Set.difference targetNames sourceNames |> Set.toList
+            let extra = Set.difference sourceNames targetNames |> Set.toList
+            invalidOp $"Cannot convert model state; missing from source: %A{missing}; extra in source: %A{extra}."
+
+        let targets =
+            targetItems
+            |> List.map (fun item -> item.Name, item)
+            |> Map.ofList
+
+        scoped {
+            for src in sourceItems do
+                let dst = targets[src.Name]
+
+                if src.Tensor.shape <> dst.Tensor.shape then
+                    invalidOp
+                        $"Cannot convert '{src.Name}': expected shape {formatShape dst.Tensor.shape}, got {formatShape src.Tensor.shape}."
+
+                if src.Tensor.dtype = dst.Tensor.dtype then
+                    dst.Tensor.copyInPlace src.Tensor
+                else
+                    let converted = src.Tensor.to_type dst.Tensor.dtype
+                    dst.Tensor.copyInPlace converted
+
+            return ()
+        }

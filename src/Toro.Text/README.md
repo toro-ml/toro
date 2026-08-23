@@ -29,8 +29,8 @@ let tensor = Encode.toTensor tokenizer "hello world" 16 0 Cpu
 
 ## Features
 
-- **Tokenizer wrappers** -- Tiktoken, BPE, WordPiece, SentencePiece via config records
-- **Encode** -- convert text to Toro tensors for model input
+- **Tokenizer wrappers** -- Tiktoken, BPE, WordPiece, SentencePiece, BERT via config records
+- **Encode** -- convert text to Toro tensors for model input (`Collation`), with fixed or batch-max padding
 
 ## License
 

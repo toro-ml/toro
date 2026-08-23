@@ -42,7 +42,7 @@ for epoch in 1..500 do
 ## Features
 
 - **Layers** -- Linear, Conv1d/Conv2d, Embedding, BatchNorm, LayerNorm, GroupNorm, Dropout, pooling, activations
-- **Blocks** -- LSTM, GRU, MultiHeadAttention, TransformerBlock, KV cache
+- **Blocks** -- LSTM, GRU, MultiHeadAttention, PreNormTransformerBlock, PostNormTransformerBlock
 - **Composition** -- `sequential { }` and `pipeline { }` CEs
 - **Training** -- SGD, AdamW, learning-rate schedulers, loss functions, metrics, gradient clipping, checkpoints
 

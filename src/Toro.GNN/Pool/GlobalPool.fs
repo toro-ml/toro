@@ -36,13 +36,14 @@ module GlobalPool =
 
     /// Max of node features per graph.
     let globalMaxPool (x: Tensor) (batch: Tensor) (numGraphs: int64) : Tensor =
-        let results = ResizeArray<Tensor>()
-
-        for i in 0L .. numGraphs - 1L do
-            let mask = batch.eq (scalar (float i))
-            let indices = mask.nonzero().squeeze 1L
-            let selected = x.index_select (0L, indices)
-            let struct (maxVals, _) = selected.max (0L)
-            results.Add(maxVals)
-
-        torch.stack (results |> Seq.toArray, 0L)
+        torch.stack (
+            [|
+                for i in 0L .. numGraphs - 1L do
+                    let mask = batch.eq (scalar (float i))
+                    let indices = mask.nonzero().squeeze 1L
+                    let selected = x.index_select (0L, indices)
+                    let struct (maxVals, _) = selected.max (0L)
+                    yield maxVals
+            |],
+            0L
+        )

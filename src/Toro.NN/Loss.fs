@@ -51,3 +51,14 @@ module Loss =
     /// Cosine embedding loss for similarity learning.
     let cosineEmbedding (margin: float) (x1: Tensor) (x2: Tensor) (target: Tensor) : Tensor =
         torch.nn.functional.cosine_embedding_loss (x1, x2, target, margin = margin)
+
+    /// CoSENT pairwise ranking loss.
+    /// $\log\sum\exp(\lambda(\cos_i - \cos_j))$ over pairs with $y_i < y_j$.
+    /// `cosineScores` and `labels` both have shape `[batch]`.
+    let cosent (scale: float) (cosineScores: Tensor) (labels: Tensor) : Tensor =
+        let scores = cosineScores * scalar scale
+        let pairDiff = scores.unsqueeze (1L) - scores.unsqueeze 0L
+        let keep = labels.unsqueeze(1L).lt (labels.unsqueeze 0L)
+        let masked = pairDiff.masked_fill (keep.logical_not (), scalar -1e12)
+        let zero = torch.zeros ([| 1L |], dtype = masked.dtype, device = masked.device)
+        torch.logsumexp (torch.cat ([| zero; masked.flatten () |], 0L), 0L)

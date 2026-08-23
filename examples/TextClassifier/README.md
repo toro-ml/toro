@@ -1,6 +1,6 @@
 # TextClassifier
 
-Char-level sentiment classification using a `TransformerBlock`.
+Char-level sentiment classification using a `PreNormTransformerBlock`.
 
 ## Run
 
@@ -10,7 +10,7 @@ dotnet run --project examples/TextClassifier
 
 ## Concepts
 
-- `Embedding` + `TransformerBlock` + mean pooling + `Linear` head
+- `Embedding` + `PreNormTransformerBlock` + mean pooling + `Linear` head
 - `MultiHeadAttention` with scaled dot-product attention
 - `Loss.crossEntropy` for multi-class classification
 - Inference on unseen words with `Toro.noGrad`

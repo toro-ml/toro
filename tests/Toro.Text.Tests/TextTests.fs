@@ -246,7 +246,7 @@ let ``Collation.toTensor produces correct shape`` () =
                     SpecialTokens = [ "[UNK]", 4 ]
             }
 
-        let options = CollationOptions.create 5 0L
+        let options = CollationOptions.create 0L (Fixed 5)
         let t = Collation.toTensor tok "a b" options torch.CPU
         t.shape |> should equal [| 5L |]
     finally
@@ -263,7 +263,7 @@ let ``Collation.batch produces correct shapes and lengths`` () =
                     SpecialTokens = [ "[UNK]", 4 ]
             }
 
-        let options = CollationOptions.create 4 0L
+        let options = CollationOptions.create 0L (Fixed 4)
         let batch = Collation.batch tok [ "a b"; "c" ] options torch.CPU
         batch.InputIds.shape |> should equal [| 2L; 4L |]
         batch.AttentionMask.shape |> should equal [| 2L; 4L |]
@@ -283,7 +283,7 @@ let ``Collation supports left padding and left truncation`` () =
             }
 
         let options = {
-            CollationOptions.create 3 9L with
+            CollationOptions.create 9L (Fixed 3) with
                 PaddingSide = PaddingSide.Left
                 TruncationSide = TruncationSide.Left
         }
@@ -314,10 +314,137 @@ let ``Collation rejects invalid length and empty batch`` () =
                     SpecialTokens = [ "[UNK]", 1L ]
             }
 
-        let invalid = CollationOptions.create 0 0L
+        let invalid = CollationOptions.create 0L (Fixed 0)
         shouldFail (fun () -> Collation.toTensor tokenizer "a" invalid torch.CPU |> ignore)
 
-        let valid = CollationOptions.create 2 0L
+        let valid = CollationOptions.create 0L (Fixed 2)
         shouldFail (fun () -> Collation.batch tokenizer [] valid torch.CPU |> ignore)
+
+        let invalidMax = CollationOptions.create 0L (BatchMax(Some 0))
+
+        shouldFail (fun () ->
+            Collation.toTensor tokenizer "a" invalidMax torch.CPU
+            |> ignore)
     finally
         System.IO.File.Delete(path)
+
+[<Fact>]
+let ``Collation.batch pads to the longest sequence when using BatchMax`` () =
+    let path = writeVocabFile [| "a"; "b"; "c"; "d"; "[UNK]" |]
+
+    try
+        let tok =
+            Tokenizer.fromWordPiece {
+                WordPieceConfig.create path with
+                    SpecialTokens = [ "[UNK]", 4 ]
+            }
+
+        let options = CollationOptions.create 9L (BatchMax(Some 3))
+        let batch = Collation.batch tok [ "a"; "a b c d" ] options torch.CPU
+        batch.InputIds.shape |> should equal [| 2L; 3L |]
+        batch.AttentionMask.shape |> should equal [| 2L; 3L |]
+        batch.Lengths |> should equal [| 1L; 4L |]
+
+        let ids = batch.InputIds.data<int64>().ToArray()
+        ids[0..2] |> should equal [| 0L; 9L; 9L |]
+        ids[3..5] |> should equal [| 0L; 1L; 2L |]
+
+        let mask = batch.AttentionMask.data<bool>().ToArray()
+        mask[0..2] |> should equal [| true; false; false |]
+    finally
+        System.IO.File.Delete(path)
+
+[<Fact>]
+let ``Collation.batch without maxLength pads to the untruncated batch max`` () =
+    let path = writeVocabFile [| "a"; "b"; "c"; "d"; "[UNK]" |]
+
+    try
+        let tok =
+            Tokenizer.fromWordPiece {
+                WordPieceConfig.create path with
+                    SpecialTokens = [ "[UNK]", 4 ]
+            }
+
+        let options = CollationOptions.create 9L (BatchMax None)
+        let batch = Collation.batch tok [ "a"; "a b c d" ] options torch.CPU
+        batch.InputIds.shape |> should equal [| 2L; 4L |]
+        batch.Lengths |> should equal [| 1L; 4L |]
+
+        batch.InputIds.data<int64>().ToArray()[0..3]
+        |> should equal [| 0L; 9L; 9L; 9L |]
+    finally
+        System.IO.File.Delete(path)
+
+// --- BERT tokenizer ---
+
+[<Fact>]
+let ``fromBert adds CLS and SEP by default`` () =
+    let path =
+        writeVocabFile [| "[PAD]"; "[UNK]"; "[CLS]"; "[SEP]"; "[MASK]"; "hello" |]
+
+    try
+        let tok = Tokenizer.fromBert (BertConfig.create path)
+        let ids = tok.encode "hello"
+        ids.Head |> should equal 2L
+        ids |> List.last |> should equal 3L
+        ids |> should equal [ 2L; 5L; 3L ]
+    finally
+        System.IO.File.Delete(path)
+
+[<Fact>]
+let ``fromBert can omit special tokens`` () =
+    let path =
+        writeVocabFile [| "[PAD]"; "[UNK]"; "[CLS]"; "[SEP]"; "[MASK]"; "hello" |]
+
+    try
+        let tok =
+            Tokenizer.fromBert {
+                BertConfig.create path with
+                    AddSpecialTokens = false
+            }
+
+        tok.encode "hello" |> should equal [ 5L ]
+    finally
+        System.IO.File.Delete(path)
+
+[<Fact>]
+let ``fromBert splits CJK characters`` () =
+    let path =
+        writeVocabFile [| "[PAD]"; "[UNK]"; "[CLS]"; "[SEP]"; "[MASK]"; "液"; "晶" |]
+
+    try
+        let tok = Tokenizer.fromBert (BertConfig.create path)
+        tok.encode "液晶" |> should equal [ 2L; 5L; 6L; 3L ]
+    finally
+        System.IO.File.Delete(path)
+
+[<Fact>]
+let ``fromFunctions uses the provided encode and decode`` () =
+    let tok =
+        Tokenizer.fromFunctions (fun text -> text |> Seq.map int64 |> Seq.toList) (fun ids ->
+            ids |> List.map char |> Array.ofList |> System.String)
+
+    tok.encode "ab" |> should equal [ 97L; 98L ]
+    tok.decode [ 97L; 98L ] |> should equal "ab"
+    tok.countTokens "ab" |> should equal 2
+
+[<Fact>]
+let ``SentencePieceConfig.create matches Create stream defaults`` () =
+    let config = SentencePieceConfig.create "spiece.model"
+    config.ModelPath |> should equal "spiece.model"
+    config.AddBos |> should equal true
+    config.AddEos |> should equal false
+    config.AddDummyPrefix |> should equal false
+
+[<Fact>]
+let ``SentencePieceConfig can enable dummy prefix without BOS or EOS`` () =
+    let config = {
+        SentencePieceConfig.create "spiece.model" with
+            AddBos = false
+            AddEos = false
+            AddDummyPrefix = true
+    }
+
+    config.AddBos |> should equal false
+    config.AddEos |> should equal false
+    config.AddDummyPrefix |> should equal true

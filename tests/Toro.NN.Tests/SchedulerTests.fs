@@ -55,9 +55,12 @@ let ``CosineAnnealing resets after full cycle`` () =
     lr |> should (equalWithin 1e-6) 1.0
 
 [<Fact>]
-let ``LinearWarmup ramps to base LR`` () =
+let ``LinearWarmup starts at zero and ramps to base LR`` () =
     let mutable lr = 0.01
     let sched = Scheduler.create (LinearWarmup 5) (fun v -> lr <- v) 0.01
+
+    lr |> should (equalWithin 1e-9) 0.0
+    Scheduler.currentLr sched |> should (equalWithin 1e-9) 0.0
 
     Scheduler.step sched
     lr |> should (equalWithin 1e-9) 0.002
@@ -83,3 +86,28 @@ let ``LrSchedule.lrAt is pure`` () =
     let lr2 = LrSchedule.lrAt 1.0 (Exponential 0.5) 3
     lr1 |> should (equalWithin 1e-15) lr2
     lr1 |> should (equalWithin 1e-9) 0.125
+
+[<Fact>]
+let ``LinearWarmupDecay ramps then decays to end LR`` () =
+    let mutable lr = 1.0
+    let sched = Scheduler.create (LinearWarmupDecay(2, 6, 0.0)) (fun v -> lr <- v) 1.0
+
+    lr |> should (equalWithin 1e-9) 0.0
+
+    Scheduler.step sched
+    lr |> should (equalWithin 1e-9) 0.5
+
+    Scheduler.step sched
+    lr |> should (equalWithin 1e-9) 1.0
+
+    Scheduler.step sched
+    lr |> should (equalWithin 1e-9) 0.75
+
+    Scheduler.step sched
+    lr |> should (equalWithin 1e-9) 0.5
+
+    Scheduler.step sched
+    lr |> should (equalWithin 1e-9) 0.25
+
+    Scheduler.step sched
+    lr |> should (equalWithin 1e-9) 0.0

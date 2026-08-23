@@ -32,7 +32,7 @@ Model loaded
 ## How it works
 
 1. **Download** — `Hub.download` fetches `model.safetensors` (268 MB) and `vocab.txt` from HF Hub. Both files are cached in `~/.cache/toro/hub/`.
-2. **Tokenize** — A greedy longest-match WordPiece tokenizer splits input text into subword token IDs using the downloaded vocabulary.
-3. **Name mapping** — `buildNameMap` translates 104 HF-style safetensors keys (e.g. `distilbert.transformer.layer.0.attention.q_lin.weight`) to Toro parameter paths (e.g. `Layers.0.Attention.Q.Weight`).
-4. **Model** — DistilBERT uses post-norm (Attn → Add → Norm), which differs from `Toro.NN.TransformerBlock` (pre-norm). Custom record types (`DistilBertAttention`, `DistilBertLayer`, `DistilBertClassifier`) implement the exact architecture.
+2. **Tokenize** — `Tokenizer.fromBert` wraps Microsoft.ML.Tokenizers `BertTokenizer`, including CJK splitting and `[CLS]`/`[SEP]`.
+3. **Name mapping** — `NameMapping` translates HF-style safetensors keys (e.g. `distilbert.transformer.layer.0.attention.q_lin.weight`) to Toro parameter paths (e.g. `Layers.0.Attn.WQ.Weight`).
+4. **Model** — Layers are `PostNormTransformerBlock` (Attn → Add → Norm). Embeddings and the classification head stay as a small DistilBERT-specific record.
 5. **Inference** — Each sentence runs through embeddings, 6 transformer layers, and a classification head to produce POSITIVE/NEGATIVE labels.

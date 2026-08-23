@@ -63,7 +63,7 @@ let encodeWord (w: string) =
 
 type TransformerClassifier = {
     Embed: Embedding
-    Block: TransformerBlock
+    Block: PreNormTransformerBlock
     Head: Linear
 }
 
@@ -73,7 +73,10 @@ let ffDim = 128
 
 let createModel () =
     let embed = Embedding.init vocabSize dim torch.float32 torch.CPU
-    let block = TransformerBlock.init dim numHeads ffDim torch.float32 torch.CPU
+
+    let block =
+        PreNormTransformerBlock.initDefault dim numHeads ffDim torch.float32 torch.CPU
+
     let head = Linear.init dim 2 torch.float32 torch.CPU
 
     {
@@ -110,7 +113,7 @@ let main _argv =
     printfn "Samples: %d (%d pos + %d neg), vocab: %d chars, maxLen: %d" nSamples nPos nNeg vocabSize maxLen
 
     printfn
-        "Model: Embedding(%d,%d) -> TransformerBlock(heads=%d, ff=%d) -> mean pool -> Linear(%d,2)"
+        "Model: Embedding(%d,%d) -> PreNormTransformerBlock(heads=%d, ff=%d) -> mean pool -> Linear(%d,2)"
         vocabSize
         dim
         numHeads

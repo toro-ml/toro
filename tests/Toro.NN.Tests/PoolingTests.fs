@@ -51,3 +51,24 @@ let ``MaxPool2d implements IModule`` () =
 
     let y = m.forward x
     y.shape |> should equal [| 1L; 1L; 2L; 2L |]
+
+[<Fact>]
+let ``SequencePool.maskedMean averages unmasked tokens`` () =
+    let hidden =
+        torch.tensor (
+            array2D [| [| 1.0f; 10.0f |]; [| 3.0f; 20.0f |]; [| 100.0f; 200.0f |] |],
+            dtype = torch.float32,
+            device = torch.CPU
+        )
+        |> fun t -> t.unsqueeze 0L
+
+    let mask =
+        torch.tensor ([| 1.0f; 1.0f; 0.0f |], dtype = torch.float32, device = torch.CPU)
+        |> fun t -> t.unsqueeze 0L
+
+    let pooled = SequencePool.maskedMean hidden mask
+    pooled.shape |> should equal [| 1L; 2L |]
+
+    let values = pooled.data<float32>().ToArray()
+    values[0] |> should (equalWithin 1e-5f) 2.0f
+    values[1] |> should (equalWithin 1e-5f) 15.0f

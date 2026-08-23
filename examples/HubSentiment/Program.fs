@@ -10,91 +10,36 @@ open Toro.NN
 open Toro.Hub
 open Toro.Text
 
-// ---------------------------------------------------------------------------
-// DistilBERT model definition
-// ---------------------------------------------------------------------------
-// DistilBERT uses post-norm (Attn → Add → Norm) unlike Toro.NN.TransformerBlock
-// which uses pre-norm. Custom record types implement the exact architecture so
-// that safetensors weights from Hugging Face load without modification.
-
-type DistilBertAttention = {
-    Q: Linear
-    K: Linear
-    V: Linear
-    OutLin: Linear
-    NumHeads: int
-    HeadDim: int
-}
-
-type DistilBertLayer = {
-    Attention: DistilBertAttention
-    SaNorm: LayerNorm
-    Ffn1: Linear
-    Ffn2: Linear
-    OutputNorm: LayerNorm
-}
+// DistilBERT uses post-norm blocks. Embeddings and the classification head remain
+// model-specific so Hugging Face safetensors load without a prefix rewrite.
 
 type DistilBertClassifier = {
     WordEmbeddings: Embedding
     PositionEmbeddings: Embedding
     EmbNorm: LayerNorm
-    Layers: DistilBertLayer list
+    Layers: PostNormTransformerBlock list
     PreClassifier: Linear
     Classifier: Linear
 }
 
-// DistilBERT config
-let vocabSize = 30522
-let maxPositions = 512
-let dim = 768
-let numHeads = 12
-let headDim = dim / numHeads
-let ffDim = 3072
+let vocabSize = 30522L
+let maxPositions = 512L
+let dim = 768L
+let numHeads = 12L
+let ffDim = 3072L
 let nLayers = 6
-
-// ---------------------------------------------------------------------------
-// Model construction
-// ---------------------------------------------------------------------------
-
-let createAttention () =
-    let q = Linear.init dim dim torch.float32 torch.CPU
-    let k = Linear.init dim dim torch.float32 torch.CPU
-    let v = Linear.init dim dim torch.float32 torch.CPU
-    let outLin = Linear.init dim dim torch.float32 torch.CPU
-
-    {
-        Q = q
-        K = k
-        V = v
-        OutLin = outLin
-        NumHeads = numHeads
-        HeadDim = headDim
-    }
-
-let createLayer () =
-    let attn = createAttention ()
-    let saNorm = LayerNorm.initDefault dim torch.float32 torch.CPU
-    let ffn1 = Linear.init dim ffDim torch.float32 torch.CPU
-    let ffn2 = Linear.init ffDim dim torch.float32 torch.CPU
-    let outputNorm = LayerNorm.initDefault dim torch.float32 torch.CPU
-
-    {
-        Attention = attn
-        SaNorm = saNorm
-        Ffn1 = ffn1
-        Ffn2 = ffn2
-        OutputNorm = outputNorm
-    }
 
 let createModel () =
     let wordEmb = Embedding.init vocabSize dim torch.float32 torch.CPU
     let posEmb = Embedding.init maxPositions dim torch.float32 torch.CPU
     let embNorm = LayerNorm.initDefault dim torch.float32 torch.CPU
 
-    let layers = [ for _ in 0 .. nLayers - 1 -> createLayer () ]
+    let layers = [
+        for _ in 0 .. nLayers - 1 -> PostNormTransformerBlock.initDefault dim numHeads ffDim torch.float32 torch.CPU
+    ]
 
     let preClassifier = Linear.init dim dim torch.float32 torch.CPU
-    let classifier = Linear.init dim 2 torch.float32 torch.CPU
+    let classifier = Linear.init dim 2L torch.float32 torch.CPU
 
     {
         WordEmbeddings = wordEmb
@@ -105,82 +50,26 @@ let createModel () =
         Classifier = classifier
     }
 
-// ---------------------------------------------------------------------------
-// Forward pass
-// ---------------------------------------------------------------------------
-
-let forwardAttention (attn: DistilBertAttention) (hidden: Tensor) =
-    let batchSz = int hidden.shape[0]
-    let seqLen = int hidden.shape[1]
-
-    let q = attn.Q.forward hidden
-    let k = attn.K.forward hidden
-    let v = attn.V.forward hidden
-
-    let q =
-        q.reshape ([| int64 batchSz; int64 seqLen; int64 attn.NumHeads; int64 attn.HeadDim |])
-
-    let q = q.permute ([| 0L; 2L; 1L; 3L |])
-
-    let k =
-        k.reshape ([| int64 batchSz; int64 seqLen; int64 attn.NumHeads; int64 attn.HeadDim |])
-
-    let k = k.permute ([| 0L; 2L; 1L; 3L |])
-
-    let v =
-        v.reshape ([| int64 batchSz; int64 seqLen; int64 attn.NumHeads; int64 attn.HeadDim |])
-
-    let v = v.permute ([| 0L; 2L; 1L; 3L |])
-
-    let a = torch.nn.functional.scaled_dot_product_attention (q, k, v)
-    let a = a.permute ([| 0L; 2L; 1L; 3L |])
-    let a = a.contiguous ()
-
-    let a =
-        a.reshape ([| int64 batchSz; int64 seqLen; int64 (attn.NumHeads * attn.HeadDim) |])
-
-    attn.OutLin.forward a
-
-let forwardLayer (layer: DistilBertLayer) (hidden: Tensor) =
-    // Self-attention with post-norm
-    let attnOut = forwardAttention layer.Attention hidden
-    let hidden = hidden.add attnOut
-    let hidden = layer.SaNorm.forward hidden
-
-    // FFN with post-norm
-    let ffnOut = layer.Ffn1.forward hidden
-    let ffnOut = ffnOut.gelu ()
-    let ffnOut = layer.Ffn2.forward ffnOut
-    let hidden = hidden.add ffnOut
-    layer.OutputNorm.forward hidden
-
 let forward (model: DistilBertClassifier) (inputIds: Tensor) =
     let seqLen = inputIds.shape[1]
 
-    // Embeddings: word + position
     let posIds =
         torch.arange (seqLen, dtype = torch.int64, device = torch.CPU)
-        |> fun t -> t.unsqueeze (0L)
+        |> fun t -> t.unsqueeze 0L
 
-    let wordEmb = model.WordEmbeddings.forward inputIds
-    let posEmb = model.PositionEmbeddings.forward posIds
-    let hidden = wordEmb.add posEmb
-    let hidden = model.EmbNorm.forward hidden
+    let hidden =
+        model.WordEmbeddings.forward inputIds
+        |> fun wordEmb -> wordEmb.add (model.PositionEmbeddings.forward posIds)
+        |> model.EmbNorm.forward
 
-    // Transformer layers
     let hidden =
         model.Layers
-        |> List.fold (fun h layer -> forwardLayer layer h) hidden
+        |> List.fold (fun h layer -> layer.forward h) hidden
 
-    // Classifier: [CLS] token → pre-classifier → ReLU → classifier
-    let cls = hidden.at [ A; I 0 ]
-    let cls = model.PreClassifier.forward cls
-    let cls = cls.relu ()
-    model.Classifier.forward cls
-
-// ---------------------------------------------------------------------------
-// HF name mapping
-// ---------------------------------------------------------------------------
+    hidden.at [ A; I 0 ]
+    |> model.PreClassifier.forward
+    |> fun cls -> cls.relu ()
+    |> model.Classifier.forward
 
 let nameMapping =
     let layer sourceSuffix targetSuffix =
@@ -191,31 +80,27 @@ let nameMapping =
         NameRule.rename "distilbert.embeddings.position_embeddings.weight" "PositionEmbeddings.Embeddings"
         NameRule.rename "distilbert.embeddings.LayerNorm.weight" "EmbNorm.Weight"
         NameRule.rename "distilbert.embeddings.LayerNorm.bias" "EmbNorm.Bias"
-        layer "attention.q_lin.weight" "Attention.Q.Weight"
-        layer "attention.q_lin.bias" "Attention.Q.Bias"
-        layer "attention.k_lin.weight" "Attention.K.Weight"
-        layer "attention.k_lin.bias" "Attention.K.Bias"
-        layer "attention.v_lin.weight" "Attention.V.Weight"
-        layer "attention.v_lin.bias" "Attention.V.Bias"
-        layer "attention.out_lin.weight" "Attention.OutLin.Weight"
-        layer "attention.out_lin.bias" "Attention.OutLin.Bias"
-        layer "sa_layer_norm.weight" "SaNorm.Weight"
-        layer "sa_layer_norm.bias" "SaNorm.Bias"
-        layer "ffn.lin1.weight" "Ffn1.Weight"
-        layer "ffn.lin1.bias" "Ffn1.Bias"
-        layer "ffn.lin2.weight" "Ffn2.Weight"
-        layer "ffn.lin2.bias" "Ffn2.Bias"
-        layer "output_layer_norm.weight" "OutputNorm.Weight"
-        layer "output_layer_norm.bias" "OutputNorm.Bias"
+        layer "attention.q_lin.weight" "Attn.WQ.Weight"
+        layer "attention.q_lin.bias" "Attn.WQ.Bias"
+        layer "attention.k_lin.weight" "Attn.WK.Weight"
+        layer "attention.k_lin.bias" "Attn.WK.Bias"
+        layer "attention.v_lin.weight" "Attn.WV.Weight"
+        layer "attention.v_lin.bias" "Attn.WV.Bias"
+        layer "attention.out_lin.weight" "Attn.WO.Weight"
+        layer "attention.out_lin.bias" "Attn.WO.Bias"
+        layer "sa_layer_norm.weight" "AttnNorm.Weight"
+        layer "sa_layer_norm.bias" "AttnNorm.Bias"
+        layer "ffn.lin1.weight" "Ff1.Weight"
+        layer "ffn.lin1.bias" "Ff1.Bias"
+        layer "ffn.lin2.weight" "Ff2.Weight"
+        layer "ffn.lin2.bias" "Ff2.Bias"
+        layer "output_layer_norm.weight" "FfNorm.Weight"
+        layer "output_layer_norm.bias" "FfNorm.Bias"
         NameRule.rename "pre_classifier.weight" "PreClassifier.Weight"
         NameRule.rename "pre_classifier.bias" "PreClassifier.Bias"
         NameRule.rename "classifier.weight" "Classifier.Weight"
         NameRule.rename "classifier.bias" "Classifier.Bias"
     ]
-
-// ---------------------------------------------------------------------------
-// Tokenizer (WordPiece via Toro.Text)
-// ---------------------------------------------------------------------------
 
 let loadTokenizer (repoId: string) (revision: string) : Async<Tokenizer> =
     async {
@@ -226,18 +111,8 @@ let loadTokenizer (repoId: string) (revision: string) : Async<Tokenizer> =
                 Filename = "vocab.txt"
             }
 
-        return
-            Tokenizer.fromWordPiece {
-                WordPieceConfig.create path with
-                    SpecialTokens = [ "[UNK]", 100; "[CLS]", 101; "[SEP]", 102; "[PAD]", 0 ]
-                    PreTokenizer = Regex @"\w+|[^\w\s]+"
-                    Normalizer = LowerCase
-            }
+        return Tokenizer.fromBert (BertConfig.create path)
     }
-
-// ---------------------------------------------------------------------------
-// Entry point
-// ---------------------------------------------------------------------------
 
 let testTexts = [|
     "this movie is great"
@@ -285,8 +160,7 @@ let main argv =
     for text in testTexts do
         let logits =
             Toro.noGrad (fun () ->
-                let ids = tokenizer.encode text
-                let data = 101L :: ids @ [ 102L ] |> List.toArray
+                let data = tokenizer.encode text |> List.toArray
 
                 let input =
                     torch.tensor (data, dtype = torch.int64, device = torch.CPU)

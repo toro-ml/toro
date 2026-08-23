@@ -129,7 +129,7 @@ let ``MultiHeadAttention forward returns correct shape`` () =
     let heads = 4
     let batch = 2L
     let seqLen = 8L
-    let mha = MultiHeadAttention.init dim heads torch.float32 torch.CPU
+    let mha = MultiHeadAttention.initNoBias dim heads torch.float32 torch.CPU
 
     let x =
         torch.randn ([| batch; seqLen; dim |], dtype = torch.float32, device = torch.CPU)
@@ -139,13 +139,15 @@ let ``MultiHeadAttention forward returns correct shape`` () =
     y.shape |> should equal [| batch; seqLen; dim |]
 
 [<Fact>]
-let ``TransformerBlock forward returns correct shape`` () =
+let ``PreNormTransformerBlock forward returns correct shape`` () =
     let dim = 32L
     let heads = 4L
     let ffDim = 64L
     let batch = 2L
     let seqLen = 8L
-    let block = TransformerBlock.init dim heads ffDim torch.float32 torch.CPU
+
+    let block =
+        PreNormTransformerBlock.initDefault dim heads ffDim torch.float32 torch.CPU
 
     let x =
         torch.randn ([| batch; seqLen; dim |], dtype = torch.float32, device = torch.CPU)
@@ -153,3 +155,62 @@ let ``TransformerBlock forward returns correct shape`` () =
     let y = block.forward x
 
     y.shape |> should equal [| batch; seqLen; dim |]
+    block.Attn.WQ.Bias |> Option.isNone |> should equal true
+
+[<Fact>]
+let ``MultiHeadAttention.init creates biased projections`` () =
+    let mha = MultiHeadAttention.init 32L 4L torch.float32 torch.CPU
+    mha.WQ.Bias |> Option.isSome |> should equal true
+    mha.WO.Bias |> Option.isSome |> should equal true
+
+[<Fact>]
+let ``PostNormTransformerBlock forward returns correct shape`` () =
+    let dim = 32L
+    let heads = 4L
+    let ffDim = 64L
+    let batch = 2L
+    let seqLen = 8L
+
+    let block =
+        PostNormTransformerBlock.initDefault dim heads ffDim torch.float32 torch.CPU
+
+    let x =
+        torch.randn ([| batch; seqLen; dim |], dtype = torch.float32, device = torch.CPU)
+
+    let y = block.forward x
+    y.shape |> should equal [| batch; seqLen; dim |]
+    block.Attn.WQ.Bias |> Option.isSome |> should equal true
+
+[<Fact>]
+let ``Attention.additiveMask broadcasts padding to SDPA shape`` () =
+    let padding =
+        torch.tensor (
+            array2D [| [| 1L; 1L; 0L |]; [| 1L; 0L; 0L |] |],
+            dtype = torch.int64,
+            device = torch.CPU
+        )
+
+    let mask = Attention.additiveMask padding torch.float32
+    mask.shape |> should equal [| 2L; 1L; 1L; 3L |]
+
+    let values = mask.data<float32>().ToArray()
+    values[0] |> should (equalWithin 1e-5f) 0.0f
+    values[1] |> should (equalWithin 1e-5f) 0.0f
+    values[2] |> should (equalWithin 1e-3f) -1.0e9f
+    values[3] |> should (equalWithin 1e-5f) 0.0f
+    values[4] |> should (equalWithin 1e-3f) -1.0e9f
+    values[5] |> should (equalWithin 1e-3f) -1.0e9f
+
+[<Fact>]
+let ``Attention.additiveMask saturates half-precision padding`` () =
+    let padding =
+        torch.tensor ([| 1L; 0L |], dtype = torch.int64, device = torch.CPU)
+        |> fun t -> t.unsqueeze 0L
+
+    let mask = Attention.additiveMask padding torch.float16
+    mask.dtype |> should equal torch.float16
+    mask.shape |> should equal [| 1L; 1L; 1L; 2L |]
+
+    let values = mask.to_type(torch.float32).data<float32>().ToArray()
+    values[0] |> should (equalWithin 1e-5f) 0.0f
+    values[1] |> should (equalWithin 1e-3f) -1.0e4f

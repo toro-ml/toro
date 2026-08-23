@@ -22,12 +22,8 @@ type ITransform =
 module Compose =
     /// Apply transforms sequentially.
     let apply (transforms: ITransform list) (x: Tensor) : Tensor =
-        let rec loop (ts: ITransform list) (t: Tensor) =
-            match ts with
-            | [] -> t
-            | h :: rest -> loop rest (h.apply t)
-
-        loop transforms x
+        transforms
+        |> List.fold (fun tensor transform -> transform.apply tensor) x
 
 /// Channel-wise normalization: $(x - \mu) / \sigma$.
 /// Input: $[C, H, W]$ or $[B, C, H, W]$.

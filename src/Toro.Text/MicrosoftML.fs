@@ -143,7 +143,23 @@ type WordPieceConfig = {
 }
 
 /// Configuration for a Microsoft.ML.Tokenizers SentencePiece tokenizer.
-type SentencePieceConfig = { ModelPath: string }
+type SentencePieceConfig = {
+    ModelPath: string
+    AddBos: bool
+    AddEos: bool
+    /// When true, prepend U+2581 before encoding so Unigram pieces match Hugging Face
+    /// on single tokens that would otherwise encode empty.
+    AddDummyPrefix: bool
+}
+
+/// Configuration for a Microsoft.ML.Tokenizers BERT tokenizer.
+type BertConfig = {
+    VocabPath: string
+    AddSpecialTokens: bool
+    LowerCase: bool
+    IndividuallyTokenizeCjk: bool
+    RemoveNonSpacingMarks: bool
+}
 
 /// Constructors for Tiktoken configuration.
 module TiktokenConfig =
@@ -188,8 +204,26 @@ module WordPieceConfig =
 /// Constructors for SentencePiece configuration.
 module SentencePieceConfig =
 
-    /// Create a SentencePiece configuration.
-    let create (modelPath: string) : SentencePieceConfig = { ModelPath = modelPath }
+    /// Create a SentencePiece configuration. Matches `SentencePieceTokenizer.Create(stream)`:
+    /// BOS is added, EOS is not, and Toro does not prepend a dummy prefix.
+    let create (modelPath: string) : SentencePieceConfig = {
+        ModelPath = modelPath
+        AddBos = true
+        AddEos = false
+        AddDummyPrefix = false
+    }
+
+/// Constructors for BERT configuration.
+module BertConfig =
+
+    /// Create a BERT configuration that lowercases, splits CJK, and adds special tokens.
+    let create (vocabPath: string) : BertConfig = {
+        VocabPath = vocabPath
+        AddSpecialTokens = true
+        LowerCase = true
+        IndividuallyTokenizeCjk = true
+        RemoveNonSpacingMarks = true
+    }
 
 /// Microsoft.ML.Tokenizers adapters and factories.
 module Tokenizer =
@@ -270,14 +304,12 @@ module Tokenizer =
             decodeComplete
         )
 
-    let private wrapWith decoderFactory (inner: Microsoft.ML.Tokenizers.Tokenizer) : Tokenizer =
+    let private wrapWith decoderFactory (encodeIds: string -> int seq) (inner: Microsoft.ML.Tokenizers.Tokenizer) : Tokenizer =
         if isNull inner then
             nullArg (nameof inner)
 
         let encode (text: string) =
-            inner.EncodeToIds(text, true, true)
-            |> Seq.map int64
-            |> Seq.toList
+            encodeIds text |> Seq.map int64 |> Seq.toList
 
         let decode (ids: int64 list) =
             ids |> Seq.map (backendId (nameof ids)) |> inner.Decode
@@ -285,16 +317,24 @@ module Tokenizer =
         Tokenizer(
             encode,
             decode,
-            (fun (text: string) -> inner.CountTokens(text, true, true)),
+            (fun (text: string) -> encodeIds text |> Seq.length),
             inner,
             (fun () -> decoderFactory decode)
         )
 
+    let private encodeIds (inner: Microsoft.ML.Tokenizers.Tokenizer) (text: string) : int seq =
+        inner.EncodeToIds(text, true, true)
+
     /// Wrap a Microsoft.ML.Tokenizers tokenizer.
     let wrap (inner: Microsoft.ML.Tokenizers.Tokenizer) : Tokenizer =
-        wrapWith IncrementalDecoder.fromDecode inner
+        wrapWith IncrementalDecoder.fromDecode (encodeIds inner) inner
+
+    /// Create a tokenizer from encode and decode functions.
+    let fromFunctions (encode: string -> int64 list) (decode: int64 list -> string) : Tokenizer =
+        Tokenizer(encode, decode, (fun text -> encode(text).Length), null, fun () -> IncrementalDecoder.fromDecode decode)
 
     /// Return the wrapped Microsoft.ML.Tokenizers instance.
+    /// Tokenizers created with `fromFunctions` have no backend; this call fails.
     let inner (tokenizer: Tokenizer) : Microsoft.ML.Tokenizers.Tokenizer =
         tokenizer.Backend :?> Microsoft.ML.Tokenizers.Tokenizer
 
@@ -305,7 +345,8 @@ module Tokenizer =
         let inner =
             Microsoft.ML.Tokenizers.TiktokenTokenizer.CreateForModel(config.Model, extra)
 
-        inner |> wrapWith (fun _ -> spanDecoder inner)
+        inner
+        |> wrapWith (fun _ -> spanDecoder inner) (encodeIds inner)
 
     /// Create a BPE tokenizer.
     let fromBpe (config: BpeConfig) : Tokenizer =
@@ -324,7 +365,8 @@ module Tokenizer =
         let inner = Microsoft.ML.Tokenizers.BpeTokenizer.Create(options)
 
         if config.ByteLevel then
-            inner |> wrapWith (fun _ -> spanDecoder inner)
+            inner
+            |> wrapWith (fun _ -> spanDecoder inner) (encodeIds inner)
         else
             wrap inner
 
@@ -352,9 +394,40 @@ module Tokenizer =
         Microsoft.ML.Tokenizers.WordPieceTokenizer.Create(config.VocabPath, options)
         |> wrap
 
+    /// Create a BERT tokenizer. Encoding adds [CLS]/[SEP] when AddSpecialTokens is true.
+    let fromBert (config: BertConfig) : Tokenizer =
+        let options = Microsoft.ML.Tokenizers.BertOptions()
+        options.LowerCaseBeforeTokenization <- config.LowerCase
+        options.IndividuallyTokenizeCjk <- config.IndividuallyTokenizeCjk
+        options.RemoveNonSpacingMarks <- config.RemoveNonSpacingMarks
+        options.ApplyBasicTokenization <- true
+        let inner = Microsoft.ML.Tokenizers.BertTokenizer.Create(config.VocabPath, options)
+
+        wrapWith
+            IncrementalDecoder.fromDecode
+            (fun text -> inner.EncodeToIds(text, config.AddSpecialTokens, true, true) :> int seq)
+            inner
+
     /// Create a SentencePiece tokenizer.
     let fromSentencePiece (config: SentencePieceConfig) : Tokenizer =
         use stream = System.IO.File.OpenRead(config.ModelPath)
 
-        Microsoft.ML.Tokenizers.SentencePieceTokenizer.Create(stream)
-        |> wrap
+        let inner =
+            Microsoft.ML.Tokenizers.SentencePieceTokenizer.Create(stream, config.AddBos, config.AddEos, null)
+
+        let prepare (text: string) =
+            if
+                config.AddDummyPrefix
+                && not (text.StartsWith("\u2581", StringComparison.Ordinal))
+            then
+                "\u2581" + text
+            else
+                text
+
+        let encodeIds (text: string) : int seq =
+            let text = prepare text
+            let considerPreTokenization = not config.AddDummyPrefix
+            let considerNormalization = not config.AddDummyPrefix
+            inner.EncodeToIds(text, config.AddBos, config.AddEos, considerPreTokenization, considerNormalization)
+
+        wrapWith IncrementalDecoder.fromDecode encodeIds inner

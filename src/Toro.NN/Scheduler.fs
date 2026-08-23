@@ -5,7 +5,10 @@ type LrSchedule =
     | StepDecay of stepSize: int * gamma: float
     | Exponential of gamma: float
     | CosineAnnealing of tMax: int * etaMin: float
+    /// Ramp from 0 at step 0 to `baseLr` at `warmupSteps`, then hold.
     | LinearWarmup of warmupSteps: int
+    /// Ramp from 0 to `baseLr` over `warmupSteps`, then decay linearly to `endLr` at `totalSteps`.
+    | LinearWarmupDecay of warmupSteps: int * totalSteps: int * endLr: float
     | OneCycle of totalSteps: int * maxLr: float * divFactor: float * finalDivFactor: float * pctStart: float
     | CosineAnnealingWarmRestarts of t0: int * tMult: int * etaMin: float
     | Polynomial of totalSteps: int * power: float * endLr: float
@@ -30,12 +33,24 @@ module LrSchedule =
             etaMin
             + 0.5 * (baseLr - etaMin) * (1.0 + cos (System.Math.PI * t))
         | LinearWarmup warmupSteps ->
-            if step = 0 then
+            if warmupSteps <= 0 || step >= warmupSteps then
                 baseLr
-            elif step <= warmupSteps then
-                baseLr * float step / float warmupSteps
             else
-                baseLr
+                baseLr * float step / float warmupSteps
+        | LinearWarmupDecay(warmupSteps, totalSteps, endLr) ->
+            if step < warmupSteps then
+                if warmupSteps <= 0 then
+                    baseLr
+                else
+                    baseLr * float step / float warmupSteps
+            elif totalSteps <= warmupSteps || step >= totalSteps then
+                endLr
+            else
+                let progress =
+                    float (step - warmupSteps)
+                    / float (totalSteps - warmupSteps)
+
+                baseLr + (endLr - baseLr) * progress
         | OneCycle(totalSteps, maxLr, divFactor, finalDivFactor, pctStart) ->
             let warmup = int (float totalSteps * pctStart)
             let initLr = maxLr / divFactor
@@ -83,12 +98,20 @@ type Scheduler = {
 type SchedulerState = { CurrentStep: int }
 
 module Scheduler =
-    let create (schedule: LrSchedule) (setLr: float -> unit) (baseLr: float) : Scheduler = {
-        Schedule = schedule
-        BaseLr = baseLr
-        CurrentStep = 0
-        SetLr = setLr
-    }
+    /// Create a scheduler and apply the learning rate at step 0 through `setLr`.
+    /// Call `step` after each optimizer update. For `LinearWarmup` and
+    /// `LinearWarmupDecay`, step 0 is 0, so call `step` before the first update
+    /// if that update should use a non-zero rate.
+    let create (schedule: LrSchedule) (setLr: float -> unit) (baseLr: float) : Scheduler =
+        let sched = {
+            Schedule = schedule
+            BaseLr = baseLr
+            CurrentStep = 0
+            SetLr = setLr
+        }
+
+        sched.SetLr(LrSchedule.lrAt baseLr schedule 0)
+        sched
 
     let step (sched: Scheduler) =
         sched.CurrentStep <- sched.CurrentStep + 1

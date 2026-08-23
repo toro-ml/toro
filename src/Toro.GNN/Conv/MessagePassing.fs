@@ -35,22 +35,21 @@ module MessagePassing =
             let count = count.clamp (min = scalar 1.0, max = scalar 1e30)
             sum / count.at [ A; N ]
         | Max ->
-            let results = ResizeArray<Tensor>()
+            torch.stack (
+                [|
+                    for i in 0L .. numNodes - 1L do
+                        let mask = targetIdx.eq (scalar (float i))
+                        let indices = mask.nonzero().squeeze 1L
 
-            for i in 0L .. numNodes - 1L do
-                let mask = targetIdx.eq (scalar (float i))
-                let indices = mask.nonzero().squeeze 1L
-
-                if indices.NumberOfElements > 0L then
-                    let selected = msg.index_select (0L, indices)
-                    let struct (maxVals, _) = selected.max (0L)
-                    results.Add maxVals
-                else
-                    let zeros = torch.zeros ([| features |], dtype = msg.dtype, device = msg.device)
-
-                    results.Add zeros
-
-            torch.stack (results |> Seq.toArray, 0L)
+                        if indices.NumberOfElements > 0L then
+                            let selected = msg.index_select (0L, indices)
+                            let struct (maxVals, _) = selected.max (0L)
+                            yield maxVals
+                        else
+                            yield torch.zeros ([| features |], dtype = msg.dtype, device = msg.device)
+                |],
+                0L
+            )
 
     /// Edge-wise softmax: softmax of scores grouped by target node index.
     /// scores: [E] or [E, H], targetIdx: [E], numNodes: N.

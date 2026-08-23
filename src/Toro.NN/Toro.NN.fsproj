@@ -33,6 +33,7 @@
     <Compile Include="Layer/InstanceNorm.fs" />
     <Compile Include="Layer/Activation.fs" />
     <Compile Include="Layer/Pooling.fs" />
+    <Compile Include="Layer/SequencePool.fs" />
     <Compile Include="Block/Sequential.fs" />
     <Compile Include="Block/Func.fs" />
     <Compile Include="Block/RNN.fs" />

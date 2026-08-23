@@ -13,9 +13,16 @@ type TruncationSide =
     | Left
     | Right
 
-/// Fixed-length text collation policy.
+/// Target sequence length for padding and truncation.
+type CollationLength =
+    /// Pad and truncate every sequence to this length.
+    | Fixed of int
+    /// Pad to the longest sequence in the batch, optionally truncating first.
+    | BatchMax of maxLength: int option
+
+/// Text collation policy.
 type CollationOptions = {
-    Length: int
+    Length: CollationLength
     PadTokenId: int64
     PaddingSide: PaddingSide
     TruncationSide: TruncationSide
@@ -25,7 +32,7 @@ type CollationOptions = {
 module CollationOptions =
 
     /// Create a right-padded policy that truncates tokens from the right.
-    let create length padTokenId = {
+    let create padTokenId length = {
         Length = length
         PadTokenId = padTokenId
         PaddingSide = PaddingSide.Right
@@ -33,8 +40,11 @@ module CollationOptions =
     }
 
     let internal validate options =
-        if options.Length <= 0 then
-            invalidArg (nameof options) "Collation length must be positive."
+        match options.Length with
+        | Fixed length when length <= 0 -> invalidArg (nameof options) "Collation length must be positive."
+        | BatchMax(Some maxLength) when maxLength <= 0 -> invalidArg (nameof options) "Collation max length must be positive."
+        | Fixed _
+        | BatchMax _ -> ()
 
 /// A model-ready batch produced from text.
 type EncodedBatch = {
@@ -52,22 +62,28 @@ module Collation =
     let private takeLast (length: int) (values: 'Value list) =
         values |> List.skip (values.Length - length)
 
-    let private resize (options: CollationOptions) (tokens: int64 list) =
-        let retained =
-            if tokens.Length <= options.Length then
-                tokens
-            else
-                match options.TruncationSide with
-                | TruncationSide.Left -> takeLast options.Length tokens
-                | TruncationSide.Right -> List.take options.Length tokens
+    let private truncationLimit options =
+        match options.Length with
+        | Fixed length -> Some length
+        | BatchMax maxLength -> maxLength
 
-        let retainedLength = retained.Length
-        let padding = List.replicate (options.Length - retainedLength) options.PadTokenId
+    let private truncate (options: CollationOptions) (tokens: int64 list) =
+        match truncationLimit options with
+        | None -> tokens
+        | Some limit when tokens.Length <= limit -> tokens
+        | Some limit ->
+            match options.TruncationSide with
+            | TruncationSide.Left -> takeLast limit tokens
+            | TruncationSide.Right -> List.take limit tokens
+
+    let private pad (options: CollationOptions) (targetLength: int) (tokens: int64 list) =
+        let retainedLength = tokens.Length
+        let padding = List.replicate (targetLength - retainedLength) options.PadTokenId
 
         let padded =
             match options.PaddingSide with
-            | PaddingSide.Left -> padding @ retained
-            | PaddingSide.Right -> retained @ padding
+            | PaddingSide.Left -> padding @ tokens
+            | PaddingSide.Right -> tokens @ padding
 
         let attended = List.replicate retainedLength true
         let masked = List.replicate padding.Length false
@@ -77,33 +93,49 @@ module Collation =
             | PaddingSide.Left -> masked @ attended
             | PaddingSide.Right -> attended @ masked
 
-        padded, mask, int64 tokens.Length
+        padded, mask
 
-    /// Encode one text into a fixed-length token tensor.
+    let private padWidth options (truncated: int64 list list) =
+        match options.Length with
+        | Fixed length -> length
+        | BatchMax _ -> truncated |> List.map _.Length |> List.max
+
+    /// Encode one text into a token tensor. Fixed length pads to that length;
+    /// batch-max pads only to the (possibly truncated) sequence itself.
     let toTensor (tokenizer: Tokenizer) (text: string) (options: CollationOptions) (device: torch.Device) : Tensor =
         CollationOptions.validate options
-        let ids, _, _ = tokenizer.encode text |> resize options
+        let truncated = tokenizer.encode text |> truncate options
+
+        let targetLength =
+            match options.Length with
+            | Fixed length -> length
+            | BatchMax _ -> truncated.Length
+
+        let ids, _ = pad options targetLength truncated
         torch.tensor (List.toArray ids, dtype = torch.int64, device = device)
 
-    /// Encode texts into a fixed-length batch with mask and retained lengths.
+    /// Encode texts into a batch with mask and retained lengths.
     let batch (tokenizer: Tokenizer) (texts: string list) (options: CollationOptions) (device: torch.Device) : EncodedBatch =
         CollationOptions.validate options
 
         if texts.IsEmpty then
             invalidArg (nameof texts) "At least one text is required for collation."
 
-        let rows = texts |> List.map (tokenizer.encode >> resize options)
+        let encoded = texts |> List.map tokenizer.encode
+        let truncated = encoded |> List.map (truncate options)
+        let width = padWidth options truncated
+        let padded = truncated |> List.map (pad options width)
 
         let inputIds =
-            rows
-            |> List.map (fun (ids, _, _) -> List.toArray ids)
+            padded
+            |> List.map (fun (ids, _) -> List.toArray ids)
             |> List.toArray
             |> array2D
             |> fun values -> torch.tensor (values, dtype = torch.int64, device = device)
 
         let attentionMask =
-            rows
-            |> List.map (fun (_, mask, _) -> List.toArray mask)
+            padded
+            |> List.map (fun (_, mask) -> List.toArray mask)
             |> List.toArray
             |> array2D
             |> fun values -> torch.tensor (values, dtype = torch.bool, device = device)
@@ -111,8 +143,5 @@ module Collation =
         {
             InputIds = inputIds
             AttentionMask = attentionMask
-            Lengths =
-                rows
-                |> List.map (fun (_, _, length) -> length)
-                |> List.toArray
+            Lengths = encoded |> List.map (_.Length >> int64) |> List.toArray
         }

@@ -100,3 +100,32 @@ let ``KL divergence loss returns scalar`` () =
 
     let loss = Loss.klDiv inp target
     loss.shape |> should equal [||]
+
+[<Fact>]
+let ``CoSENT loss is zero when all labels are equal`` () =
+    let scores =
+        torch.tensor ([| 0.9f; 0.1f; 0.5f |], dtype = torch.float32, device = torch.CPU)
+
+    let labels =
+        torch.tensor ([| 1.0f; 1.0f; 1.0f |], dtype = torch.float32, device = torch.CPU)
+
+    let loss = Loss.cosent 20.0 scores labels
+    loss.shape |> should equal [||]
+    loss.ToSingle() |> should (equalWithin 1e-5f) 0.0f
+
+[<Fact>]
+let ``CoSENT loss is higher when ranking contradicts labels`` () =
+    let labels =
+        torch.tensor ([| 1.0f; 0.0f |], dtype = torch.float32, device = torch.CPU)
+
+    let correct =
+        torch.tensor ([| 0.9f; 0.1f |], dtype = torch.float32, device = torch.CPU)
+
+    let inverted =
+        torch.tensor ([| 0.1f; 0.9f |], dtype = torch.float32, device = torch.CPU)
+
+    let correctLoss = Loss.cosent 20.0 correct labels
+    let invertedLoss = Loss.cosent 20.0 inverted labels
+
+    invertedLoss.ToSingle()
+    |> should be (greaterThan (correctLoss.ToSingle()))

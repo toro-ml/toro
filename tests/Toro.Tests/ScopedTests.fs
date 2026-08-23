@@ -854,3 +854,29 @@ let ``G8 double keep in nested scopes does not move two levels`` () =
             _outer.Contains(keptRef) |> should equal true
 
         keptRef.IsInvalid |> should equal true
+
+[<Fact>]
+let ``mapScoped keeps each result and disposes per-item intermediates`` () =
+    let mutable intermediates = Array.empty<Tensor>
+
+    let results =
+        Toro.mapScoped
+            (fun (value: float32) ->
+                let inner = torch.ones ([| 1L |], dtype = torch.float32, device = torch.CPU)
+                intermediates <- Array.append intermediates [| inner |]
+                inner.mul (scalar (float value * 2.0)))
+            [| 1.0f; 2.0f; 3.0f |]
+
+    results.Length |> should equal 3
+
+    intermediates
+    |> Array.forall _.IsInvalid
+    |> should equal true
+
+    results
+    |> Array.forall (fun tensor -> not tensor.IsInvalid)
+    |> should equal true
+
+    scalarF32 results[0] |> should (equalWithin 1e-5f) 2.0f
+    scalarF32 results[1] |> should (equalWithin 1e-5f) 4.0f
+    scalarF32 results[2] |> should (equalWithin 1e-5f) 6.0f

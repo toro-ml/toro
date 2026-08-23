@@ -260,12 +260,9 @@ type private ToroChatClient<'Cache>(initialConfig: CausalLmChatClientConfig<'Cac
 
                     let responseTokenIds, eos = Response.withoutEos config.Model.EosTokenIds tokenIds
 
-                    let text = config.Decode responseTokenIds
-
-                    if isNull text then
-                        invalidOp "The token decoder returned null."
-
-                    Response.create config.ModelId eos text),
+                    match config.Decode responseTokenIds with
+                    | null -> invalidOp "The token decoder returned null."
+                    | text -> Response.create config.ModelId eos text),
                 cancellationToken
             )
 

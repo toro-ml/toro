@@ -457,3 +457,43 @@ let ``Init Randn creates tensor with specified mean`` () =
         Init.toTensor [| 10000L |] torch.float64 torch.CPU (Init.Randn(3.0, 0.01))
 
     (tensor.mean ()).ToDouble() |> should (equalWithin 0.1) 3.0
+
+[<Fact>]
+let ``ModelState.toDtype returns converted tensors`` () =
+    let source = Linear.init 2 2 torch.float32 torch.CPU
+    let converted = ModelState.toDtype torch.bfloat16 (Model.state source)
+
+    converted.Count
+    |> should equal (ModelState.namedState (Model.state source)).Length
+
+    converted.Values
+    |> Seq.forall (fun tensor -> tensor.dtype = torch.bfloat16)
+    |> should equal true
+
+[<Fact>]
+let ``ModelState.toDtype clones when dtype already matches`` () =
+    let source = Linear.init 2 2 torch.float32 torch.CPU
+    let converted = ModelState.toDtype torch.float32 (Model.state source)
+    source.Weight.IsInvalid |> should equal false
+    converted["Weight"].dtype |> should equal torch.float32
+
+    converted["Weight"].data<float32>().ToArray()
+    |> should equal (source.Weight.data<float32>().ToArray())
+
+[<Fact>]
+let ``ModelState.convert casts into a target of another dtype`` () =
+    let source = Linear.init 3 2 torch.float32 torch.CPU
+    source.Weight.copyInPlace (torch.ones_like source.Weight)
+
+    match source.Bias with
+    | Some bias -> bias.copyInPlace (torch.ones_like bias)
+    | None -> ()
+
+    let target = Linear.init 3 2 torch.float16 torch.CPU
+    ModelState.convert (Model.state source) (Model.state target)
+
+    target.Weight.dtype |> should equal torch.float16
+    source.Weight.IsInvalid |> should equal false
+
+    let mean = (target.Weight.to_type(torch.float32).mean ()).ToSingle()
+    mean |> should (equalWithin 1e-3f) 1.0f
