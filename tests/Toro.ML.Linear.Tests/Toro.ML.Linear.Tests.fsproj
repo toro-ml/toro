@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <Compile Include="SdcaRegressionTests.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Toro.ML.Linear/Toro.ML.Linear.fsproj" />
+  </ItemGroup>
+
+</Project>

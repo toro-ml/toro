@@ -9,6 +9,7 @@
     <Project Path="src/Toro.Vision/Toro.Vision.fsproj" />
     <Project Path="src/Toro.Text/Toro.Text.fsproj" />
     <Project Path="src/Toro.ML/Toro.ML.fsproj" />
+    <Project Path="src/Toro.ML.Linear/Toro.ML.Linear.fsproj" />
     <Project Path="src/Toro.ML.FastTree/Toro.ML.FastTree.fsproj" />
     <Project Path="src/Toro.ML.LightGbm/Toro.ML.LightGbm.fsproj" />
   </Folder>
@@ -22,6 +23,7 @@
     <Project Path="tests/Toro.Vision.Tests/Toro.Vision.Tests.fsproj" />
     <Project Path="tests/Toro.Text.Tests/Toro.Text.Tests.fsproj" />
     <Project Path="tests/Toro.ML.Tests/Toro.ML.Tests.fsproj" />
+    <Project Path="tests/Toro.ML.Linear.Tests/Toro.ML.Linear.Tests.fsproj" />
     <Project Path="tests/Toro.ML.FastTree.Tests/Toro.ML.FastTree.Tests.fsproj" />
     <Project Path="tests/Toro.ML.LightGbm.Tests/Toro.ML.LightGbm.Tests.fsproj" />
   </Folder>

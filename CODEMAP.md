@@ -2,7 +2,7 @@
 
 ## Architecture Overview
 
-Toro is an F# machine learning framework with PyTorch-style semantics, built on TorchSharp (.NET 10). The monorepo contains 11 library packages under `src/`, 11 test projects, 15 examples, and a React Router v7 documentation site. Models are plain F# records composed via interfaces and computation expressions.
+Toro is an F# machine learning framework with PyTorch-style semantics, built on TorchSharp (.NET 10). The monorepo contains 12 library packages under `src/`, 12 test projects, 15 examples, and a React Router v7 documentation site. Models are plain F# records composed via interfaces and computation expressions.
 
 ## Package Dependency Graph
 
@@ -12,6 +12,7 @@ flowchart TD
     Toro --> Toro.Vision
     Toro --> Toro.Text
     Toro --> Toro.ML
+    Toro.ML --> Toro.ML.Linear
     Toro.ML --> Toro.ML.FastTree
     Toro.ML --> Toro.ML.LightGbm
     Toro.NN --> Toro.GNN
@@ -130,6 +131,14 @@ Shared tensor datasets and ML.NET conversion for classical machine learning. Nam
 | `RegressionDataset.fs` | Validated tensor-backed regression dataset |
 | `Interop.fs` | IntelliSense-hidden shared scoring plus task-specific Tensor to `IDataView` conversion for algorithm packages |
 
+### Toro.ML.Linear — `src/Toro.ML.Linear/`
+
+Related linear trainers included with standard ML.NET, grouped in one physical package while retaining algorithm-specific namespaces and types.
+
+| File | Role |
+|------|------|
+| `Sdca/Regression.fs` | SDCA-specific regression config, model, operations, metrics, and ML.NET zip persistence |
+
 ### Toro.ML.FastTree — `src/Toro.ML.FastTree/`
 
 FastTree regression and learning-to-rank. Namespace: `Toro.ML.FastTree`.
@@ -152,7 +161,7 @@ LightGBM regression and learning-to-rank. Namespace: `Toro.ML.LightGbm`.
 
 - **`Toro` remains the tensor substrate**: tensor extensions, lifetime management, and tensor serialization belong in the root package. It does not acquire trainer, model-family, modality, or service dependencies.
 - **Training paradigms branch above the substrate**: `Toro.NN` owns differentiable neural-network composition and optimization, while `Toro.ML` owns borrowed task datasets and ML.NET interop for classical machine learning.
-- **Algorithms grow by package and tasks grow inside packages**: packages such as `Toro.ML.FastTree` and `Toro.ML.LightGbm` contain independent task modules such as `Regression` and `Ranking`. Config and model types remain task- and algorithm-specific.
+- **Algorithms grow at dependency-family granularity**: packages such as `Toro.ML.FastTree` and `Toro.ML.LightGbm` isolate dedicated dependencies, while `Toro.ML.Linear` groups standard trainers under algorithm namespaces such as `Sdca`. Tasks grow inside those namespaces, and config and model types remain task- and algorithm-specific.
 - **Modalities stay orthogonal**: `Toro.Text`, `Toro.Vision`, and `Toro.GNN` provide domain data and operations without becoming mandatory dependencies of the root package.
 - **Reusable architectures and external adapters stay at the leaves**: `Toro.Models` owns model families; `Toro.Hub` owns remote assets; `Toro.Extensions.AI` owns ecosystem integration. These packages may compose lower layers but lower layers do not depend on them.
 
@@ -171,8 +180,8 @@ LightGBM regression and learning-to-rank. Namespace: `Toro.ML.LightGbm`.
 ## Project Layout
 
 ```
-src/           — 11 library packages
-tests/         — 11 test projects (xUnit + FsUnit, TorchSharp-cpu)
+src/           — 12 library packages
+tests/         — 12 test projects (xUnit + FsUnit, TorchSharp-cpu)
 examples/      — 15 runnable console apps
 docs/          — React Router v7 site (pnpm, MDX)
 scripts/       — API doc generation (FSDocs → MDX)
@@ -188,7 +197,7 @@ scripts/       — API doc generation (FSDocs → MDX)
 
 - All public APIs carry `///` XML doc comments.
 - Each example has its own `README.md`.
-- CI publishes all 11 library packages to NuGet on `v*.*.*` tags.
+- The release workflow uses an explicit package allow-list; new ML packages remain excluded until publication is approved.
 - TorchSharp version pinned at 0.107.0 across all projects.
 
 ## Maintenance

@@ -36,6 +36,7 @@ let copyDeps () =
         "src/Toro.Text"
         "src/Toro.Vision"
         "src/Toro.ML"
+        "src/Toro.ML.Linear"
         "src/Toro.ML.FastTree"
         "src/Toro.ML.LightGbm"
     ]
@@ -49,6 +50,7 @@ let copyDeps () =
         ("src/Toro.Text/bin/Release/net10.0", [ "Microsoft.ML.Tokenizers.dll" ])
         ("src/Toro.Vision/bin/Release/net10.0", [ "TorchVision.dll"; "SkiaSharp.dll" ])
         ("src/Toro.ML/bin/Release/net10.0", [ "Microsoft.ML.Core.dll"; "Microsoft.ML.Data.dll"; "Microsoft.ML.dll" ])
+        ("src/Toro.ML.Linear/bin/Release/net10.0", [ "Microsoft.ML.StandardTrainers.dll" ])
         ("src/Toro.ML.FastTree/bin/Release/net10.0", [ "Microsoft.ML.FastTree.dll" ])
         ("src/Toro.ML.LightGbm/bin/Release/net10.0", [ "Microsoft.ML.LightGbm.dll" ])
     ]
@@ -74,6 +76,7 @@ let run () =
             "src/Toro.Extensions.AI/Toro.Extensions.AI.fsproj"
             "src/Toro.Hub/Toro.Hub.fsproj"
             "src/Toro.ML/Toro.ML.fsproj"
+            "src/Toro.ML.Linear/Toro.ML.Linear.fsproj"
             "src/Toro.ML.FastTree/Toro.ML.FastTree.fsproj"
             "src/Toro.ML.LightGbm/Toro.ML.LightGbm.fsproj"
         ]

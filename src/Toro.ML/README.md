@@ -2,7 +2,7 @@
 
 Shared tensor datasets and ML.NET interop for classical machine learning with [Toro](https://www.nuget.org/packages/Toro).
 
-Algorithm implementations are distributed separately, including `Toro.ML.FastTree` and `Toro.ML.LightGbm`.
+Algorithm implementations are distributed separately. `Toro.ML.FastTree` and `Toro.ML.LightGbm` isolate dedicated dependencies, while `Toro.ML.Linear` groups related standard ML.NET trainers.
 
 ## Installation
 
