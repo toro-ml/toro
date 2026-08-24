@@ -1,6 +1,6 @@
 # TabularRanking
 
-Fit a FastTree ranker on a named-column `Table` and score each row. The `tf` feature equals the relevance label, so the highest-relevance document should rank first in each query group.
+Fit FastTree and LightGBM rankers on one tensor-backed `RankingDataset`, evaluate them with NDCG, and score each row. The feature equals the relevance label, so the highest-relevance document should rank first in each query group.
 
 ## Run
 
@@ -14,8 +14,9 @@ dotnet run --project examples/TabularRanking
 
 ```
 Tabular ranking: 4 queries, 5 documents each
-table rows = 20, feature shape = [|20L; 1L|]
+dataset rows = 20, feature shape = [|20L; 1L|]
 
+FastTree (NDCG@1 = ...)
 query 0
   #1  relevance=4  score=...
   #2  relevance=3  score=...
@@ -23,10 +24,14 @@ query 0
 
 query 1
   ...
+
+LightGBM (NDCG@1 = ...)
+query 0
+  ...
 ```
 
 ## Concepts
 
-- `Table.create` with `Floats` / `Ints` columns
-- `Table.features` stacking 1-d columns into a `[n, f]` tensor
-- `Ranker.fit` / `Ranker.predict` (ML.NET FastTree under the table API)
+- `RankingDataset.create` over feature, label, and query-group tensors
+- Independent `Toro.ML.FastTree.Ranking` and `Toro.ML.LightGbm.Ranking` APIs
+- ML.NET ranking metrics returned by each package's `evaluate` function

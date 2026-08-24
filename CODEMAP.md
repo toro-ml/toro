@@ -2,7 +2,7 @@
 
 ## Architecture Overview
 
-Toro is an F# machine learning framework with PyTorch-style semantics, built on TorchSharp (.NET 10). The monorepo contains 9 library packages under `src/`, 9 test projects, 15 examples, and a React Router v7 documentation site. Models are plain F# records composed via interfaces and computation expressions.
+Toro is an F# machine learning framework with PyTorch-style semantics, built on TorchSharp (.NET 10). The monorepo contains 11 library packages under `src/`, 11 test projects, 15 examples, and a React Router v7 documentation site. Models are plain F# records composed via interfaces and computation expressions.
 
 ## Package Dependency Graph
 
@@ -11,7 +11,9 @@ flowchart TD
     Toro --> Toro.NN
     Toro --> Toro.Vision
     Toro --> Toro.Text
-    Toro --> Toro.Tabular
+    Toro --> Toro.ML
+    Toro.ML --> Toro.ML.FastTree
+    Toro.ML --> Toro.ML.LightGbm
     Toro.NN --> Toro.GNN
     Toro.NN --> Toro.Models
     Toro.Models --> Toro.Extensions.AI
@@ -117,14 +119,30 @@ Text tokenization. Namespace: `Toro.Text`.
 | `MicrosoftML.fs` | Microsoft.ML.Tokenizers factories (including BERT and SentencePiece BOS/EOS/dummy-prefix options), custom encode/decode wrappers, public tokenizer façade, and incremental decoding |
 | `Collation.fs` | Encode text to padded tensors via CollationLength (Fixed or BatchMax) |
 
-### Toro.Tabular — `src/Toro.Tabular/`
+### Toro.ML — `src/Toro.ML/`
 
-Named-column tables and FastTree ranking over tensors, using ML.NET. Namespace: `Toro.Tabular`.
+Shared tensor datasets and ML.NET conversion for classical machine learning. Namespace: `Toro.ML`.
 
 | File | Role |
 |------|------|
-| `Table.fs` | `Column` (`Floats` / `Ints` / `Vectors`), `Table.create`, `column`, and `features` stacking |
-| `Ranker.fs` | FastTree ranker over named columns; `IDataView` stays internal |
+| `RankingDataset.fs` | Validated tensor-backed ranking dataset with contiguous query groups |
+| `Interop.fs` | IntelliSense-hidden Tensor to `IDataView` conversion and fixed ML.NET schema for algorithm packages |
+
+### Toro.ML.FastTree — `src/Toro.ML.FastTree/`
+
+FastTree learning-to-rank over `RankingDataset`. Namespace: `Toro.ML.FastTree`.
+
+| File | Role |
+|------|------|
+| `Ranking.fs` | FastTree-specific config, model, training, scoring, evaluation, and ML.NET zip persistence |
+
+### Toro.ML.LightGbm — `src/Toro.ML.LightGbm/`
+
+LightGBM learning-to-rank over `RankingDataset`. Namespace: `Toro.ML.LightGbm`.
+
+| File | Role |
+|------|------|
+| `Ranking.fs` | LightGBM-specific config, model, training, scoring, evaluation, and ML.NET zip persistence |
 
 ## Design Patterns
 
@@ -141,8 +159,8 @@ Named-column tables and FastTree ranking over tensors, using ML.NET. Namespace: 
 ## Project Layout
 
 ```
-src/           — 9 library packages
-tests/         — 9 test projects (xUnit + FsUnit, TorchSharp-cpu)
+src/           — 11 library packages
+tests/         — 11 test projects (xUnit + FsUnit, TorchSharp-cpu)
 examples/      — 15 runnable console apps
 docs/          — React Router v7 site (pnpm, MDX)
 scripts/       — API doc generation (FSDocs → MDX)
@@ -158,7 +176,7 @@ scripts/       — API doc generation (FSDocs → MDX)
 
 - All public APIs carry `///` XML doc comments.
 - Each example has its own `README.md`.
-- CI publishes all 8 library packages to NuGet on `v*.*.*` tags.
+- CI publishes all 11 library packages to NuGet on `v*.*.*` tags.
 - TorchSharp version pinned at 0.107.0 across all projects.
 
 ## Maintenance

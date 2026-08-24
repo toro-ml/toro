@@ -11,7 +11,9 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/Toro/Toro.fsproj" />
-    <ProjectReference Include="../../src/Toro.Tabular/Toro.Tabular.fsproj" />
+    <ProjectReference Include="../../src/Toro.ML/Toro.ML.fsproj" />
+    <ProjectReference Include="../../src/Toro.ML.FastTree/Toro.ML.FastTree.fsproj" />
+    <ProjectReference Include="../../src/Toro.ML.LightGbm/Toro.ML.LightGbm.fsproj" />
   </ItemGroup>
 
   <ItemGroup>

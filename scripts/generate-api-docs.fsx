@@ -32,7 +32,13 @@ let requireSuccess description (code, stdout: string, stderr: string) =
 let copyDeps () =
     let libDir = Path.Combine(root, ".fsdocs-libs")
 
-    let projects = [ "src/Toro.Text"; "src/Toro.Vision" ]
+    let projects = [
+        "src/Toro.Text"
+        "src/Toro.Vision"
+        "src/Toro.ML"
+        "src/Toro.ML.FastTree"
+        "src/Toro.ML.LightGbm"
+    ]
 
     for proj in projects do
         exec "dotnet" $"publish {proj} -c Release --no-build -o {libDir}"
@@ -42,6 +48,9 @@ let copyDeps () =
     let targets = [
         ("src/Toro.Text/bin/Release/net10.0", [ "Microsoft.ML.Tokenizers.dll" ])
         ("src/Toro.Vision/bin/Release/net10.0", [ "TorchVision.dll"; "SkiaSharp.dll" ])
+        ("src/Toro.ML/bin/Release/net10.0", [ "Microsoft.ML.Core.dll"; "Microsoft.ML.Data.dll"; "Microsoft.ML.dll" ])
+        ("src/Toro.ML.FastTree/bin/Release/net10.0", [ "Microsoft.ML.FastTree.dll" ])
+        ("src/Toro.ML.LightGbm/bin/Release/net10.0", [ "Microsoft.ML.LightGbm.dll" ])
     ]
 
     for (destRel, dlls) in targets do
@@ -64,6 +73,9 @@ let run () =
             "src/Toro.Models/Toro.Models.fsproj"
             "src/Toro.Extensions.AI/Toro.Extensions.AI.fsproj"
             "src/Toro.Hub/Toro.Hub.fsproj"
+            "src/Toro.ML/Toro.ML.fsproj"
+            "src/Toro.ML.FastTree/Toro.ML.FastTree.fsproj"
+            "src/Toro.ML.LightGbm/Toro.ML.LightGbm.fsproj"
         ]
         |> String.concat " "
 

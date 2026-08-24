@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <Compile Include="RankingTests.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Toro.ML.LightGbm/Toro.ML.LightGbm.fsproj" />
+    <ProjectReference Include="../../src/Toro.ML.FastTree/Toro.ML.FastTree.fsproj" />
+  </ItemGroup>
+
+</Project>

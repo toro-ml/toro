@@ -8,7 +8,9 @@
     <Project Path="src/Toro.Extensions.AI/Toro.Extensions.AI.fsproj" />
     <Project Path="src/Toro.Vision/Toro.Vision.fsproj" />
     <Project Path="src/Toro.Text/Toro.Text.fsproj" />
-    <Project Path="src/Toro.Tabular/Toro.Tabular.fsproj" />
+    <Project Path="src/Toro.ML/Toro.ML.fsproj" />
+    <Project Path="src/Toro.ML.FastTree/Toro.ML.FastTree.fsproj" />
+    <Project Path="src/Toro.ML.LightGbm/Toro.ML.LightGbm.fsproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Toro.Tests/Toro.Tests.fsproj" />
@@ -19,7 +21,9 @@
     <Project Path="tests/Toro.Extensions.AI.Tests/Toro.Extensions.AI.Tests.fsproj" />
     <Project Path="tests/Toro.Vision.Tests/Toro.Vision.Tests.fsproj" />
     <Project Path="tests/Toro.Text.Tests/Toro.Text.Tests.fsproj" />
-    <Project Path="tests/Toro.Tabular.Tests/Toro.Tabular.Tests.fsproj" />
+    <Project Path="tests/Toro.ML.Tests/Toro.ML.Tests.fsproj" />
+    <Project Path="tests/Toro.ML.FastTree.Tests/Toro.ML.FastTree.Tests.fsproj" />
+    <Project Path="tests/Toro.ML.LightGbm.Tests/Toro.ML.LightGbm.Tests.fsproj" />
   </Folder>
   <Folder Name="/examples/">
     <Project Path="examples/SimpleTraining/SimpleTraining.fsproj" />

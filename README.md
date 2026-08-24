@@ -28,7 +28,7 @@ dotnet add package Toro.NN
 dotnet add package TorchSharp-cpu
 ```
 
-Add `Toro.GNN`, `Toro.Models`, `Toro.Text`, or `Toro.Vision` when the application needs those features.
+Add `Toro.GNN`, `Toro.Models`, `Toro.Text`, `Toro.Vision`, or an algorithm package such as `Toro.ML.FastTree` or `Toro.ML.LightGbm` when the application needs those features.
 
 ## First model
 
@@ -156,6 +156,7 @@ The [MnistTraining](examples/MnistTraining) example saves CPU Torch RNG state an
 - **SafeTensors:** Save canonical parameters and buffers, or load external weights with strict preflight validation.
 - **Vision and text:** Image loading and transforms plus tokenization based on Microsoft.ML.Tokenizers.
 - **Graph neural networks:** Message passing, GCN, GAT, GraphSAGE, GIN, graph normalization, and global pooling.
+- **Classical machine learning:** Tensor-backed ranking datasets with independent ML.NET FastTree and LightGBM packages.
 
 ## Packages
 
@@ -168,6 +169,9 @@ The [MnistTraining](examples/MnistTraining) example saves CPU Torch RNG state an
 | [`Toro.Extensions.AI`](src/Toro.Extensions.AI) | `IChatClient` adapter for causal language models |
 | [`Toro.Text`](src/Toro.Text) | Tokenization and tensor encoding |
 | [`Toro.Vision`](src/Toro.Vision) | Image loading and tensor transforms |
+| [`Toro.ML`](src/Toro.ML) | Shared tensor datasets and ML.NET interop |
+| [`Toro.ML.FastTree`](src/Toro.ML.FastTree) | FastTree learning-to-rank |
+| [`Toro.ML.LightGbm`](src/Toro.ML.LightGbm) | LightGBM learning-to-rank |
 
 `Toro.Hub` downloads one revision-pinned Hugging Face file at a time and caches it locally.
 
@@ -176,7 +180,7 @@ The [MnistTraining](examples/MnistTraining) example saves CPU Torch RNG state an
 | Example | Demonstrates |
 | --- | --- |
 | [LinearRegression](examples/LinearRegression) | Gradient descent with tensors |
-| [TabularRanking](examples/TabularRanking) | FastTree ranking over named tensor columns |
+| [TabularRanking](examples/TabularRanking) | FastTree and LightGBM ranking over one tensor dataset |
 | [SimpleTraining](examples/SimpleTraining) | XOR training with `sequential { }` |
 | [MnistTraining](examples/MnistTraining) | Reproducible CNN training and checkpoint resume |
 | [MnistCnn](examples/MnistCnn) | CNN composition with BatchNorm and Dropout |

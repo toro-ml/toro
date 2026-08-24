@@ -3,11 +3,11 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <PackageId>Toro.Tabular</PackageId>
+    <PackageId>Toro.ML.FastTree</PackageId>
     <Version>0.1.0</Version>
     <Authors>ryushiaok</Authors>
-    <Description>Named-column tables and FastTree ranking over Toro tensors</Description>
-    <PackageTags>fsharp;dotnet;ml;torchsharp;tabular;mlnet</PackageTags>
+    <Description>FastTree classical machine-learning algorithms over Toro tensors</Description>
+    <PackageTags>fsharp;dotnet;ml;torchsharp;mlnet;fasttree;ranking</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/toro-ml/toro</RepositoryUrl>
@@ -19,16 +19,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Table.fs" />
-    <Compile Include="Ranker.fs" />
+    <Compile Include="Ranking.fs" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../Toro/Toro.fsproj" />
+    <ProjectReference Include="../Toro.ML/Toro.ML.fsproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.ML" Version="5.0.0" />
     <PackageReference Include="Microsoft.ML.FastTree" Version="5.0.0" />
   </ItemGroup>
 
