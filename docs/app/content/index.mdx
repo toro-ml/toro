@@ -12,14 +12,22 @@ It keeps PyTorch's tensor semantics while using records, computation expressions
 - **Computation expressions for composition** -- `sequential { }` composes layers; `pipeline { }` enables composition for heterogeneous signatures.
 - **PyTorch-compatible surface** -- tensor operations, neural network layers, and training utilities mirror PyTorch naming and behavior.
 
-| Package       | Purpose                                        |
-| ------------- | ---------------------------------------------- |
-| `Toro`        | Tensor alias, `scoped { }` CE, SafeTensors I/O |
-| `Toro.NN`     | Layers, loss functions, optimizers, metrics    |
-| `Toro.GNN`    | Graph neural network layers and batching       |
-| `Toro.Vision` | Image I/O and transforms (SkiaSharp + Torch)   |
-| `Toro.Text`   | Tokenization via Microsoft.ML.Tokenizers       |
-| `Toro.Hub`    | Hugging Face Hub client for pre-trained models |
+| Package                   | Purpose                                                   | v0.7 NuGet availability |
+| ------------------------- | --------------------------------------------------------- | ----------------------- |
+| `Toro`                    | Tensor alias, `scoped { }` CE, SafeTensors I/O            | Included                |
+| `Toro.NN`                 | Layers, loss functions, optimizers, metrics               | Included                |
+| `Toro.GNN`                | Graph neural network layers and batching                  | Included                |
+| `Toro.Vision`             | Image I/O and transforms (SkiaSharp + Torch)              | Included                |
+| `Toro.Text`               | Tokenization via Microsoft.ML.Tokenizers                  | Included                |
+| `Toro.Models`             | Shared causal language-model contracts and generation    | Repository preview      |
+| `Toro.Models.SmolLm2`     | SmolLM2 architecture, local loader, and KV cache          | Repository preview      |
+| `Toro.Models.DistilGpt2`  | DistilGPT-2 architecture, local loader, and KV cache      | Repository preview      |
+| `Toro.Extensions.AI`      | `IChatClient` adapter for causal language models          | Repository preview      |
+| `Toro.Hub`                | Revision-pinned Hugging Face downloads and local caching  | Repository preview      |
+| `Toro.ML`                 | Shared tensor datasets and ML.NET interop                 | Repository preview      |
+| `Toro.ML.Linear`          | Linear algorithm families, beginning with SDCA regression | Repository preview      |
+| `Toro.ML.FastTree`        | FastTree regression and learning-to-rank                  | Repository preview      |
+| `Toro.ML.LightGbm`        | LightGBM regression and learning-to-rank                  | Repository preview      |
 
 ## Install
 
@@ -33,6 +41,9 @@ dotnet add package Toro.GNN      # Graph neural networks
 dotnet add package Toro.Vision   # Image transforms
 dotnet add package Toro.Text     # Tokenization and text preprocessing
 ```
+
+The v0.7.0 NuGet release is limited to the five packages marked as included above.
+Repository-preview packages can be used from source but are not part of the current NuGet release.
 
 ## Train an XOR model
 

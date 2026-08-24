@@ -28,7 +28,9 @@ dotnet add package Toro.NN
 dotnet add package TorchSharp-cpu
 ```
 
-Add `Toro.GNN`, `Toro.Text`, `Toro.Vision`, a model-family package such as `Toro.Models.SmolLm2`, or an algorithm package such as `Toro.ML.FastTree` when the application needs those features.
+The v0.7.0 NuGet release includes `Toro`, `Toro.NN`, `Toro.GNN`, `Toro.Text`, and `Toro.Vision`.
+Packages marked as repository previews below are available from source but are not part of the current NuGet release.
+Add `Toro.GNN`, `Toro.Text`, or `Toro.Vision` when the application needs those features.
 
 ## First model
 
@@ -160,23 +162,22 @@ The [MnistTraining](examples/MnistTraining) example saves CPU Torch RNG state an
 
 ## Packages
 
-| Package | Purpose |
-| --- | --- |
-| [`Toro`](src/Toro) | Tensor extensions, scoped ownership, and SafeTensors |
-| [`Toro.NN`](src/Toro.NN) | Model state, layers, optimizers, schedulers, and checkpoints |
-| [`Toro.GNN`](src/Toro.GNN) | Graph data, message passing, graph convolutions, and pooling |
-| [`Toro.Models`](src/Toro.Models) | Shared causal language-model contracts and token-level generation |
-| [`Toro.Models.SmolLm2`](src/Toro.Models.SmolLm2) | SmolLM2 architecture, local loader, and KV cache |
-| [`Toro.Models.DistilGpt2`](src/Toro.Models.DistilGpt2) | DistilGPT-2 architecture, local loader, and KV cache |
-| [`Toro.Extensions.AI`](src/Toro.Extensions.AI) | `IChatClient` adapter for causal language models |
-| [`Toro.Text`](src/Toro.Text) | Tokenization and tensor encoding |
-| [`Toro.Vision`](src/Toro.Vision) | Image loading and tensor transforms |
-| [`Toro.ML`](src/Toro.ML) | Shared tensor datasets and ML.NET interop |
-| [`Toro.ML.Linear`](src/Toro.ML.Linear) | Linear algorithm families, beginning with SDCA regression |
-| [`Toro.ML.FastTree`](src/Toro.ML.FastTree) | FastTree regression and learning-to-rank |
-| [`Toro.ML.LightGbm`](src/Toro.ML.LightGbm) | LightGBM regression and learning-to-rank |
-
-`Toro.Hub` downloads one revision-pinned Hugging Face file at a time and caches it locally.
+| Package | Purpose | v0.7 NuGet availability |
+| --- | --- | --- |
+| [`Toro`](src/Toro) | Tensor extensions, scoped ownership, and SafeTensors | Included |
+| [`Toro.NN`](src/Toro.NN) | Model state, layers, optimizers, schedulers, and checkpoints | Included |
+| [`Toro.GNN`](src/Toro.GNN) | Graph data, message passing, graph convolutions, and pooling | Included |
+| [`Toro.Text`](src/Toro.Text) | Tokenization and tensor encoding | Included |
+| [`Toro.Vision`](src/Toro.Vision) | Image loading and tensor transforms | Included |
+| [`Toro.Models`](src/Toro.Models) | Shared causal language-model contracts and token-level generation | Repository preview |
+| [`Toro.Models.SmolLm2`](src/Toro.Models.SmolLm2) | SmolLM2 architecture, local loader, and KV cache | Repository preview |
+| [`Toro.Models.DistilGpt2`](src/Toro.Models.DistilGpt2) | DistilGPT-2 architecture, local loader, and KV cache | Repository preview |
+| [`Toro.Extensions.AI`](src/Toro.Extensions.AI) | `IChatClient` adapter for causal language models | Repository preview |
+| [`Toro.Hub`](src/Toro.Hub) | Revision-pinned Hugging Face downloads and local caching | Repository preview |
+| [`Toro.ML`](src/Toro.ML) | Shared tensor datasets and ML.NET interop | Repository preview |
+| [`Toro.ML.Linear`](src/Toro.ML.Linear) | Linear algorithm families, beginning with SDCA regression | Repository preview |
+| [`Toro.ML.FastTree`](src/Toro.ML.FastTree) | FastTree regression and learning-to-rank | Repository preview |
+| [`Toro.ML.LightGbm`](src/Toro.ML.LightGbm) | LightGBM regression and learning-to-rank | Repository preview |
 
 ### Package architecture
 
