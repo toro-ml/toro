@@ -1,0 +1,45 @@
+---
+title: "CausalLmChatClient"
+description: "Microsoft.Extensions.AI chat-client adapter for Toro causal language models."
+namespace: "Toro.Extensions.AI"
+showTitle: false
+---
+
+# CausalLmChatClientConfig
+
+Configuration for adapting a Toro causal language model to IChatClient.
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `CreateDecoder` | Optional factory for request-local incremental decoding. |
+| `Decode` | Decode generated token IDs into response text. |
+| `DefaultMaxOutputTokens` | Maximum number of generated tokens when a request does not specify a limit. |
+| `Encode` | Encode a formatted prompt into token IDs. |
+| `FormatPrompt` | Model-specific formatter for validated text-only chat messages. |
+| `Model` | Bound causal language model used for generation. |
+| `ModelId` | Model identifier reported through Microsoft.Extensions.AI responses and metadata. |
+---
+
+# CausalLmChatClient
+
+Factory for Microsoft.Extensions.AI chat clients backed by Toro causal language models.
+
+| Function | Description |
+| --- | --- |
+| `create config` | Create a stateless IChatClient. The returned client does not own or dispose the model. |
+
+## create
+
+```fsharp
+create config
+```
+
+Create a stateless IChatClient. The returned client does not own or dispose the model.
+
+**Parameters**
+
+- `config` : `CausalLmChatClientConfig<'a>`
+
+**Returns** `IChatClient`

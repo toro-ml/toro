@@ -13,9 +13,11 @@ pnpm dev
 ## Build
 
 ```bash
+pnpm docs:generate
 pnpm build
 ```
 
+`pnpm docs:generate` builds every Toro package, generates FSDocs output, and converts API reference pages for every package to MDX.
 Output goes to `build/client/`. Deployed to GitHub Pages via `.github/workflows/docs.yml`.
 
 ## Stack

@@ -14,7 +14,6 @@ Image transform that maps a tensor to a tensor.
 | Name | Description |
 | --- | --- |
 | `this.apply arg1` |  |
-
 ---
 
 # Compose
@@ -39,7 +38,6 @@ Apply transforms sequentially.
 - `x` : `Tensor`
 
 **Returns** `Tensor`
-
 ---
 
 # Normalize
@@ -59,7 +57,6 @@ Channel-wise normalization: $(x - \mu) / \sigma$.
 | Name | Description |
 | --- | --- |
 | `this.apply x` |  |
-
 ---
 
 # Normalize module
@@ -77,7 +74,6 @@ imageNet
 ImageNet normalization preset.
 
 **Returns** `Normalize`
-
 ---
 
 # Resize
@@ -97,7 +93,6 @@ Resize to the target spatial size using bilinear interpolation.
 | Name | Description |
 | --- | --- |
 | `this.apply x` |  |
-
 ---
 
 # Resize module
@@ -118,7 +113,6 @@ create height width
 - `width` : `int`
 
 **Returns** `Resize`
-
 ---
 
 # RandomHorizontalFlip
@@ -137,7 +131,6 @@ Randomly flip the image horizontally with probability p.
 | Name | Description |
 | --- | --- |
 | `this.apply x` |  |
-
 ---
 
 # RandomHorizontalFlip module
@@ -168,7 +161,6 @@ defaultFlip
 ```
 
 **Returns** `RandomHorizontalFlip`
-
 ---
 
 # RandomVerticalFlip
@@ -187,7 +179,6 @@ Randomly flip the image vertically with probability p.
 | Name | Description |
 | --- | --- |
 | `this.apply x` |  |
-
 ---
 
 # RandomVerticalFlip module
@@ -218,7 +209,6 @@ defaultFlip
 ```
 
 **Returns** `RandomVerticalFlip`
-
 ---
 
 # RandomCrop
@@ -238,7 +228,6 @@ Randomly crop the image to the given size.
 | Name | Description |
 | --- | --- |
 | `this.apply x` |  |
-
 ---
 
 # RandomCrop module
@@ -259,7 +248,6 @@ create height width
 - `width` : `int`
 
 **Returns** `RandomCrop`
-
 ---
 
 # CenterCrop
@@ -279,7 +267,6 @@ Crop the center region of the image.
 | Name | Description |
 | --- | --- |
 | `this.apply x` |  |
-
 ---
 
 # CenterCrop module
@@ -300,7 +287,6 @@ create height width
 - `width` : `int`
 
 **Returns** `CenterCrop`
-
 ---
 
 # ToGrayscale
@@ -319,7 +305,6 @@ Convert an RGB image to grayscale using ITU-R BT.601 weights.
 | Name | Description |
 | --- | --- |
 | `this.apply x` |  |
-
 ---
 
 # ToGrayscale module
@@ -361,7 +346,6 @@ triple
 ```
 
 **Returns** `ToGrayscale`
-
 ---
 
 # ConvertImageDType
@@ -380,7 +364,6 @@ Convert image tensor dtype, scaling between [0, 255] int and [0.0, 1.0] float ra
 | Name | Description |
 | --- | --- |
 | `this.apply x` |  |
-
 ---
 
 # ConvertImageDType module
@@ -400,4 +383,3 @@ create dtype
 - `dtype` : `ScalarType`
 
 **Returns** `ConvertImageDType`
-

@@ -1,0 +1,43 @@
+---
+title: "RegressionDataset"
+description: "Borrowed tensor datasets for regression tasks."
+namespace: "Toro.ML"
+showTitle: false
+---
+
+# RegressionDataset
+
+A borrowed tensor dataset for regression tasks.
+
+## Instance members
+
+| Name | Description |
+| --- | --- |
+| `this.FeatureCount` | Number of features per example. |
+| `this.Features` | Feature matrix with shape `[n, f]` and dtype `float32`. |
+| `this.Labels` | Target values with shape `[n]` and dtype `float32`. |
+| `this.RowCount` | Number of examples. |
+---
+
+# RegressionDataset module
+
+Constructors for regression datasets.
+
+| Function | Description |
+| --- | --- |
+| `create features labels` | Create a dataset without copying or taking ownership of its tensors. |
+
+## create
+
+```fsharp
+create features labels
+```
+
+Create a dataset without copying or taking ownership of its tensors.
+
+**Parameters**
+
+- `features` : `Tensor`
+- `labels` : `Tensor`
+
+**Returns** `RegressionDataset`

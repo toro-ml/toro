@@ -57,7 +57,6 @@ Type alias exposing TorchSharp tensor under the shorter Toro name.
 | --- | --- |
 | `Tensor.PeakCount` |  |
 | `Tensor.TotalCount` |  |
-
 ---
 
 # TIdx
@@ -89,4 +88,164 @@ Index specifier for `Tensor.at`. I=single, S=slice, A=all, T=tensor, E=ellipsis,
 | `this.IsSf` |  |
 | `this.IsSt` |  |
 | `this.IsT` |  |
+---
 
+# TensorOps
+
+| Function | Description |
+| --- | --- |
+| `a .&lt;. b` | Elementwise $a &lt; b$. |
+| `a .&lt;=. b` | Elementwise $a \leq b$. |
+| `a .&lt;&gt;. b` | Elementwise $a \neq b$. |
+| `a .=. b` | Elementwise $a = b$. |
+| `a .&gt;. b` | Elementwise $a &gt; b$. |
+| `a .&gt;=. b` | Elementwise $a \geq b$. |
+| `scalar v` | Convert a float to a TorchSharp Scalar for use with tensor operators. |
+
+## (.&lt;.)
+
+```fsharp
+a .<. b
+```
+
+Elementwise $a &lt; b$.
+
+**Parameters**
+
+- `a` : `Tensor`
+- `b` : `Tensor`
+
+**Returns** `Tensor`
+
+---
+
+## (.&lt;=.)
+
+```fsharp
+a .<=. b
+```
+
+Elementwise $a \leq b$.
+
+**Parameters**
+
+- `a` : `Tensor`
+- `b` : `Tensor`
+
+**Returns** `Tensor`
+
+---
+
+## (.&lt;&gt;.)
+
+```fsharp
+a .<>. b
+```
+
+Elementwise $a \neq b$.
+
+**Parameters**
+
+- `a` : `Tensor`
+- `b` : `Tensor`
+
+**Returns** `Tensor`
+
+---
+
+## (.=.)
+
+```fsharp
+a .=. b
+```
+
+Elementwise $a = b$.
+
+**Parameters**
+
+- `a` : `Tensor`
+- `b` : `Tensor`
+
+**Returns** `Tensor`
+
+---
+
+## (.&gt;.)
+
+```fsharp
+a .>. b
+```
+
+Elementwise $a &gt; b$.
+
+**Parameters**
+
+- `a` : `Tensor`
+- `b` : `Tensor`
+
+**Returns** `Tensor`
+
+---
+
+## (.&gt;=.)
+
+```fsharp
+a .>=. b
+```
+
+Elementwise $a \geq b$.
+
+**Parameters**
+
+- `a` : `Tensor`
+- `b` : `Tensor`
+
+**Returns** `Tensor`
+
+---
+
+## scalar
+
+```fsharp
+scalar v
+```
+
+Convert a float to a TorchSharp Scalar for use with tensor operators.
+
+**Parameters**
+
+- `v` : `float`
+
+**Returns** `Scalar`
+---
+
+# TensorExtensions
+
+
+---
+
+# Tensor module
+
+| Function | Description |
+| --- | --- |
+| `keep t` | Move a tensor out of the current dispose scope so it
+ survives when that scope exits. Inside `scoped { }`,
+ return values are auto-kept, so `keep` is only needed
+ for side-effect retention (e.g. caching a tensor in a mutable field). |
+
+## keep
+
+```fsharp
+keep t
+```
+
+Move a tensor out of the current dispose scope so it
+ survives when that scope exits. Inside `scoped { }`,
+ return values are auto-kept, so `keep` is only needed
+ for side-effect retention (e.g. caching a tensor in a mutable field).
+
+**Parameters**
+
+- `t` : `Tensor`
+
+**Returns** `Tensor`

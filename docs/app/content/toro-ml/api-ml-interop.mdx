@@ -1,0 +1,199 @@
+---
+title: "ML.NET interop"
+description: "Tensor and IDataView conversion used by Toro.ML algorithm packages."
+namespace: "Toro.ML.Interop"
+showTitle: false
+---
+
+# Columns
+
+Fixed ML.NET column names used by Toro.ML algorithm packages.
+
+| Function | Description |
+| --- | --- |
+| `Features` |  |
+| `GroupId` |  |
+| `Label` |  |
+| `Score` |  |
+
+## Features
+
+```fsharp
+Features
+```
+
+**Returns** `string`
+
+---
+
+## GroupId
+
+```fsharp
+GroupId
+```
+
+**Returns** `string`
+
+---
+
+## Label
+
+```fsharp
+Label
+```
+
+**Returns** `string`
+
+---
+
+## Score
+
+```fsharp
+Score
+```
+
+**Returns** `string`
+---
+
+# RegressionRow
+
+ML.NET regression row exposed for algorithm extension packages.
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `Features` | Fixed-width feature vector. |
+| `Label` | Target value. |
+---
+
+# RankingRow
+
+ML.NET ranking row exposed for algorithm extension packages.
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `Features` | Fixed-width feature vector. |
+| `GroupId` | Query-group key encoded for ML.NET. |
+| `Label` | Relevance label. |
+---
+
+# ScoringRow
+
+ML.NET scoring row exposed for algorithm extension packages.
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `Features` | Fixed-width feature vector. |
+---
+
+# TensorDataView
+
+Shared Tensor and IDataView conversion for algorithm extension packages.
+
+| Function | Description |
+| --- | --- |
+| `float32Column columnName data` | Copy a scalar float32 IDataView column to a detached CPU tensor. |
+| `schema mlContext featureCount` | Create the ML.NET scoring input schema for a feature width. |
+| `scoring mlContext features` | Convert a feature matrix to an ML.NET scoring view and return its width. |
+
+## float32Column
+
+```fsharp
+float32Column columnName data
+```
+
+Copy a scalar float32 IDataView column to a detached CPU tensor.
+
+**Parameters**
+
+- `columnName` : `string`
+- `data` : `IDataView`
+
+**Returns** `Tensor`
+
+---
+
+## schema
+
+```fsharp
+schema mlContext featureCount
+```
+
+Create the ML.NET scoring input schema for a feature width.
+
+**Parameters**
+
+- `mlContext` : `MLContext`
+- `featureCount` : `int`
+
+**Returns** `DataViewSchema`
+
+---
+
+## scoring
+
+```fsharp
+scoring mlContext features
+```
+
+Convert a feature matrix to an ML.NET scoring view and return its width.
+
+**Parameters**
+
+- `mlContext` : `MLContext`
+- `features` : `Tensor`
+
+**Returns** `int * IDataView`
+---
+
+# RegressionDataView
+
+Regression Tensor-to-IDataView conversion for algorithm extension packages.
+
+| Function | Description |
+| --- | --- |
+| `training mlContext dataset` | Convert a validated regression dataset to an ML.NET training view. |
+
+## training
+
+```fsharp
+training mlContext dataset
+```
+
+Convert a validated regression dataset to an ML.NET training view.
+
+**Parameters**
+
+- `mlContext` : `MLContext`
+- `dataset` : `RegressionDataset`
+
+**Returns** `IDataView`
+---
+
+# RankingDataView
+
+Ranking Tensor-to-IDataView conversion for algorithm extension packages.
+
+| Function | Description |
+| --- | --- |
+| `training mlContext dataset` | Convert a validated ranking dataset to an ML.NET training view. |
+
+## training
+
+```fsharp
+training mlContext dataset
+```
+
+Convert a validated ranking dataset to an ML.NET training view.
+
+**Parameters**
+
+- `mlContext` : `MLContext`
+- `dataset` : `RankingDataset`
+
+**Returns** `IDataView`

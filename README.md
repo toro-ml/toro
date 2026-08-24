@@ -225,6 +225,7 @@ Preview the documentation site locally:
 ```bash
 cd docs
 pnpm install
+pnpm docs:generate
 pnpm dev
 ```
 

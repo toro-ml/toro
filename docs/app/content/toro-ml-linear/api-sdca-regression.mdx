@@ -1,0 +1,166 @@
+---
+title: "SDCA regression"
+description: "SDCA regression configuration, model persistence, training, prediction, and evaluation."
+namespace: "Toro.ML.Linear.Sdca"
+showTitle: false
+---
+
+# RegressionConfig
+
+Common SDCA regression settings.
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `L1Regularization` | L1 regularization weight, or `None` to use the ML.NET default. |
+| `L2Regularization` | L2 regularization weight, or `None` to use the ML.NET default. |
+| `MaximumNumberOfIterations` | Maximum training iterations, or `None` to use the ML.NET default. |
+| `Seed` | ML.NET context seed. The default is `Some 0` for reproducibility. |
+---
+
+# RegressionConfig module
+
+Constructors for SDCA regression settings.
+
+| Function | Description |
+| --- | --- |
+| `create ()` | Create settings from the ML.NET SDCA defaults with a deterministic context seed. |
+
+## create
+
+```fsharp
+create ()
+```
+
+Create settings from the ML.NET SDCA defaults with a deterministic context seed.
+
+**Parameters**
+
+- `()` : `unit`
+
+**Returns** `RegressionConfig`
+---
+
+# RegressionModel
+
+A fitted SDCA regression model.
+
+## Instance members
+
+| Name | Description |
+| --- | --- |
+| `this.FeatureCount` | Number of input features expected by the model. |
+| `this.Transformer` | Underlying ML.NET model. |
+---
+
+# Regression
+
+SDCA regression operations.
+
+| Function | Description |
+| --- | --- |
+| `evaluate dataset model` | Evaluate a fitted regressor with ML.NET regression metrics. |
+| `fit config dataset` | Fit an SDCA regressor with common F# settings. |
+| `fitWithOptions seed configure dataset` | Fit an SDCA regressor after configuring the complete ML.NET options object. |
+| `load path` | Load a linear regression model compatible with the SDCA output type. |
+| `predict features model` | Predict target values. Values are returned as a detached CPU float32 tensor. |
+| `save path model` | Save a fitted model in the ML.NET zip format. |
+
+## evaluate
+
+```fsharp
+evaluate dataset model
+```
+
+Evaluate a fitted regressor with ML.NET regression metrics.
+
+**Parameters**
+
+- `dataset` : `RegressionDataset`
+- `model` : `RegressionModel`
+
+**Returns** `RegressionMetrics`
+
+---
+
+## fit
+
+```fsharp
+fit config dataset
+```
+
+Fit an SDCA regressor with common F# settings.
+
+**Parameters**
+
+- `config` : `RegressionConfig`
+- `dataset` : `RegressionDataset`
+
+**Returns** `RegressionModel`
+
+---
+
+## fitWithOptions
+
+```fsharp
+fitWithOptions seed configure dataset
+```
+
+Fit an SDCA regressor after configuring the complete ML.NET options object.
+
+**Parameters**
+
+- `seed` : `int option`
+- `configure` : `Options -> unit`
+- `dataset` : `RegressionDataset`
+
+**Returns** `RegressionModel`
+
+---
+
+## load
+
+```fsharp
+load path
+```
+
+Load a linear regression model compatible with the SDCA output type.
+
+**Parameters**
+
+- `path` : `string`
+
+**Returns** `RegressionModel`
+
+---
+
+## predict
+
+```fsharp
+predict features model
+```
+
+Predict target values. Values are returned as a detached CPU float32 tensor.
+
+**Parameters**
+
+- `features` : `Tensor`
+- `model` : `RegressionModel`
+
+**Returns** `Tensor`
+
+---
+
+## save
+
+```fsharp
+save path model
+```
+
+Save a fitted model in the ML.NET zip format.
+
+**Parameters**
+
+- `path` : `string`
+- `model` : `RegressionModel`

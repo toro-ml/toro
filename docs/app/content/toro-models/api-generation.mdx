@@ -1,0 +1,156 @@
+---
+title: "Generation"
+description: "Sampling options and session-based causal language-model generation."
+namespace: "Toro.Models"
+showTitle: false
+---
+
+# GenerationSampling
+
+Token-selection strategy used during generation.
+
+## Union cases
+
+| Name | Description |
+| --- | --- |
+| `Greedy` | Select the highest-logit token. |
+| `Temperature temperature` | Sample from logits divided by a positive temperature. |
+
+## Instance members
+
+| Name | Description |
+| --- | --- |
+| `this.IsGreedy` |  |
+| `this.IsTemperature` |  |
+---
+
+# GenerationOptions
+
+Options for one causal language-model generation session.
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `CancellationToken` | Cancellation signal checked before each model invocation. |
+| `MaxNewTokens` | Maximum number of tokens to generate after the prompt. |
+| `Sampling` | Token-selection strategy applied to each next-token distribution. |
+---
+
+# GenerationOptions module
+
+Constructors and validation for generation options.
+
+| Function | Description |
+| --- | --- |
+| `greedy maxNewTokens` | Create greedy generation options without cancellation. |
+| `temperature temperature maxNewTokens` | Create temperature-sampling options without cancellation. |
+
+## greedy
+
+```fsharp
+greedy maxNewTokens
+```
+
+Create greedy generation options without cancellation.
+
+**Parameters**
+
+- `maxNewTokens` : `int`
+
+**Returns** `GenerationOptions`
+
+---
+
+## temperature
+
+```fsharp
+temperature temperature maxNewTokens
+```
+
+Create temperature-sampling options without cancellation.
+
+**Parameters**
+
+- `temperature` : `float`
+- `maxNewTokens` : `int`
+
+**Returns** `GenerationOptions`
+---
+
+# GenerationSession
+
+A single-request generation session that owns its token sequence and key/value cache.
+
+## Instance members
+
+| Name | Description |
+| --- | --- |
+| `this.Generate` | Generate until EOS or the configured maximum token count is reached. |
+| `this.GeneratedTokenIds` | Tokens generated so far, including a terminating EOS token when one was selected. |
+| `this.IsFinished` | Whether EOS or the configured maximum token count has been reached. |
+| `this.PromptTokenIds` | Tokens supplied as the prompt. |
+| `this.Step` | Generate at most one token. Returns None after the session has finished. |
+| `this.TokenIds` | Prompt and generated tokens accumulated by this session. |
+| `this.Tokens` | Generate tokens until EOS or the configured maximum token count is reached. |
+---
+
+# Generation
+
+Session-based causal language-model generation.
+
+| Function | Description |
+| --- | --- |
+| `createSession options promptTokenIds model` | Create a request-local generation session. The caller owns the returned session. |
+| `generate options promptTokenIds model` | Generate token IDs and dispose the request-local cache before returning. |
+| `tokens session` | Enumerate generated token IDs until the session finishes. |
+
+## createSession
+
+```fsharp
+createSession options promptTokenIds model
+```
+
+Create a request-local generation session. The caller owns the returned session.
+
+**Parameters**
+
+- `options` : `GenerationOptions`
+- `promptTokenIds` : `int64 list`
+- `model` : `CausalLm<'a>`
+
+**Returns** `GenerationSession<'a>`
+
+---
+
+## generate
+
+```fsharp
+generate options promptTokenIds model
+```
+
+Generate token IDs and dispose the request-local cache before returning.
+
+**Parameters**
+
+- `options` : `GenerationOptions`
+- `promptTokenIds` : `int64 list`
+- `model` : `CausalLm<'a>`
+
+**Returns** `int64 list`
+
+---
+
+## tokens
+
+```fsharp
+tokens session
+```
+
+Enumerate generated token IDs until the session finishes.
+
+**Parameters**
+
+- `session` : `GenerationSession<'Cache>`
+
+**Returns** `int64 seq`

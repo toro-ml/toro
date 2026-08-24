@@ -1,0 +1,16 @@
+---
+title: "SmolLm2Cache"
+description: "Key/value cache for incremental SmolLM2 decoding."
+namespace: "Toro.Models"
+---
+
+A fixed-capacity, per-layer SmolLM2 key/value cache.
+
+## Instance members
+
+| Name | Description |
+| --- | --- |
+| `this.BatchSize` | Number of batch items stored by this cache. |
+| `this.Capacity` | Maximum number of tokens stored by this cache. |
+| `this.Length` | Number of tokens currently stored by this cache. |
+| `this.Reset` | Remove all logical entries without reallocating storage. |

@@ -1,6 +1,6 @@
 ---
 title: "Attention layers"
-description: "Multi-head attention and transformer block."
+description: "Multi-head attention and pre-norm and post-norm transformer blocks."
 namespace: "Toro.NN"
 showTitle: false
 ---
@@ -23,24 +23,45 @@ showTitle: false
 | Name | Description |
 | --- | --- |
 | `this.forward (x, ?mask, ?kvCache)` |  |
-
 ---
 
-# TransformerBlock
+# PreNormTransformerBlock
+
+Pre-norm transformer block: Norm → Attn → Add → Norm → FFN → Add.
 
 ## Record fields
 
 | Name | Description |
 | --- | --- |
 | `Attn` |  |
+| `AttnNorm` |  |
 | `Ff1` |  |
 | `Ff2` |  |
-| `Norm1` |  |
-| `Norm2` |  |
+| `FfNorm` |  |
 
 ## Instance members
 
 | Name | Description |
 | --- | --- |
 | `this.forward (x, ?mask)` |  |
+---
 
+# PostNormTransformerBlock
+
+Post-norm transformer block: Attn → Add → Norm → FFN → Add → Norm.
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `Attn` |  |
+| `AttnNorm` |  |
+| `Ff1` |  |
+| `Ff2` |  |
+| `FfNorm` |  |
+
+## Instance members
+
+| Name | Description |
+| --- | --- |
+| `this.forward (x, ?mask)` | $x \leftarrow \mathrm{LN}(x + \mathrm{Attn}(x))$, then $x \leftarrow \mathrm{LN}(x + \mathrm{FFN}(x))$. |

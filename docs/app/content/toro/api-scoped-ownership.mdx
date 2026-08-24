@@ -1,0 +1,100 @@
+---
+title: "Scoped ownership"
+description: "Computation expressions for automatic and explicit tensor lifetime management."
+namespace: "Toro"
+showTitle: false
+---
+
+# ScopedBuilder
+
+Computation expression that wraps the body in a
+ `torch.NewDisposeScope()`. Intermediate tensors are disposed
+ automatically when the block completes. Tensors in the return value
+ (including inside tuples, records, and unions) are kept alive past the scope.
+
+## Constructors
+
+| Name | Description |
+| --- | --- |
+| `ScopedBuilder()` |  |
+
+## Instance members
+
+| Name | Description |
+| --- | --- |
+| `this.Combine` |  |
+| `this.Delay` |  |
+| `this.For` |  |
+| `this.Return` |  |
+| `this.ReturnFrom` |  |
+| `this.Run` |  |
+| `this.TryFinally` |  |
+| `this.TryWith` |  |
+| `this.Using` |  |
+| `this.While` |  |
+| `this.Zero` |  |
+---
+
+# ExplicitScopedBuilder
+
+Computation expression that disposes every tensor created in its scope unless
+ the tensor is moved to the outer scope explicitly with `Tensor.keep`.
+ Unlike `scoped`, the return value is not traversed automatically.
+
+## Constructors
+
+| Name | Description |
+| --- | --- |
+| `ExplicitScopedBuilder()` |  |
+
+## Instance members
+
+| Name | Description |
+| --- | --- |
+| `this.Combine` |  |
+| `this.Delay` |  |
+| `this.For` |  |
+| `this.Return` |  |
+| `this.ReturnFrom` |  |
+| `this.Run` |  |
+| `this.TryFinally` |  |
+| `this.TryWith` |  |
+| `this.Using` |  |
+| `this.While` |  |
+| `this.Zero` |  |
+---
+
+# ScopedCE
+
+| Function | Description |
+| --- | --- |
+| `scoped` | Computation expression that wraps the body in a
+ `torch.NewDisposeScope()`. Intermediate tensors are disposed
+ automatically when the block completes. |
+| `scopedExplicit` | Computation expression that disposes intermediate tensors without inspecting
+ the return value. Call `Tensor.keep` for each tensor that must survive. |
+
+## scoped
+
+```fsharp
+scoped
+```
+
+Computation expression that wraps the body in a
+ `torch.NewDisposeScope()`. Intermediate tensors are disposed
+ automatically when the block completes.
+
+**Returns** `ScopedBuilder`
+
+---
+
+## scopedExplicit
+
+```fsharp
+scopedExplicit
+```
+
+Computation expression that disposes intermediate tensors without inspecting
+ the return value. Call `Tensor.keep` for each tensor that must survive.
+
+**Returns** `ExplicitScopedBuilder`

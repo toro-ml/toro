@@ -76,10 +76,8 @@ export const navSections: readonly NavSection[] = [
       {
         title: "Toro",
         entries: [
-          { to: "/api-device", label: "Device" },
-          { to: "/api-dtype", label: "DType" },
-          { to: "/api-shape", label: "Shape" },
           { to: "/api-tensor", label: "Tensor" },
+          { to: "/api-scoped-ownership", label: "Scoped ownership" },
           { to: "/api-safetensors", label: "SafeTensors" },
         ],
       },
@@ -164,7 +162,70 @@ export const navSections: readonly NavSection[] = [
         title: "Toro.Text",
         entries: [
           { to: "/api-tokenizer", label: "Tokenizer" },
-          { to: "/api-encode", label: "Encode" },
+          { to: "/api-collation", label: "Collation" },
+        ],
+      },
+      {
+        title: "Toro.Models",
+        entries: [
+          { to: "/api-causal-lm", label: "CausalLm" },
+          { to: "/api-generation", label: "Generation" },
+          { to: "/api-model-interop", label: "Interop" },
+        ],
+      },
+      {
+        title: "Toro.Models.SmolLm2",
+        entries: [
+          { to: "/api-smollm2-types", label: "Types" },
+          { to: "/api-smollm2-cache", label: "Cache" },
+          { to: "/api-smollm2-model", label: "Model" },
+        ],
+      },
+      {
+        title: "Toro.Models.DistilGpt2",
+        entries: [
+          { to: "/api-distilgpt2-types", label: "Types" },
+          { to: "/api-distilgpt2-cache", label: "Cache" },
+          { to: "/api-distilgpt2-model", label: "Model" },
+        ],
+      },
+      {
+        title: "Toro.Extensions.AI",
+        entries: [
+          { to: "/api-causal-lm-chat-client", label: "CausalLmChatClient" },
+        ],
+      },
+      {
+        title: "Toro.ML",
+        entries: [
+          {
+            title: "Data",
+            items: [
+              { to: "/api-ranking-dataset", label: "RankingDataset" },
+              { to: "/api-regression-dataset", label: "RegressionDataset" },
+            ],
+          },
+          { to: "/api-ml-interop", label: "Interop" },
+        ],
+      },
+      {
+        title: "Toro.ML.Linear",
+        entries: [
+          { to: "/api-sdca-regression", label: "SDCA Regression" },
+        ],
+      },
+      {
+        title: "Toro.ML.FastTree",
+        entries: [
+          { to: "/api-fasttree-regression", label: "Regression" },
+          { to: "/api-fasttree-ranking", label: "Ranking" },
+        ],
+      },
+      {
+        title: "Toro.ML.LightGbm",
+        entries: [
+          { to: "/api-lightgbm-regression", label: "Regression" },
+          { to: "/api-lightgbm-ranking", label: "Ranking" },
         ],
       },
     ],

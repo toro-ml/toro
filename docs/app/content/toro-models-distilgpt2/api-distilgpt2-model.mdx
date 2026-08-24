@@ -1,0 +1,220 @@
+---
+title: "DistilGPT-2 model"
+description: "DistilGPT-2 layers, model composition, local loading, and causal language-model adaptation."
+namespace: "Toro.Models"
+showTitle: false
+---
+
+# DistilGpt2Conv1d
+
+A GPT-2 Conv1D projection stored in Hugging Face [input, output] weight layout.
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `Bias` |  |
+| `Weight` |  |
+
+## Instance members
+
+| Name | Description |
+| --- | --- |
+| `this.forward input` | Apply the affine projection without transposing its stored weight. |
+---
+
+# DistilGpt2Attention
+
+Projection layers in one DistilGPT-2 self-attention block.
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `Output` |  |
+| `Qkv` |  |
+---
+
+# DistilGpt2Mlp
+
+Projection layers in one DistilGPT-2 feed-forward block.
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `Input` |  |
+| `Output` |  |
+---
+
+# DistilGpt2Block
+
+One DistilGPT-2 transformer block.
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `Attention` |  |
+| `Mlp` |  |
+| `Norm1` |  |
+| `Norm2` |  |
+---
+
+# DistilGpt2
+
+Construction, state, cache, and forward operations for DistilGPT-2.
+
+| Function | Description |
+| --- | --- |
+| `asCausalLm model` | Bind a DistilGPT-2 model to the common typed causal language-model interface. |
+| `create config dtype device` | Create a DistilGPT-2 model from a validated configuration. |
+| `createCache batchSize capacity model` | Allocate a reusable fixed-capacity key/value cache for a model. |
+| `descriptor` | State descriptor whose canonical names and shapes match Hugging Face DistilGPT-2 weights. |
+| `dispose model` | Dispose tensors owned by a DistilGPT-2 model. |
+| `forward input model` | Run DistilGPT-2. When a cache is supplied, only new tokens should be passed after prefill. |
+| `loadConfig path` | Load and validate a Hugging Face config.json file. |
+| `loadFromDirectory directory device` | Load config and a strict single-file or sharded SafeTensors state from a local directory. |
+| `state model` | Create a validated named state view using Hugging Face weight names. |
+
+## asCausalLm
+
+```fsharp
+asCausalLm model
+```
+
+Bind a DistilGPT-2 model to the common typed causal language-model interface.
+
+**Parameters**
+
+- `model` : `DistilGpt2`
+
+**Returns** `CausalLm<DistilGpt2Cache>`
+
+---
+
+## create
+
+```fsharp
+create config dtype device
+```
+
+Create a DistilGPT-2 model from a validated configuration.
+
+**Parameters**
+
+- `config` : `DistilGpt2Config`
+- `dtype` : `ScalarType`
+- `device` : `Device`
+
+**Returns** `DistilGpt2`
+
+---
+
+## createCache
+
+```fsharp
+createCache batchSize capacity model
+```
+
+Allocate a reusable fixed-capacity key/value cache for a model.
+
+**Parameters**
+
+- `batchSize` : `int64`
+- `capacity` : `int64`
+- `model` : `DistilGpt2`
+
+**Returns** `DistilGpt2Cache`
+
+---
+
+## descriptor
+
+```fsharp
+descriptor
+```
+
+State descriptor whose canonical names and shapes match Hugging Face DistilGPT-2 weights.
+
+**Returns** `ModelDescriptor<DistilGpt2>`
+
+---
+
+## dispose
+
+```fsharp
+dispose model
+```
+
+Dispose tensors owned by a DistilGPT-2 model.
+
+**Parameters**
+
+- `model` : `DistilGpt2`
+
+---
+
+## forward
+
+```fsharp
+forward input model
+```
+
+Run DistilGPT-2. When a cache is supplied, only new tokens should be passed after prefill.
+
+**Parameters**
+
+- `input` : `DistilGpt2Input`
+- `model` : `DistilGpt2`
+
+**Returns** `DistilGpt2Output`
+
+---
+
+## loadConfig
+
+```fsharp
+loadConfig path
+```
+
+Load and validate a Hugging Face config.json file.
+
+**Parameters**
+
+- `path` : `string`
+
+**Returns** `DistilGpt2Config`
+
+---
+
+## loadFromDirectory
+
+```fsharp
+loadFromDirectory directory device
+```
+
+Load config and a strict single-file or sharded SafeTensors state from a local directory.
+
+**Parameters**
+
+- `directory` : `string`
+- `device` : `Device`
+
+**Returns** `DistilGpt2 * LoadReport`
+
+---
+
+## state
+
+```fsharp
+state model
+```
+
+Create a validated named state view using Hugging Face weight names.
+
+**Parameters**
+
+- `model` : `DistilGpt2`
+
+**Returns** `ModelState`

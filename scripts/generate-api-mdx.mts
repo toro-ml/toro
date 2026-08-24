@@ -1,5 +1,10 @@
-import { mkdirSync } from "node:fs";
-import { readFileSync, writeFileSync, readdirSync } from "node:fs";
+import {
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 
 const root = join(import.meta.dirname, "..");
@@ -53,36 +58,27 @@ const filePages: FilePage[] = [
   {
     subdir: "toro",
     namespace: "Toro",
-    slug: "api-device",
-    title: "Device",
-    description: "Device selection (CPU / CUDA).",
-    sources: [{ html: "toro-device.html", heading: "Device" }],
-  },
-  {
-    subdir: "toro",
-    namespace: "Toro",
-    slug: "api-dtype",
-    title: "DType",
-    description: "Data type definitions for tensors.",
-    sources: [{ html: "toro-dtype.html", heading: "DType" }],
-  },
-  {
-    subdir: "toro",
-    namespace: "Toro",
-    slug: "api-shape",
-    title: "Shape",
-    description: "Tensor shape utilities.",
-    sources: [{ html: "toro-shape.html", heading: "Shape" }],
-  },
-  {
-    subdir: "toro",
-    namespace: "Toro",
     slug: "api-tensor",
     title: "Tensor APIs",
     description: "Tensor creation, manipulation, and indexing.",
     sources: [
       { html: "toro-tensor.html", heading: "Tensor" },
       { html: "toro-tidx.html", heading: "TIdx" },
+      { html: "toro-tensorops.html", heading: "TensorOps" },
+      { html: "toro-tensorextensions.html", heading: "TensorExtensions" },
+      { html: "toro-tensormodule.html", heading: "Tensor module" },
+    ],
+  },
+  {
+    subdir: "toro",
+    namespace: "Toro",
+    slug: "api-scoped-ownership",
+    title: "Scoped ownership",
+    description: "Computation expressions for automatic and explicit tensor lifetime management.",
+    sources: [
+      { html: "toro-scopedbuilder.html", heading: "ScopedBuilder" },
+      { html: "toro-explicitscopedbuilder.html", heading: "ExplicitScopedBuilder" },
+      { html: "toro-scopedce.html", heading: "ScopedCE" },
     ],
   },
   // ── Toro.NN ── (fsproj compile order)
@@ -239,10 +235,11 @@ const filePages: FilePage[] = [
     namespace: "Toro.NN",
     slug: "api-attention",
     title: "Attention layers",
-    description: "Multi-head attention and transformer block.",
+    description: "Multi-head attention and pre-norm and post-norm transformer blocks.",
     sources: [
       { html: "toro-nn-multiheadattention.html", heading: "MultiHeadAttention" },
-      { html: "toro-nn-transformerblock.html", heading: "TransformerBlock" },
+      { html: "toro-nn-prenormtransformerblock.html", heading: "PreNormTransformerBlock" },
+      { html: "toro-nn-postnormtransformerblock.html", heading: "PostNormTransformerBlock" },
     ],
   },
   {
@@ -467,11 +464,258 @@ const filePages: FilePage[] = [
   {
     subdir: "toro-text",
     namespace: "Toro.Text",
-    slug: "api-encode",
-    title: "Encode",
-    description: "Text-to-tensor encoding utilities.",
+    slug: "api-collation",
+    title: "Collation",
+    description: "Text-to-tensor collation, padding, truncation, and batch encoding.",
     sources: [
-      { html: "toro-text-encode.html", heading: "Encode" },
+      { html: "toro-text-paddingside.html", heading: "PaddingSide" },
+      { html: "toro-text-truncationside.html", heading: "TruncationSide" },
+      { html: "toro-text-collationlength.html", heading: "CollationLength" },
+      { html: "toro-text-collationoptions.html", heading: "CollationOptions" },
+      { html: "toro-text-collationoptionsmodule.html", heading: "CollationOptions module" },
+      { html: "toro-text-encodedbatch.html", heading: "EncodedBatch" },
+      { html: "toro-text-collation.html", heading: "Collation" },
+    ],
+  },
+
+  // ── Toro.Models ──
+  {
+    subdir: "toro-models",
+    namespace: "Toro.Models",
+    slug: "api-causal-lm",
+    title: "Causal language models",
+    description: "Shared inputs, outputs, contracts, and tensor-level operations for cached causal language models.",
+    sources: [
+      { html: "toro-models-causallminput-1.html", heading: "CausalLmInput" },
+      { html: "toro-models-causallmoutput-1.html", heading: "CausalLmOutput" },
+      { html: "toro-models-causallm-1.html", heading: "CausalLm contract" },
+      { html: "toro-models-causallm.html", heading: "CausalLm" },
+    ],
+  },
+  {
+    subdir: "toro-models",
+    namespace: "Toro.Models",
+    slug: "api-generation",
+    title: "Generation",
+    description: "Sampling options and session-based causal language-model generation.",
+    sources: [
+      { html: "toro-models-generationsampling.html", heading: "GenerationSampling" },
+      { html: "toro-models-generationoptions.html", heading: "GenerationOptions" },
+      { html: "toro-models-generationoptionsmodule.html", heading: "GenerationOptions module" },
+      { html: "toro-models-generationsession-1.html", heading: "GenerationSession" },
+      { html: "toro-models-generation.html", heading: "Generation" },
+    ],
+  },
+  {
+    subdir: "toro-models",
+    namespace: "Toro.Models.Interop",
+    slug: "api-model-interop",
+    title: "Model interop",
+    description: "Shared configuration, model assets, tensor ownership, cache, and causal-input helpers for model-family packages.",
+    sources: [
+      { html: "toro-models-interop-jsonconfig.html", heading: "JsonConfig" },
+      { html: "toro-models-interop-localmodelassets.html", heading: "LocalModelAssets" },
+      { html: "toro-models-interop-tensorowner.html", heading: "TensorOwner" },
+      { html: "toro-models-interop-fixedkvcache.html", heading: "FixedKvCache" },
+      { html: "toro-models-interop-preparedcausalinput.html", heading: "PreparedCausalInput" },
+      { html: "toro-models-interop-causalinput.html", heading: "CausalInput" },
+    ],
+  },
+
+  // ── Toro.Models.SmolLm2 ──
+  {
+    subdir: "toro-models-smollm2",
+    namespace: "Toro.Models",
+    slug: "api-smollm2-types",
+    title: "SmolLM2 types",
+    description: "SmolLM2 configuration and model input and output types.",
+    sources: [
+      { html: "toro-models-smollm2config.html", heading: "SmolLm2Config" },
+      { html: "toro-models-smollm2configmodule.html", heading: "SmolLm2Config module" },
+      { html: "toro-models-smollm2input.html", heading: "SmolLm2Input" },
+      { html: "toro-models-smollm2output.html", heading: "SmolLm2Output" },
+    ],
+  },
+  {
+    subdir: "toro-models-smollm2",
+    namespace: "Toro.Models",
+    slug: "api-smollm2-cache",
+    title: "SmolLM2 cache",
+    description: "Key/value cache for incremental SmolLM2 decoding.",
+    sources: [{ html: "toro-models-smollm2cache.html", heading: "SmolLm2Cache" }],
+  },
+  {
+    subdir: "toro-models-smollm2",
+    namespace: "Toro.Models",
+    slug: "api-smollm2-model",
+    title: "SmolLM2 model",
+    description: "SmolLM2 layers, model composition, local loading, and causal language-model adaptation.",
+    sources: [
+      { html: "toro-models-smollm2attention.html", heading: "SmolLm2Attention" },
+      { html: "toro-models-smollm2mlp.html", heading: "SmolLm2Mlp" },
+      { html: "toro-models-smollm2block.html", heading: "SmolLm2Block" },
+      { html: "toro-models-smollm2module.html", heading: "SmolLm2" },
+    ],
+  },
+
+  // ── Toro.Models.DistilGpt2 ──
+  {
+    subdir: "toro-models-distilgpt2",
+    namespace: "Toro.Models",
+    slug: "api-distilgpt2-types",
+    title: "DistilGPT-2 types",
+    description: "DistilGPT-2 configuration and model input and output types.",
+    sources: [
+      { html: "toro-models-distilgpt2config.html", heading: "DistilGpt2Config" },
+      { html: "toro-models-distilgpt2configmodule.html", heading: "DistilGpt2Config module" },
+      { html: "toro-models-distilgpt2input.html", heading: "DistilGpt2Input" },
+      { html: "toro-models-distilgpt2output.html", heading: "DistilGpt2Output" },
+    ],
+  },
+  {
+    subdir: "toro-models-distilgpt2",
+    namespace: "Toro.Models",
+    slug: "api-distilgpt2-cache",
+    title: "DistilGPT-2 cache",
+    description: "Key/value cache for incremental DistilGPT-2 decoding.",
+    sources: [{ html: "toro-models-distilgpt2cache.html", heading: "DistilGpt2Cache" }],
+  },
+  {
+    subdir: "toro-models-distilgpt2",
+    namespace: "Toro.Models",
+    slug: "api-distilgpt2-model",
+    title: "DistilGPT-2 model",
+    description: "DistilGPT-2 layers, model composition, local loading, and causal language-model adaptation.",
+    sources: [
+      { html: "toro-models-distilgpt2conv1d.html", heading: "DistilGpt2Conv1d" },
+      { html: "toro-models-distilgpt2attention.html", heading: "DistilGpt2Attention" },
+      { html: "toro-models-distilgpt2mlp.html", heading: "DistilGpt2Mlp" },
+      { html: "toro-models-distilgpt2block.html", heading: "DistilGpt2Block" },
+      { html: "toro-models-distilgpt2module.html", heading: "DistilGpt2" },
+    ],
+  },
+
+  // ── Toro.Extensions.AI ──
+  {
+    subdir: "toro-extensions-ai",
+    namespace: "Toro.Extensions.AI",
+    slug: "api-causal-lm-chat-client",
+    title: "CausalLmChatClient",
+    description: "Microsoft.Extensions.AI chat-client adapter for Toro causal language models.",
+    sources: [
+      { html: "toro-extensions-ai-causallmchatclientconfig-1.html", heading: "CausalLmChatClientConfig" },
+      { html: "toro-extensions-ai-causallmchatclient.html", heading: "CausalLmChatClient" },
+    ],
+  },
+
+  // ── Toro.ML ──
+  {
+    subdir: "toro-ml",
+    namespace: "Toro.ML",
+    slug: "api-ranking-dataset",
+    title: "RankingDataset",
+    description: "Borrowed tensor datasets for learning-to-rank tasks.",
+    sources: [
+      { html: "toro-ml-rankingdataset.html", heading: "RankingDataset" },
+      { html: "toro-ml-rankingdatasetmodule.html", heading: "RankingDataset module" },
+    ],
+  },
+  {
+    subdir: "toro-ml",
+    namespace: "Toro.ML",
+    slug: "api-regression-dataset",
+    title: "RegressionDataset",
+    description: "Borrowed tensor datasets for regression tasks.",
+    sources: [
+      { html: "toro-ml-regressiondataset.html", heading: "RegressionDataset" },
+      { html: "toro-ml-regressiondatasetmodule.html", heading: "RegressionDataset module" },
+    ],
+  },
+  {
+    subdir: "toro-ml",
+    namespace: "Toro.ML.Interop",
+    slug: "api-ml-interop",
+    title: "ML.NET interop",
+    description: "Tensor and IDataView conversion used by Toro.ML algorithm packages.",
+    sources: [
+      { html: "toro-ml-interop-columns.html", heading: "Columns" },
+      { html: "toro-ml-interop-regressionrow.html", heading: "RegressionRow" },
+      { html: "toro-ml-interop-rankingrow.html", heading: "RankingRow" },
+      { html: "toro-ml-interop-scoringrow.html", heading: "ScoringRow" },
+      { html: "toro-ml-interop-tensordataview.html", heading: "TensorDataView" },
+      { html: "toro-ml-interop-regressiondataview.html", heading: "RegressionDataView" },
+      { html: "toro-ml-interop-rankingdataview.html", heading: "RankingDataView" },
+    ],
+  },
+
+  // ── Toro.ML.Linear ──
+  {
+    subdir: "toro-ml-linear",
+    namespace: "Toro.ML.Linear.Sdca",
+    slug: "api-sdca-regression",
+    title: "SDCA regression",
+    description: "SDCA regression configuration, model persistence, training, prediction, and evaluation.",
+    sources: [
+      { html: "toro-ml-linear-sdca-regressionconfig.html", heading: "RegressionConfig" },
+      { html: "toro-ml-linear-sdca-regressionconfigmodule.html", heading: "RegressionConfig module" },
+      { html: "toro-ml-linear-sdca-regressionmodel.html", heading: "RegressionModel" },
+      { html: "toro-ml-linear-sdca-regression.html", heading: "Regression" },
+    ],
+  },
+
+  // ── Toro.ML.FastTree ──
+  {
+    subdir: "toro-ml-fasttree",
+    namespace: "Toro.ML.FastTree",
+    slug: "api-fasttree-regression",
+    title: "FastTree regression",
+    description: "FastTree regression configuration, model persistence, training, prediction, and evaluation.",
+    sources: [
+      { html: "toro-ml-fasttree-regressionconfig.html", heading: "RegressionConfig" },
+      { html: "toro-ml-fasttree-regressionconfigmodule.html", heading: "RegressionConfig module" },
+      { html: "toro-ml-fasttree-regressionmodel.html", heading: "RegressionModel" },
+      { html: "toro-ml-fasttree-regression.html", heading: "Regression" },
+    ],
+  },
+  {
+    subdir: "toro-ml-fasttree",
+    namespace: "Toro.ML.FastTree",
+    slug: "api-fasttree-ranking",
+    title: "FastTree ranking",
+    description: "FastTree ranking configuration, model persistence, training, prediction, and evaluation.",
+    sources: [
+      { html: "toro-ml-fasttree-rankingconfig.html", heading: "RankingConfig" },
+      { html: "toro-ml-fasttree-rankingconfigmodule.html", heading: "RankingConfig module" },
+      { html: "toro-ml-fasttree-rankingmodel.html", heading: "RankingModel" },
+      { html: "toro-ml-fasttree-ranking.html", heading: "Ranking" },
+    ],
+  },
+
+  // ── Toro.ML.LightGbm ──
+  {
+    subdir: "toro-ml-lightgbm",
+    namespace: "Toro.ML.LightGbm",
+    slug: "api-lightgbm-regression",
+    title: "LightGBM regression",
+    description: "LightGBM regression configuration, model persistence, training, prediction, and evaluation.",
+    sources: [
+      { html: "toro-ml-lightgbm-regressionconfig.html", heading: "RegressionConfig" },
+      { html: "toro-ml-lightgbm-regressionconfigmodule.html", heading: "RegressionConfig module" },
+      { html: "toro-ml-lightgbm-regressionmodel.html", heading: "RegressionModel" },
+      { html: "toro-ml-lightgbm-regression.html", heading: "Regression" },
+    ],
+  },
+  {
+    subdir: "toro-ml-lightgbm",
+    namespace: "Toro.ML.LightGbm",
+    slug: "api-lightgbm-ranking",
+    title: "LightGBM ranking",
+    description: "LightGBM ranking configuration, model persistence, training, prediction, and evaluation.",
+    sources: [
+      { html: "toro-ml-lightgbm-rankingconfig.html", heading: "RankingConfig" },
+      { html: "toro-ml-lightgbm-rankingconfigmodule.html", heading: "RankingConfig module" },
+      { html: "toro-ml-lightgbm-rankingmodel.html", heading: "RankingModel" },
+      { html: "toro-ml-lightgbm-ranking.html", heading: "Ranking" },
     ],
   },
 ];
@@ -501,11 +745,18 @@ function stripTagsKeepCode(html: string): string {
 }
 
 function escapeMdx(text: string): string {
-  return text.replace(/(\w+)<([^>]+)>/g, "`$1<$2>`");
+  return text
+    .replace(/(\w+)<([^>]+)>/g, "`$1&lt;$2&gt;`")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 
 function escapeTableCell(text: string): string {
   return text.replace(/(?<!\\)\|/g, "\\|");
+}
+
+function escapeInlineCode(text: string): string {
+  return text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 function extractMembers(html: string): Member[] {
@@ -618,7 +869,7 @@ function generateSourceContent(html: string, sourceLevel: number): string {
     mdx += "| Name | Description |\n";
     mdx += "| --- | --- |\n";
     for (const m of section.members) {
-      const sig = escapeMdx(escapeTableCell(m.signature));
+      const sig = escapeInlineCode(escapeTableCell(m.signature));
       const desc = escapeMdx(escapeTableCell(m.summary));
       mdx += `| \`${sig}\` | ${desc} |\n`;
     }
@@ -634,7 +885,7 @@ function generateSourceContent(html: string, sourceLevel: number): string {
     mdx += "| --- | --- |\n";
 
     for (const m of section.members) {
-      const sig = escapeMdx(escapeTableCell(m.signature));
+      const sig = escapeInlineCode(escapeTableCell(m.signature));
       const desc = escapeMdx(escapeTableCell(m.summary));
       mdx += `| \`${sig}\` | ${desc} |\n`;
     }
@@ -673,7 +924,7 @@ function generateSourceContent(html: string, sourceLevel: number): string {
     }
   }
 
-  return mdx;
+  return `${mdx.trimEnd()}\n`;
 }
 
 function generateFileMdx(filePage: FilePage): string {
@@ -720,8 +971,12 @@ function main(): void {
     filePages.map((p) => p.subdir).filter(Boolean),
   );
   for (const sub of subdirs) {
-    mkdirSync(join(outDir, sub), { recursive: true });
+    const dir = join(outDir, sub);
+    rmSync(dir, { recursive: true, force: true });
+    mkdirSync(dir, { recursive: true });
   }
+
+  let failureCount = 0;
 
   for (const filePage of filePages) {
     try {
@@ -734,10 +989,15 @@ function main(): void {
         : `${filePage.slug}.mdx`;
       console.log(`  ${label}`);
     } catch (e: unknown) {
+      failureCount += 1;
       const htmlList = filePage.sources.map((s) => s.html).join(", ");
       const message = e instanceof Error ? e.message : String(e);
       console.error(`Error processing ${htmlList}: ${message}`);
     }
+  }
+
+  if (failureCount > 0) {
+    throw new Error(`Failed to generate ${failureCount} API page(s).`);
   }
 }
 

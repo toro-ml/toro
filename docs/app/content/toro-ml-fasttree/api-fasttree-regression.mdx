@@ -1,0 +1,167 @@
+---
+title: "FastTree regression"
+description: "FastTree regression configuration, model persistence, training, prediction, and evaluation."
+namespace: "Toro.ML.FastTree"
+showTitle: false
+---
+
+# RegressionConfig
+
+Common FastTree regression settings.
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `LearningRate` | Shrinkage rate applied to each tree. |
+| `MinimumExampleCountPerLeaf` | Minimum number of examples required in a leaf. |
+| `NumberOfLeaves` | Maximum number of leaves in each tree. |
+| `NumberOfTrees` | Number of trees in the ensemble. |
+| `Seed` | Random seed. The default is `Some 0` for reproducibility. |
+---
+
+# RegressionConfig module
+
+Constructors for FastTree regression settings.
+
+| Function | Description |
+| --- | --- |
+| `create ()` | Create settings from the ML.NET FastTree defaults with a deterministic seed. |
+
+## create
+
+```fsharp
+create ()
+```
+
+Create settings from the ML.NET FastTree defaults with a deterministic seed.
+
+**Parameters**
+
+- `()` : `unit`
+
+**Returns** `RegressionConfig`
+---
+
+# RegressionModel
+
+A fitted FastTree regression model.
+
+## Instance members
+
+| Name | Description |
+| --- | --- |
+| `this.FeatureCount` | Number of input features expected by the model. |
+| `this.Transformer` | Underlying ML.NET model. |
+---
+
+# Regression
+
+FastTree regression operations.
+
+| Function | Description |
+| --- | --- |
+| `evaluate dataset model` | Evaluate a fitted regressor with ML.NET regression metrics. |
+| `fit config dataset` | Fit a FastTree regressor with common F# settings. |
+| `fitWithOptions seed configure dataset` | Fit a FastTree regressor after configuring the complete ML.NET options object. |
+| `load path` | Load a FastTree regression model from the ML.NET zip format. |
+| `predict features model` | Predict target values. Values are returned as a detached CPU float32 tensor. |
+| `save path model` | Save a fitted model in the ML.NET zip format. |
+
+## evaluate
+
+```fsharp
+evaluate dataset model
+```
+
+Evaluate a fitted regressor with ML.NET regression metrics.
+
+**Parameters**
+
+- `dataset` : `RegressionDataset`
+- `model` : `RegressionModel`
+
+**Returns** `RegressionMetrics`
+
+---
+
+## fit
+
+```fsharp
+fit config dataset
+```
+
+Fit a FastTree regressor with common F# settings.
+
+**Parameters**
+
+- `config` : `RegressionConfig`
+- `dataset` : `RegressionDataset`
+
+**Returns** `RegressionModel`
+
+---
+
+## fitWithOptions
+
+```fsharp
+fitWithOptions seed configure dataset
+```
+
+Fit a FastTree regressor after configuring the complete ML.NET options object.
+
+**Parameters**
+
+- `seed` : `int option`
+- `configure` : `Options -> unit`
+- `dataset` : `RegressionDataset`
+
+**Returns** `RegressionModel`
+
+---
+
+## load
+
+```fsharp
+load path
+```
+
+Load a FastTree regression model from the ML.NET zip format.
+
+**Parameters**
+
+- `path` : `string`
+
+**Returns** `RegressionModel`
+
+---
+
+## predict
+
+```fsharp
+predict features model
+```
+
+Predict target values. Values are returned as a detached CPU float32 tensor.
+
+**Parameters**
+
+- `features` : `Tensor`
+- `model` : `RegressionModel`
+
+**Returns** `Tensor`
+
+---
+
+## save
+
+```fsharp
+save path model
+```
+
+Save a fitted model in the ML.NET zip format.
+
+**Parameters**
+
+- `path` : `string`
+- `model` : `RegressionModel`

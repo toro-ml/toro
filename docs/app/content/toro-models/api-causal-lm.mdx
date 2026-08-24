@@ -1,0 +1,90 @@
+---
+title: "Causal language models"
+description: "Shared inputs, outputs, contracts, and tensor-level operations for cached causal language models."
+namespace: "Toro.Models"
+showTitle: false
+---
+
+# CausalLmInput
+
+Tensor input shared by cached causal language models.
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `AttentionMask` | Optional 0/1 padding mask with shape [batch, total sequence]. |
+| `Cache` | Optional model-specific key/value cache. |
+| `InputIds` | Token IDs with shape [batch, sequence]. |
+| `PositionIds` | Optional absolute positions with shape [sequence] or [batch, sequence]. |
+---
+
+# CausalLmOutput
+
+Tensor output shared by cached causal language models.
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `Cache` | The cache supplied in the input, after the successful forward pass. |
+| `Logits` | Vocabulary logits with shape [batch, sequence, vocabulary]. |
+---
+
+# CausalLm contract
+
+Typed operations and metadata required for causal language-model generation.
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `CacheLength` | Return the number of tokens currently stored by a cache. |
+| `ContextLength` | Maximum total number of prompt and generated tokens. |
+| `CreateCache` | Allocate an empty request-local cache for a batch and token capacity. |
+| `Device` | Device on which token inputs are created. |
+| `DisposeCache` | Release a request-local cache and its tensors. |
+| `EosTokenIds` | Token IDs that terminate generation after being selected. |
+| `Forward` | Run the model for a prefill or single-token decode input. |
+---
+
+# CausalLm
+
+Tensor-level prefill and decode operations for causal language models.
+
+| Function | Description |
+| --- | --- |
+| `decode input model` | Decode exactly one new token using a populated cache. |
+| `prefill input model` | Populate an empty cache from one or more input tokens. |
+
+## decode
+
+```fsharp
+decode input model
+```
+
+Decode exactly one new token using a populated cache.
+
+**Parameters**
+
+- `input` : `CausalLmInput<'Cache>`
+- `model` : `CausalLm<'Cache>`
+
+**Returns** `CausalLmOutput<'Cache>`
+
+---
+
+## prefill
+
+```fsharp
+prefill input model
+```
+
+Populate an empty cache from one or more input tokens.
+
+**Parameters**
+
+- `input` : `CausalLmInput<'Cache>`
+- `model` : `CausalLm<'Cache>`
+
+**Returns** `CausalLmOutput<'Cache>`

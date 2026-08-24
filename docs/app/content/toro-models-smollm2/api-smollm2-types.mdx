@@ -1,0 +1,57 @@
+---
+title: "SmolLM2 types"
+description: "SmolLM2 configuration and model input and output types."
+namespace: "Toro.Models"
+showTitle: false
+---
+
+# SmolLm2Config
+
+Configuration values used by a SmolLM2 causal language model.
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `BosTokenId` |  |
+| `EosTokenId` |  |
+| `HiddenSize` |  |
+| `IntermediateSize` |  |
+| `MaxPositionEmbeddings` |  |
+| `NumAttentionHeads` |  |
+| `NumHiddenLayers` |  |
+| `NumKeyValueHeads` |  |
+| `RmsNormEps` |  |
+| `RopeTheta` |  |
+| `VocabSize` |  |
+---
+
+# SmolLm2Config module
+
+Validation operations for SmolLM2 configurations.
+
+| Function | Description |
+| --- | --- |
+| `validate config` | Validate dimensions and constants required by the implemented architecture. |
+
+## validate
+
+```fsharp
+validate config
+```
+
+Validate dimensions and constants required by the implemented architecture.
+
+**Parameters**
+
+- `config` : `SmolLm2Config`
+---
+
+# SmolLm2Input
+
+Tensor inputs accepted by SmolLM2.
+---
+
+# SmolLm2Output
+
+Tensor outputs produced by SmolLM2.

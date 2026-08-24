@@ -1,0 +1,55 @@
+---
+title: "DistilGPT-2 types"
+description: "DistilGPT-2 configuration and model input and output types."
+namespace: "Toro.Models"
+showTitle: false
+---
+
+# DistilGpt2Config
+
+Configuration values used by a DistilGPT-2 causal language model.
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `BosTokenId` |  |
+| `EmbeddingSize` |  |
+| `EosTokenId` |  |
+| `IntermediateSize` |  |
+| `LayerNormEps` |  |
+| `MaxPositionEmbeddings` |  |
+| `NumAttentionHeads` |  |
+| `NumHiddenLayers` |  |
+| `VocabSize` |  |
+---
+
+# DistilGpt2Config module
+
+Validation operations for DistilGPT-2 configurations.
+
+| Function | Description |
+| --- | --- |
+| `validate config` | Validate dimensions and constants required by the implemented architecture. |
+
+## validate
+
+```fsharp
+validate config
+```
+
+Validate dimensions and constants required by the implemented architecture.
+
+**Parameters**
+
+- `config` : `DistilGpt2Config`
+---
+
+# DistilGpt2Input
+
+Tensor inputs accepted by DistilGPT-2.
+---
+
+# DistilGpt2Output
+
+Tensor outputs produced by DistilGPT-2.

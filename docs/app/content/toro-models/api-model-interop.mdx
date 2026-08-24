@@ -1,0 +1,289 @@
+---
+title: "Model interop"
+description: "Shared configuration, model assets, tensor ownership, cache, and causal-input helpers for model-family packages."
+namespace: "Toro.Models.Interop"
+showTitle: false
+---
+
+# JsonConfig
+
+JSON configuration helpers for Toro model-family packages.
+
+| Function | Description |
+| --- | --- |
+| `boolValue label root name` | Read a required Boolean property. |
+| `floatValue label root name` | Read a required floating-point property. |
+| `int64Element label name value` | Read an integer JSON element. |
+| `int64Value label root name` | Read a required integer property. |
+| `property label root name` | Get a required object property. |
+| `stringValue label root name` | Read a required string property. |
+| `tryProperty root name` | Find an optional object property. |
+| `validateObject label root` | Validate that a configuration root is an object without duplicate keys. |
+
+## boolValue
+
+```fsharp
+boolValue label root name
+```
+
+Read a required Boolean property.
+
+**Parameters**
+
+- `label` : `string`
+- `root` : `JsonElement`
+- `name` : `string`
+
+**Returns** `bool`
+
+---
+
+## floatValue
+
+```fsharp
+floatValue label root name
+```
+
+Read a required floating-point property.
+
+**Parameters**
+
+- `label` : `string`
+- `root` : `JsonElement`
+- `name` : `string`
+
+**Returns** `float`
+
+---
+
+## int64Element
+
+```fsharp
+int64Element label name value
+```
+
+Read an integer JSON element.
+
+**Parameters**
+
+- `label` : `string`
+- `name` : `string`
+- `value` : `JsonElement`
+
+**Returns** `int64`
+
+---
+
+## int64Value
+
+```fsharp
+int64Value label root name
+```
+
+Read a required integer property.
+
+**Parameters**
+
+- `label` : `string`
+- `root` : `JsonElement`
+- `name` : `string`
+
+**Returns** `int64`
+
+---
+
+## property
+
+```fsharp
+property label root name
+```
+
+Get a required object property.
+
+**Parameters**
+
+- `label` : `string`
+- `root` : `JsonElement`
+- `name` : `string`
+
+**Returns** `JsonElement`
+
+---
+
+## stringValue
+
+```fsharp
+stringValue label root name
+```
+
+Read a required string property.
+
+**Parameters**
+
+- `label` : `string`
+- `root` : `JsonElement`
+- `name` : `string`
+
+**Returns** `string`
+
+---
+
+## tryProperty
+
+```fsharp
+tryProperty root name
+```
+
+Find an optional object property.
+
+**Parameters**
+
+- `root` : `JsonElement`
+- `name` : `string`
+
+**Returns** `JsonElement option`
+
+---
+
+## validateObject
+
+```fsharp
+validateObject label root
+```
+
+Validate that a configuration root is an object without duplicate keys.
+
+**Parameters**
+
+- `label` : `string`
+- `root` : `JsonElement`
+---
+
+# LocalModelAssets
+
+Local Hugging Face-style asset helpers for Toro model-family packages.
+
+| Function | Description |
+| --- | --- |
+| `dtype label tensorName reader` | Read the dtype of a required tensor from model metadata. |
+| `openReader label directory` | Open a validated single-file or sharded SafeTensors model directory. |
+
+## dtype
+
+```fsharp
+dtype label tensorName reader
+```
+
+Read the dtype of a required tensor from model metadata.
+
+**Parameters**
+
+- `label` : `string`
+- `tensorName` : `string`
+- `reader` : `SafeTensorReader`
+
+**Returns** `ScalarType`
+
+---
+
+## openReader
+
+```fsharp
+openReader label directory
+```
+
+Open a validated single-file or sharded SafeTensors model directory.
+
+**Parameters**
+
+- `label` : `string`
+- `directory` : `string`
+
+**Returns** `string * SafeTensorReader`
+---
+
+# TensorOwner
+
+Tensor ownership helpers for Toro model-family packages.
+
+| Function | Description |
+| --- | --- |
+| `disposeDistinct namedTensors owner` | Dispose each distinct tensor returned by a named-tensor projection exactly once. |
+
+## disposeDistinct
+
+```fsharp
+disposeDistinct namedTensors owner
+```
+
+Dispose each distinct tensor returned by a named-tensor projection exactly once.
+
+**Parameters**
+
+- `namedTensors` : `'Owner -> (string * Tensor) seq`
+- `owner` : `'Owner`
+---
+
+# FixedKvCache
+
+Fixed-capacity key/value storage shared by Toro causal model-family packages.
+
+## Constructors
+
+| Name | Description |
+| --- | --- |
+| `FixedKvCache(ownerName, layerCount, batchSize, headCount, capacity, headSize, dtype, device)` |  |
+
+## Instance members
+
+| Name | Description |
+| --- | --- |
+| `this.Advance` | Advance the logical cache length after every layer has appended. |
+| `this.Append` | Append one layer's key and value tensors and return the populated views. |
+| `this.BatchSize` | Number of batch items stored by the cache. |
+| `this.Capacity` | Maximum number of tokens stored by the cache. |
+| `this.Length` | Number of tokens currently stored by the cache. |
+| `this.Reset` | Remove all logical entries without reallocating storage. |
+| `this.Validate` | Validate an input batch and sequence against the cache state. |
+---
+
+# PreparedCausalInput
+
+Validated and normalized causal model input for model-family packages.
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `AttentionMask` | Broadcastable padding and causal mask when an explicit mask is required. |
+| `CacheStart` | Number of cached tokens preceding this invocation. |
+| `IsCausal` | Whether the attention implementation should apply its built-in causal mask. |
+| `PositionIds` | Validated or generated absolute token positions. |
+| `SequenceLength` | Number of input tokens processed in this invocation. |
+---
+
+# CausalInput
+
+Input preparation shared by Toro causal model-family packages.
+
+| Function | Description |
+| --- | --- |
+| `prepare modelName maxPositions cacheLength validateCache input` | Validate and normalize a causal language-model input for one forward pass. |
+
+## prepare
+
+```fsharp
+prepare modelName maxPositions cacheLength validateCache input
+```
+
+Validate and normalize a causal language-model input for one forward pass.
+
+**Parameters**
+
+- `modelName` : `string`
+- `maxPositions` : `int64`
+- `cacheLength` : `'Cache -> int64`
+- `validateCache` : `'Cache -> int64 -> int64 -> unit`
+- `input` : `CausalLmInput<'Cache>`
+
+**Returns** `PreparedCausalInput`

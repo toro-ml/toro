@@ -1,0 +1,45 @@
+---
+title: "RankingDataset"
+description: "Borrowed tensor datasets for learning-to-rank tasks."
+namespace: "Toro.ML"
+showTitle: false
+---
+
+# RankingDataset
+
+A borrowed tensor dataset for learning-to-rank tasks.
+
+## Instance members
+
+| Name | Description |
+| --- | --- |
+| `this.FeatureCount` | Number of features per example. |
+| `this.Features` | Feature matrix with shape `[n, f]` and dtype `float32`. |
+| `this.GroupIds` | Query identifiers with shape `[n]` and dtype `int64`. |
+| `this.Labels` | Relevance labels with shape `[n]` and dtype `float32`. |
+| `this.RowCount` | Number of examples. |
+---
+
+# RankingDataset module
+
+Constructors for learning-to-rank datasets.
+
+| Function | Description |
+| --- | --- |
+| `create features labels groupIds` | Create a dataset without copying or taking ownership of its tensors. |
+
+## create
+
+```fsharp
+create features labels groupIds
+```
+
+Create a dataset without copying or taking ownership of its tensors.
+
+**Parameters**
+
+- `features` : `Tensor`
+- `labels` : `Tensor`
+- `groupIds` : `Tensor`
+
+**Returns** `RankingDataset`

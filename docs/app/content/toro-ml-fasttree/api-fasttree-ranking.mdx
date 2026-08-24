@@ -1,0 +1,167 @@
+---
+title: "FastTree ranking"
+description: "FastTree ranking configuration, model persistence, training, prediction, and evaluation."
+namespace: "Toro.ML.FastTree"
+showTitle: false
+---
+
+# RankingConfig
+
+Common FastTree ranking settings.
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `LearningRate` | Shrinkage rate applied to each tree. |
+| `MinimumExampleCountPerLeaf` | Minimum number of examples required in a leaf. |
+| `NumberOfLeaves` | Maximum number of leaves in each tree. |
+| `NumberOfTrees` | Number of trees in the ensemble. |
+| `Seed` | Random seed. The default is `Some 0` for reproducibility. |
+---
+
+# RankingConfig module
+
+Constructors for FastTree ranking settings.
+
+| Function | Description |
+| --- | --- |
+| `create ()` | Create settings from the ML.NET FastTree defaults with a deterministic seed. |
+
+## create
+
+```fsharp
+create ()
+```
+
+Create settings from the ML.NET FastTree defaults with a deterministic seed.
+
+**Parameters**
+
+- `()` : `unit`
+
+**Returns** `RankingConfig`
+---
+
+# RankingModel
+
+A fitted FastTree ranking model.
+
+## Instance members
+
+| Name | Description |
+| --- | --- |
+| `this.FeatureCount` | Number of input features expected by the model. |
+| `this.Transformer` | Underlying ML.NET model. |
+---
+
+# Ranking
+
+FastTree learning-to-rank operations.
+
+| Function | Description |
+| --- | --- |
+| `evaluate dataset model` | Evaluate a fitted ranker with ML.NET ranking metrics. |
+| `fit config dataset` | Fit a FastTree ranker with common F# settings. |
+| `fitWithOptions seed configure dataset` | Fit a FastTree ranker after configuring the complete ML.NET options object. |
+| `load path` | Load a FastTree ranking model from the ML.NET zip format. |
+| `predict features model` | Score a feature matrix. Scores are returned as a detached CPU float32 tensor. |
+| `save path model` | Save a fitted model in the ML.NET zip format. |
+
+## evaluate
+
+```fsharp
+evaluate dataset model
+```
+
+Evaluate a fitted ranker with ML.NET ranking metrics.
+
+**Parameters**
+
+- `dataset` : `RankingDataset`
+- `model` : `RankingModel`
+
+**Returns** `RankingMetrics`
+
+---
+
+## fit
+
+```fsharp
+fit config dataset
+```
+
+Fit a FastTree ranker with common F# settings.
+
+**Parameters**
+
+- `config` : `RankingConfig`
+- `dataset` : `RankingDataset`
+
+**Returns** `RankingModel`
+
+---
+
+## fitWithOptions
+
+```fsharp
+fitWithOptions seed configure dataset
+```
+
+Fit a FastTree ranker after configuring the complete ML.NET options object.
+
+**Parameters**
+
+- `seed` : `int option`
+- `configure` : `Options -> unit`
+- `dataset` : `RankingDataset`
+
+**Returns** `RankingModel`
+
+---
+
+## load
+
+```fsharp
+load path
+```
+
+Load a FastTree ranking model from the ML.NET zip format.
+
+**Parameters**
+
+- `path` : `string`
+
+**Returns** `RankingModel`
+
+---
+
+## predict
+
+```fsharp
+predict features model
+```
+
+Score a feature matrix. Scores are returned as a detached CPU float32 tensor.
+
+**Parameters**
+
+- `features` : `Tensor`
+- `model` : `RankingModel`
+
+**Returns** `Tensor`
+
+---
+
+## save
+
+```fsharp
+save path model
+```
+
+Save a fitted model in the ML.NET zip format.
+
+**Parameters**
+
+- `path` : `string`
+- `model` : `RankingModel`

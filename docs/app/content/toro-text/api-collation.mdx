@@ -1,0 +1,161 @@
+---
+title: "Collation"
+description: "Text-to-tensor collation, padding, truncation, and batch encoding."
+namespace: "Toro.Text"
+showTitle: false
+---
+
+# PaddingSide
+
+Side on which padding tokens are inserted.
+
+## Union cases
+
+| Name | Description |
+| --- | --- |
+| `Left` |  |
+| `Right` |  |
+
+## Instance members
+
+| Name | Description |
+| --- | --- |
+| `this.IsLeft` |  |
+| `this.IsRight` |  |
+---
+
+# TruncationSide
+
+Side removed when a token sequence exceeds the target length.
+
+## Union cases
+
+| Name | Description |
+| --- | --- |
+| `Left` |  |
+| `Right` |  |
+
+## Instance members
+
+| Name | Description |
+| --- | --- |
+| `this.IsLeft` |  |
+| `this.IsRight` |  |
+---
+
+# CollationLength
+
+Target sequence length for padding and truncation.
+
+## Union cases
+
+| Name | Description |
+| --- | --- |
+| `BatchMax maxLength` | Pad to the longest sequence in the batch, optionally truncating first. |
+| `Fixed int` | Pad and truncate every sequence to this length. |
+
+## Instance members
+
+| Name | Description |
+| --- | --- |
+| `this.IsBatchMax` |  |
+| `this.IsFixed` |  |
+---
+
+# CollationOptions
+
+Text collation policy.
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `Length` |  |
+| `PadTokenId` |  |
+| `PaddingSide` |  |
+| `TruncationSide` |  |
+---
+
+# CollationOptions module
+
+Constructors for text collation policies.
+
+| Function | Description |
+| --- | --- |
+| `create padTokenId length` | Create a right-padded policy that truncates tokens from the right. |
+
+## create
+
+```fsharp
+create padTokenId length
+```
+
+Create a right-padded policy that truncates tokens from the right.
+
+**Parameters**
+
+- `padTokenId` : `int64`
+- `length` : `CollationLength`
+
+**Returns** `CollationOptions`
+---
+
+# EncodedBatch
+
+A model-ready batch produced from text.
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `AttentionMask` | Boolean attention mask with shape [batch, sequence]. |
+| `InputIds` | Token IDs with shape [batch, sequence]. |
+| `Lengths` | Original token count for each batch item before truncation. |
+---
+
+# Collation
+
+Text-to-tensor collation.
+
+| Function | Description |
+| --- | --- |
+| `batch tokenizer texts options device` | Encode texts into a batch with mask and retained lengths. |
+| `toTensor tokenizer text options device` | Encode one text into a token tensor. Fixed length pads to that length;
+ batch-max pads only to the (possibly truncated) sequence itself. |
+
+## batch
+
+```fsharp
+batch tokenizer texts options device
+```
+
+Encode texts into a batch with mask and retained lengths.
+
+**Parameters**
+
+- `tokenizer` : `Tokenizer`
+- `texts` : `string list`
+- `options` : `CollationOptions`
+- `device` : `Device`
+
+**Returns** `EncodedBatch`
+
+---
+
+## toTensor
+
+```fsharp
+toTensor tokenizer text options device
+```
+
+Encode one text into a token tensor. Fixed length pads to that length;
+ batch-max pads only to the (possibly truncated) sequence itself.
+
+**Parameters**
+
+- `tokenizer` : `Tokenizer`
+- `text` : `string`
+- `options` : `CollationOptions`
+- `device` : `Device`
+
+**Returns** `Tensor`

@@ -1,0 +1,167 @@
+---
+title: "LightGBM regression"
+description: "LightGBM regression configuration, model persistence, training, prediction, and evaluation."
+namespace: "Toro.ML.LightGbm"
+showTitle: false
+---
+
+# RegressionConfig
+
+Common LightGBM regression settings.
+
+## Record fields
+
+| Name | Description |
+| --- | --- |
+| `LearningRate` | Shrinkage rate, or `None` to use ML.NET auto-tuning. |
+| `MinimumExampleCountPerLeaf` | Minimum examples per leaf, or `None` to use ML.NET auto-tuning. |
+| `NumberOfIterations` | Number of boosting iterations. |
+| `NumberOfLeaves` | Maximum number of leaves, or `None` to use ML.NET auto-tuning. |
+| `Seed` | Random seed. The default is `Some 0` for reproducibility. |
+---
+
+# RegressionConfig module
+
+Constructors for LightGBM regression settings.
+
+| Function | Description |
+| --- | --- |
+| `create ()` | Create settings from the ML.NET LightGBM defaults with a deterministic seed. |
+
+## create
+
+```fsharp
+create ()
+```
+
+Create settings from the ML.NET LightGBM defaults with a deterministic seed.
+
+**Parameters**
+
+- `()` : `unit`
+
+**Returns** `RegressionConfig`
+---
+
+# RegressionModel
+
+A fitted LightGBM regression model.
+
+## Instance members
+
+| Name | Description |
+| --- | --- |
+| `this.FeatureCount` | Number of input features expected by the model. |
+| `this.Transformer` | Underlying ML.NET model. |
+---
+
+# Regression
+
+LightGBM regression operations.
+
+| Function | Description |
+| --- | --- |
+| `evaluate dataset model` | Evaluate a fitted regressor with ML.NET regression metrics. |
+| `fit config dataset` | Fit a LightGBM regressor with common F# settings. |
+| `fitWithOptions seed configure dataset` | Fit a LightGBM regressor after configuring the complete ML.NET options object. |
+| `load path` | Load a LightGBM regression model from the ML.NET zip format. |
+| `predict features model` | Predict target values. Values are returned as a detached CPU float32 tensor. |
+| `save path model` | Save a fitted model in the ML.NET zip format. |
+
+## evaluate
+
+```fsharp
+evaluate dataset model
+```
+
+Evaluate a fitted regressor with ML.NET regression metrics.
+
+**Parameters**
+
+- `dataset` : `RegressionDataset`
+- `model` : `RegressionModel`
+
+**Returns** `RegressionMetrics`
+
+---
+
+## fit
+
+```fsharp
+fit config dataset
+```
+
+Fit a LightGBM regressor with common F# settings.
+
+**Parameters**
+
+- `config` : `RegressionConfig`
+- `dataset` : `RegressionDataset`
+
+**Returns** `RegressionModel`
+
+---
+
+## fitWithOptions
+
+```fsharp
+fitWithOptions seed configure dataset
+```
+
+Fit a LightGBM regressor after configuring the complete ML.NET options object.
+
+**Parameters**
+
+- `seed` : `int option`
+- `configure` : `Options -> unit`
+- `dataset` : `RegressionDataset`
+
+**Returns** `RegressionModel`
+
+---
+
+## load
+
+```fsharp
+load path
+```
+
+Load a LightGBM regression model from the ML.NET zip format.
+
+**Parameters**
+
+- `path` : `string`
+
+**Returns** `RegressionModel`
+
+---
+
+## predict
+
+```fsharp
+predict features model
+```
+
+Predict target values. Values are returned as a detached CPU float32 tensor.
+
+**Parameters**
+
+- `features` : `Tensor`
+- `model` : `RegressionModel`
+
+**Returns** `Tensor`
+
+---
+
+## save
+
+```fsharp
+save path model
+```
+
+Save a fitted model in the ML.NET zip format.
+
+**Parameters**
+
+- `path` : `string`
+- `model` : `RegressionModel`
