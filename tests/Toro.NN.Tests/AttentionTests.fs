@@ -184,11 +184,7 @@ let ``PostNormTransformerBlock forward returns correct shape`` () =
 [<Fact>]
 let ``Attention.additiveMask broadcasts padding to SDPA shape`` () =
     let padding =
-        torch.tensor (
-            array2D [| [| 1L; 1L; 0L |]; [| 1L; 0L; 0L |] |],
-            dtype = torch.int64,
-            device = torch.CPU
-        )
+        torch.tensor (array2D [| [| 1L; 1L; 0L |]; [| 1L; 0L; 0L |] |], dtype = torch.int64, device = torch.CPU)
 
     let mask = Attention.additiveMask padding torch.float32
     mask.shape |> should equal [| 2L; 1L; 1L; 3L |]
