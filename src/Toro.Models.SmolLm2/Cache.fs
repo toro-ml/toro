@@ -4,6 +4,7 @@ open System
 open TorchSharp
 open Toro
 open Toro.Models
+open Toro.Models.Interop
 
 /// A fixed-capacity, per-layer SmolLM2 key/value cache.
 type SmolLm2Cache internal (config: SmolLm2Config, batchSize: int64, capacity: int64, dtype, device) =

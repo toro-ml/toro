@@ -73,6 +73,8 @@ let run () =
             "src/Toro.Text/Toro.Text.fsproj"
             "src/Toro.Vision/Toro.Vision.fsproj"
             "src/Toro.Models/Toro.Models.fsproj"
+            "src/Toro.Models.SmolLm2/Toro.Models.SmolLm2.fsproj"
+            "src/Toro.Models.DistilGpt2/Toro.Models.DistilGpt2.fsproj"
             "src/Toro.Extensions.AI/Toro.Extensions.AI.fsproj"
             "src/Toro.Hub/Toro.Hub.fsproj"
             "src/Toro.ML/Toro.ML.fsproj"

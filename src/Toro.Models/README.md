@@ -1,6 +1,6 @@
 # Toro.Models
 
-`Toro.Models` provides reusable pretrained model implementations for Toro.
+`Toro.Models` provides shared causal language-model contracts, token-level generation, and extension-package interop for Toro.
 
-The package contains SmolLM2 and DistilGPT-2 architectures, named state descriptors, local-file loaders, fixed-capacity KV caches, and token-level generation sessions.
+Install a model-family package such as `Toro.Models.SmolLm2` or `Toro.Models.DistilGpt2` for a concrete architecture and local loader.
 Downloading assets and tokenization remain separate concerns.

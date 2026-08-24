@@ -2,12 +2,13 @@
 
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="GenerationTests.fs" />
+    <Compile Include="SmolLm2Tests.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="../../src/Toro/Toro.fsproj" />
-    <ProjectReference Include="../../src/Toro.Models/Toro.Models.fsproj" />
+    <ProjectReference Include="../../src/Toro.NN/Toro.NN.fsproj" />
+    <ProjectReference Include="../../src/Toro.Models.SmolLm2/Toro.Models.SmolLm2.fsproj" />
   </ItemGroup>
 
 </Project>

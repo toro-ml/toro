@@ -1,11 +1,15 @@
-namespace Toro.Models
+namespace Toro.Models.Interop
 
 open System
+open System.ComponentModel
 open System.IO
 open Toro
 
-module internal LocalModelAssets =
+/// Local Hugging Face-style asset helpers for Toro model-family packages.
+[<EditorBrowsable(EditorBrowsableState.Never)>]
+module LocalModelAssets =
 
+    /// Open a validated single-file or sharded SafeTensors model directory.
     let openReader (label: string) (directory: string) =
         if String.IsNullOrWhiteSpace directory then
             invalidArg (nameof directory) "Model directory must not be empty."
@@ -32,6 +36,7 @@ module internal LocalModelAssets =
 
         configPath, reader
 
+    /// Read the dtype of a required tensor from model metadata.
     let dtype (label: string) (tensorName: string) (reader: SafeTensorReader) =
         reader.Metadata
         |> Map.tryFind tensorName

@@ -45,7 +45,7 @@ Its generated IDs are `[2068, 5482, 451, 28, 392, 808, 737, 288, 21000, 260, 435
 
 ## Implementation
 
-- `Toro.Models` provides the Llama architecture, rotary position embedding, grouped-query attention, SwiGLU MLP, and fixed-capacity KV cache.
+- `Toro.Models.SmolLm2` provides the Llama architecture, rotary position embedding, grouped-query attention, SwiGLU MLP, and fixed-capacity KV cache.
 - The common generation session performs prefill once and owns incremental decoding state.
 - `Toro.Extensions.AI` adapts the model and chat template to `Microsoft.Extensions.AI.IChatClient` and streams response updates.
 - The model descriptor uses Hugging Face weight names directly, independently of the F# record layout.

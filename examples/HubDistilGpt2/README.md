@@ -44,7 +44,7 @@ Both implementations prefill once and then decode one token at a time with a key
 
 ## Implementation
 
-- `Toro.Models` provides the GPT-2 architecture, fixed-capacity KV cache, and common generation session.
+- `Toro.Models.DistilGpt2` provides the GPT-2 architecture and fixed-capacity KV cache; `Toro.Models` provides the common generation session.
 - The model descriptor uses Hugging Face names and Conv1D weight shapes directly, so loading does not transpose weights.
 - `DistilGpt2.loadFromDirectory` validates the config and complete F32 state, then copies one tensor at a time.
 - The stored causal-mask buffers are ignored because TorchSharp creates the causal mask during attention.

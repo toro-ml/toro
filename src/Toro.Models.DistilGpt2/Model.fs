@@ -4,6 +4,7 @@ open System
 open TorchSharp
 open Toro
 open Toro.Models
+open Toro.Models.Interop
 open Toro.NN
 
 /// A DistilGPT-2 causal language model with tied input and output embeddings.

@@ -10,7 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../src/Toro.Models/Toro.Models.fsproj" />
+    <ProjectReference Include="../../src/Toro.Models.DistilGpt2/Toro.Models.DistilGpt2.fsproj" />
     <ProjectReference Include="../../src/Toro.Text/Toro.Text.fsproj" />
     <ProjectReference Include="../../src/Toro.Hub/Toro.Hub.fsproj" />
   </ItemGroup>

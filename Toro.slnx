@@ -5,6 +5,8 @@
     <Project Path="src/Toro.GNN/Toro.GNN.fsproj" />
     <Project Path="src/Toro.Hub/Toro.Hub.fsproj" />
     <Project Path="src/Toro.Models/Toro.Models.fsproj" />
+    <Project Path="src/Toro.Models.SmolLm2/Toro.Models.SmolLm2.fsproj" />
+    <Project Path="src/Toro.Models.DistilGpt2/Toro.Models.DistilGpt2.fsproj" />
     <Project Path="src/Toro.Extensions.AI/Toro.Extensions.AI.fsproj" />
     <Project Path="src/Toro.Vision/Toro.Vision.fsproj" />
     <Project Path="src/Toro.Text/Toro.Text.fsproj" />
@@ -19,6 +21,8 @@
     <Project Path="tests/Toro.GNN.Tests/Toro.GNN.Tests.fsproj" />
     <Project Path="tests/Toro.Hub.Tests/Toro.Hub.Tests.fsproj" />
     <Project Path="tests/Toro.Models.Tests/Toro.Models.Tests.fsproj" />
+    <Project Path="tests/Toro.Models.SmolLm2.Tests/Toro.Models.SmolLm2.Tests.fsproj" />
+    <Project Path="tests/Toro.Models.DistilGpt2.Tests/Toro.Models.DistilGpt2.Tests.fsproj" />
     <Project Path="tests/Toro.Extensions.AI.Tests/Toro.Extensions.AI.Tests.fsproj" />
     <Project Path="tests/Toro.Vision.Tests/Toro.Vision.Tests.fsproj" />
     <Project Path="tests/Toro.Text.Tests/Toro.Text.Tests.fsproj" />

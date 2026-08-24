@@ -2,7 +2,7 @@
 
 ## Architecture Overview
 
-Toro is an F# machine learning framework with PyTorch-style semantics, built on TorchSharp (.NET 10). The monorepo contains 12 library packages under `src/`, 12 test projects, 15 examples, and a React Router v7 documentation site. Models are plain F# records composed via interfaces and computation expressions.
+Toro is an F# machine learning framework with PyTorch-style semantics, built on TorchSharp (.NET 10). The monorepo contains 14 library packages under `src/`, 14 test projects, 15 examples, and a React Router v7 documentation site. Models are plain F# records composed via interfaces and computation expressions.
 
 ## Package Dependency Graph
 
@@ -12,11 +12,15 @@ flowchart TD
     Toro --> Toro.Vision
     Toro --> Toro.Text
     Toro --> Toro.ML
+    Toro --> Toro.Models
     Toro.ML --> Toro.ML.Linear
     Toro.ML --> Toro.ML.FastTree
     Toro.ML --> Toro.ML.LightGbm
     Toro.NN --> Toro.GNN
-    Toro.NN --> Toro.Models
+    Toro.NN --> Toro.Models.SmolLm2
+    Toro.Models --> Toro.Models.SmolLm2
+    Toro.NN --> Toro.Models.DistilGpt2
+    Toro.Models --> Toro.Models.DistilGpt2
     Toro.Models --> Toro.Extensions.AI
     Toro.Text --> Toro.Extensions.AI
 ```
@@ -85,13 +89,35 @@ Single-file Hugging Face Hub downloader. Namespace: `Toro.Hub`.
 
 ### Toro.Models — `src/Toro.Models/`
 
-Reusable pretrained model implementations. Namespace: `Toro.Models`.
+Shared causal language-model contracts, token-level generation, and model-family interop. Namespace: `Toro.Models`.
 
 | File | Role |
 |------|------|
-| `CausalLm.fs` | Typed causal LM contract, prefill/decode operations, sampling, and request-local generation sessions |
-| `SmolLm2.fs` | SmolLM2 config, F# record model, Hugging Face-named descriptor, local loader, and fixed-capacity GQA cache |
-| `DistilGpt2.fs` | DistilGPT-2 config, HF-layout Conv1D model, descriptor, local loader, and fixed-capacity KV cache |
+| `CausalLm.fs` | Typed causal LM contract and prefill/decode operations |
+| `Sampling.fs`, `Generation.fs` | Sampling policies and request-local generation sessions |
+| `Interop/` | IntelliSense-hidden JSON, local asset, tensor ownership, causal input, and fixed KV cache helpers for model-family packages |
+
+### Toro.Models.SmolLm2 — `src/Toro.Models.SmolLm2/`
+
+SmolLM2 model-family implementation. Public namespace: `Toro.Models`.
+
+| File | Role |
+|------|------|
+| `Types.fs` | SmolLM2 configuration and layer records |
+| `Cache.fs` | SmolLM2 fixed-capacity grouped-query KV cache |
+| `Checkpoint.fs` | Hugging Face SmolLM2 config loading and validation |
+| `Model.fs` | Architecture, named state descriptor, forward pass, causal LM adapter, and local loader |
+
+### Toro.Models.DistilGpt2 — `src/Toro.Models.DistilGpt2/`
+
+DistilGPT-2 model-family implementation. Public namespace: `Toro.Models`.
+
+| File | Role |
+|------|------|
+| `Types.fs` | DistilGPT-2 configuration and layer records |
+| `Cache.fs` | DistilGPT-2 fixed-capacity KV cache |
+| `Checkpoint.fs` | Hugging Face GPT-2 config loading and validation |
+| `Model.fs` | Architecture, named state descriptor, forward pass, causal LM adapter, and local loader |
 
 ### Toro.Extensions.AI — `src/Toro.Extensions.AI/`
 
@@ -163,7 +189,8 @@ LightGBM regression and learning-to-rank. Namespace: `Toro.ML.LightGbm`.
 - **Training paradigms branch above the substrate**: `Toro.NN` owns differentiable neural-network composition and optimization, while `Toro.ML` owns borrowed task datasets and ML.NET interop for classical machine learning.
 - **Algorithms grow at dependency-family granularity**: packages such as `Toro.ML.FastTree` and `Toro.ML.LightGbm` isolate dedicated dependencies, while `Toro.ML.Linear` groups standard trainers under algorithm namespaces such as `Sdca`. Tasks grow inside those namespaces, and config and model types remain task- and algorithm-specific.
 - **Modalities stay orthogonal**: `Toro.Text`, `Toro.Vision`, and `Toro.GNN` provide domain data and operations without becoming mandatory dependencies of the root package.
-- **Reusable architectures and external adapters stay at the leaves**: `Toro.Models` owns model families; `Toro.Hub` owns remote assets; `Toro.Extensions.AI` owns ecosystem integration. These packages may compose lower layers but lower layers do not depend on them.
+- **Reusable architectures grow by model family**: `Toro.Models` owns causal LM contracts, generation, and hidden extension interop. Concrete packages such as `Toro.Models.SmolLm2` and `Toro.Models.DistilGpt2` combine it with `Toro.NN` without adding model implementations to the shared package.
+- **External adapters stay at the leaves**: `Toro.Hub` owns remote assets and `Toro.Extensions.AI` owns ecosystem integration. These packages may compose lower layers but lower layers do not depend on them.
 
 ## Design Patterns
 
@@ -174,14 +201,14 @@ LightGBM regression and learning-to-rank. Namespace: `Toro.ML.LightGbm`.
 - **`pipeline { }` CE**: Composes arbitrary `'a -> 'b` functions and `IModule.forward` calls via `>>`.
 - **Named optimizer state**: SGD and AdamW implement `IOptimizer`; AdamW state is keyed by canonical parameter name.
 - **SafeTensors for persistence**: `ModelState` and checkpoint loading validate all metadata before reading and copying one tensor at a time.
-- **Pretrained models**: `Toro.Models` owns reusable architectures, local asset loaders, typed causal LM operations, and request-local generation sessions without depending on Hub, tokenizers, or HTTP.
+- **Pretrained models**: `Toro.Models` owns typed causal LM operations and request-local generation without depending on `Toro.NN`; each `Toro.Models.*` family owns its architecture, named state, cache, and local loader without depending on Hub, tokenizers, or HTTP.
 - **Extensions.AI adapter**: `Toro.Extensions.AI` maps Microsoft chat messages and options to request-local Toro generation sessions and incremental token decoding without owning model state.
 
 ## Project Layout
 
 ```
-src/           — 12 library packages
-tests/         — 12 test projects (xUnit + FsUnit, TorchSharp-cpu)
+src/           — 14 library packages
+tests/         — 14 test projects (xUnit + FsUnit, TorchSharp-cpu)
 examples/      — 15 runnable console apps
 docs/          — React Router v7 site (pnpm, MDX)
 scripts/       — API doc generation (FSDocs → MDX)
@@ -197,7 +224,7 @@ scripts/       — API doc generation (FSDocs → MDX)
 
 - All public APIs carry `///` XML doc comments.
 - Each example has its own `README.md`.
-- The release workflow uses an explicit package allow-list; new ML packages remain excluded until publication is approved.
+- The release workflow uses an explicit package allow-list; new packages remain excluded until publication is approved.
 - TorchSharp version pinned at 0.107.0 across all projects.
 
 ## Maintenance

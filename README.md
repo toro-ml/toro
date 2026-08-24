@@ -28,7 +28,7 @@ dotnet add package Toro.NN
 dotnet add package TorchSharp-cpu
 ```
 
-Add `Toro.GNN`, `Toro.Models`, `Toro.Text`, `Toro.Vision`, or an algorithm package such as `Toro.ML.FastTree` or `Toro.ML.LightGbm` when the application needs those features.
+Add `Toro.GNN`, `Toro.Text`, `Toro.Vision`, a model-family package such as `Toro.Models.SmolLm2`, or an algorithm package such as `Toro.ML.FastTree` when the application needs those features.
 
 ## First model
 
@@ -165,7 +165,9 @@ The [MnistTraining](examples/MnistTraining) example saves CPU Torch RNG state an
 | [`Toro`](src/Toro) | Tensor extensions, scoped ownership, and SafeTensors |
 | [`Toro.NN`](src/Toro.NN) | Model state, layers, optimizers, schedulers, and checkpoints |
 | [`Toro.GNN`](src/Toro.GNN) | Graph data, message passing, graph convolutions, and pooling |
-| [`Toro.Models`](src/Toro.Models) | Pretrained models, local loaders, and token-level generation |
+| [`Toro.Models`](src/Toro.Models) | Shared causal language-model contracts and token-level generation |
+| [`Toro.Models.SmolLm2`](src/Toro.Models.SmolLm2) | SmolLM2 architecture, local loader, and KV cache |
+| [`Toro.Models.DistilGpt2`](src/Toro.Models.DistilGpt2) | DistilGPT-2 architecture, local loader, and KV cache |
 | [`Toro.Extensions.AI`](src/Toro.Extensions.AI) | `IChatClient` adapter for causal language models |
 | [`Toro.Text`](src/Toro.Text) | Tokenization and tensor encoding |
 | [`Toro.Vision`](src/Toro.Vision) | Image loading and tensor transforms |
@@ -180,7 +182,8 @@ The [MnistTraining](examples/MnistTraining) example saves CPU Torch RNG state an
 
 `Toro` remains the small tensor substrate: tensor extensions, scoped ownership, and tensor serialization. Higher layers grow without adding their dependencies to the root package.
 
-- `Toro.NN` provides differentiable modules, training, and checkpoints; `Toro.GNN` and `Toro.Models` build on it.
+- `Toro.NN` provides differentiable modules, training, and checkpoints; `Toro.GNN` and concrete `Toro.Models.*` packages build on it.
+- `Toro.Models` provides model-independent causal LM contracts and generation; model-family packages contain concrete architectures and local loaders.
 - `Toro.ML` provides task datasets and ML.NET interop; dedicated algorithm packages isolate additional dependencies, while family packages such as `Toro.ML.Linear` group related standard trainers under algorithm namespaces.
 - `Toro.Text` and `Toro.Vision` remain orthogonal modality packages.
 - `Toro.Hub` and `Toro.Extensions.AI` remain leaf integrations rather than foundational dependencies.

@@ -1,10 +1,13 @@
-namespace Toro.Models
+namespace Toro.Models.Interop
 
 open System
+open System.ComponentModel
 open TorchSharp
 open Toro
 
-type internal FixedKvCache
+/// Fixed-capacity key/value storage shared by Toro causal model-family packages.
+[<Sealed; EditorBrowsable(EditorBrowsableState.Never)>]
+type FixedKvCache
     (ownerName: string, layerCount: int, batchSize: int64, headCount: int64, capacity: int64, headSize: int64, dtype, device) =
 
     let keys =
@@ -22,14 +25,21 @@ type internal FixedKvCache
         if disposed then
             raise (ObjectDisposedException ownerName)
 
+    /// Number of batch items stored by the cache.
     member _.BatchSize = batchSize
+
+    /// Maximum number of tokens stored by the cache.
     member _.Capacity = capacity
+
+    /// Number of tokens currently stored by the cache.
     member _.Length = length
 
+    /// Remove all logical entries without reallocating storage.
     member _.Reset() =
         ensureAvailable ()
         length <- 0L
 
+    /// Validate an input batch and sequence against the cache state.
     member _.Validate(batch: int64, sequenceLength: int64) =
         ensureAvailable ()
 
@@ -39,6 +49,7 @@ type internal FixedKvCache
         if length + sequenceLength > capacity then
             invalidOp $"KV cache capacity {capacity} is too small for {length + sequenceLength} tokens."
 
+    /// Append one layer's key and value tensors and return the populated views.
     member _.Append(layerIndex: int, start: int64, key: Tensor, value: Tensor) =
         ensureAvailable ()
 
@@ -53,6 +64,7 @@ type internal FixedKvCache
 
         keys[layerIndex].narrow (2L, 0L, start + sequenceLength), values[layerIndex].narrow (2L, 0L, start + sequenceLength)
 
+    /// Advance the logical cache length after every layer has appended.
     member _.Advance(sequenceLength: int64) =
         ensureAvailable ()
         length <- length + sequenceLength

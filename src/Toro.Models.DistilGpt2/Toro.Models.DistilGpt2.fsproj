@@ -3,11 +3,11 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <PackageId>Toro.Models</PackageId>
+    <PackageId>Toro.Models.DistilGpt2</PackageId>
     <Version>0.1.0</Version>
     <Authors>ryushiaok</Authors>
-    <Description>Shared causal language-model contracts and generation for Toro</Description>
-    <PackageTags>fsharp;dotnet;ml;torchsharp;models;llm</PackageTags>
+    <Description>DistilGPT-2 causal language-model implementation for Toro</Description>
+    <PackageTags>fsharp;dotnet;ml;torchsharp;models;llm;distilgpt2</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/toro-ml/toro</RepositoryUrl>
@@ -19,18 +19,15 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="CausalLm.fs" />
-    <Compile Include="Sampling.fs" />
-    <Compile Include="Generation.fs" />
-    <Compile Include="Interop/JsonConfig.fs" />
-    <Compile Include="Interop/LocalModelAssets.fs" />
-    <Compile Include="Interop/TensorOwner.fs" />
-    <Compile Include="Interop/FixedKvCache.fs" />
-    <Compile Include="Interop/CausalInput.fs" />
+    <Compile Include="Types.fs" />
+    <Compile Include="Cache.fs" />
+    <Compile Include="Checkpoint.fs" />
+    <Compile Include="Model.fs" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../Toro/Toro.fsproj" />
+    <ProjectReference Include="../Toro.Models/Toro.Models.fsproj" />
+    <ProjectReference Include="../Toro.NN/Toro.NN.fsproj" />
   </ItemGroup>
 
   <ItemGroup>

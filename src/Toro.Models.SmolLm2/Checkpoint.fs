@@ -2,6 +2,7 @@ namespace Toro.Models
 
 open System.IO
 open System.Text.Json
+open Toro.Models.Interop
 
 module internal SmolLm2Checkpoint =
 

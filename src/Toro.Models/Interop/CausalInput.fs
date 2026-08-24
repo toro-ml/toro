@@ -1,17 +1,28 @@
-namespace Toro.Models
+namespace Toro.Models.Interop
 
+open System.ComponentModel
 open TorchSharp
 open Toro
+open Toro.Models
 
-type internal PreparedCausalInput = {
+/// Validated and normalized causal model input for model-family packages.
+[<EditorBrowsable(EditorBrowsableState.Never)>]
+type PreparedCausalInput = {
+    /// Number of input tokens processed in this invocation.
     SequenceLength: int64
+    /// Number of cached tokens preceding this invocation.
     CacheStart: int64
+    /// Validated or generated absolute token positions.
     PositionIds: Tensor
+    /// Broadcastable padding and causal mask when an explicit mask is required.
     AttentionMask: Tensor option
+    /// Whether the attention implementation should apply its built-in causal mask.
     IsCausal: bool
 }
 
-module internal CausalInput =
+/// Input preparation shared by Toro causal model-family packages.
+[<EditorBrowsable(EditorBrowsableState.Never)>]
+module CausalInput =
 
     let private attentionMask (input: CausalLmInput<'Cache>) batchSize sequenceLength start totalLength =
         let paddingMask =
@@ -44,6 +55,7 @@ module internal CausalInput =
             | Some value -> Some(causal.logical_and value), false
             | None -> Some causal, false
 
+    /// Validate and normalize a causal language-model input for one forward pass.
     let prepare
         (modelName: string)
         (maxPositions: int64)
