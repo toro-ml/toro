@@ -8,14 +8,13 @@ Download files from the Hugging Face Hub.
 
 | Function | Description |
 | --- | --- |
-| `download repoId filename` | Download a single file from Hugging Face Hub.
+| `download file` | Download a single file from Hugging Face Hub.
  Return the local cache path. |
-| `loadSafeTensors repoId filename` | Download a .safetensors file from Hugging Face Hub and load it as a tensor dictionary. |
 
 ## download
 
 ```fsharp
-download repoId filename
+download file
 ```
 
 Download a single file from Hugging Face Hub.
@@ -23,25 +22,7 @@ Download a single file from Hugging Face Hub.
 
 **Parameters**
 
-- `repoId` : `string`
-- `filename` : `string`
+- `file` : `HubFile`
 
 **Returns** `Async<string>`
-
----
-
-## loadSafeTensors
-
-```fsharp
-loadSafeTensors repoId filename
-```
-
-Download a .safetensors file from Hugging Face Hub and load it as a tensor dictionary.
-
-**Parameters**
-
-- `repoId` : `string`
-- `filename` : `string`
-
-**Returns** `Async<Map<string, Tensor>>`
 

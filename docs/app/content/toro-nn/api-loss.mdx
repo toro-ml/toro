@@ -9,6 +9,9 @@ Loss functions. Each takes (input, target) and returns a scalar loss tensor.
 | Function | Description |
 | --- | --- |
 | `binaryCrossEntropyWithLogit inp target` | $\text{BCE} = \max(x,0) - x \cdot y + \ln(1 + e^{-\lvert x \rvert})$ |
+| `cosent scale cosineScores labels` | CoSENT pairwise ranking loss.
+ $\log\sum\exp(\lambda(\cos_i - \cos_j))$ over pairs with $y_i < y_j$.
+ `cosineScores` and `labels` both have shape `[batch]`. |
 | `cosineEmbedding margin x1 x2 target` | Cosine embedding loss for similarity learning. |
 | `crossEntropy inp target` | $H(p,q) = -(1/n)\sum \log\text{softmax}(x)_{y_i}$ |
 | `ctc logProbs targets inputLengths targetLengths` | CTC loss for sequence-to-sequence alignment. |
@@ -32,6 +35,26 @@ $\text{BCE} = \max(x,0) - x \cdot y + \ln(1 + e^{-\lvert x \rvert})$
 
 - `inp` : `Tensor`
 - `target` : `Tensor`
+
+**Returns** `Tensor`
+
+---
+
+## cosent
+
+```fsharp
+cosent scale cosineScores labels
+```
+
+CoSENT pairwise ranking loss.
+ $\log\sum\exp(\lambda(\cos_i - \cos_j))$ over pairs with $y_i < y_j$.
+ `cosineScores` and `labels` both have shape `[batch]`.
+
+**Parameters**
+
+- `scale` : `float`
+- `cosineScores` : `Tensor`
+- `labels` : `Tensor`
 
 **Returns** `Tensor`
 

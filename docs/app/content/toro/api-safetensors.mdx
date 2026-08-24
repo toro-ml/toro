@@ -8,12 +8,31 @@ Read and write the SafeTensors binary format.
 
 | Function | Description |
 | --- | --- |
+| `indexShardFiles indexPath` | Return the distinct shard filenames referenced by an index, sorted ordinally. |
 | `load filePath` | Load all tensors from a .safetensors file. |
 | `loadMeta filePath` | Load only the header metadata from a .safetensors file. |
 | `loadMetaFromStream stream` | Parse the SafeTensors header from an open stream.
  Returns (headerSize, tensorMetadata). |
 | `loadSelected filePath names` | Load only the tensors whose names are in the given set. |
+| `openFile filePath` | Open and validate one SafeTensors file for name-based tensor reads. |
+| `openIndex indexPath` | Open and validate a sharded SafeTensors index and every referenced shard. |
 | `save tensors filePath` | Save tensors to a .safetensors file after staging them as contiguous CPU tensors. |
+
+## indexShardFiles
+
+```fsharp
+indexShardFiles indexPath
+```
+
+Return the distinct shard filenames referenced by an index, sorted ordinally.
+
+**Parameters**
+
+- `indexPath` : `string`
+
+**Returns** `string list`
+
+---
 
 ## load
 
@@ -78,6 +97,38 @@ Load only the tensors whose names are in the given set.
 - `names` : `Set<string>`
 
 **Returns** `Map<string, TensorMeta> * Map<string, Tensor>`
+
+---
+
+## openFile
+
+```fsharp
+openFile filePath
+```
+
+Open and validate one SafeTensors file for name-based tensor reads.
+
+**Parameters**
+
+- `filePath` : `string`
+
+**Returns** `SafeTensorReader`
+
+---
+
+## openIndex
+
+```fsharp
+openIndex indexPath
+```
+
+Open and validate a sharded SafeTensors index and every referenced shard.
+
+**Parameters**
+
+- `indexPath` : `string`
+
+**Returns** `SafeTensorReader`
 
 ---
 

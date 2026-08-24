@@ -4,13 +4,35 @@ description: "Tokenizer wrapping Microsoft.ML.Tokenizers with F#-idiomatic API."
 namespace: "Toro.Text"
 ---
 
+Microsoft.ML.Tokenizers adapters and factories.
+
 | Function | Description |
 | --- | --- |
-| `fromBpe config` | Create from a BPE config. |
-| `fromSentencePiece config` | Create from a SentencePiece config. |
-| `fromTiktoken config` | Create from a Tiktoken config. |
-| `fromWordPiece config` | Create from a WordPiece config. |
-| `wrap inner` | Wrap an existing Microsoft.ML.Tokenizers.Tokenizer instance. |
+| `fromBert config` | Create a BERT tokenizer. Encoding adds [CLS]/[SEP] when AddSpecialTokens is true. |
+| `fromBpe config` | Create a BPE tokenizer. |
+| `fromFunctions encode decode` | Create a tokenizer from encode and decode functions. |
+| `fromSentencePiece config` | Create a SentencePiece tokenizer. |
+| `fromTiktoken config` | Create a Tiktoken tokenizer. |
+| `fromWordPiece config` | Create a WordPiece tokenizer. |
+| `inner tokenizer` | Return the wrapped Microsoft.ML.Tokenizers instance.
+ Tokenizers created with `fromFunctions` have no backend; this call fails. |
+| `wrap inner` | Wrap a Microsoft.ML.Tokenizers tokenizer. |
+
+## fromBert
+
+```fsharp
+fromBert config
+```
+
+Create a BERT tokenizer. Encoding adds [CLS]/[SEP] when AddSpecialTokens is true.
+
+**Parameters**
+
+- `config` : `BertConfig`
+
+**Returns** `Tokenizer`
+
+---
 
 ## fromBpe
 
@@ -18,11 +40,28 @@ namespace: "Toro.Text"
 fromBpe config
 ```
 
-Create from a BPE config.
+Create a BPE tokenizer.
 
 **Parameters**
 
 - `config` : `BpeConfig`
+
+**Returns** `Tokenizer`
+
+---
+
+## fromFunctions
+
+```fsharp
+fromFunctions encode decode
+```
+
+Create a tokenizer from encode and decode functions.
+
+**Parameters**
+
+- `encode` : `string -> int64 list`
+- `decode` : `int64 list -> string`
 
 **Returns** `Tokenizer`
 
@@ -34,7 +73,7 @@ Create from a BPE config.
 fromSentencePiece config
 ```
 
-Create from a SentencePiece config.
+Create a SentencePiece tokenizer.
 
 **Parameters**
 
@@ -50,7 +89,7 @@ Create from a SentencePiece config.
 fromTiktoken config
 ```
 
-Create from a Tiktoken config.
+Create a Tiktoken tokenizer.
 
 **Parameters**
 
@@ -66,11 +105,28 @@ Create from a Tiktoken config.
 fromWordPiece config
 ```
 
-Create from a WordPiece config.
+Create a WordPiece tokenizer.
 
 **Parameters**
 
 - `config` : `WordPieceConfig`
+
+**Returns** `Tokenizer`
+
+---
+
+## inner
+
+```fsharp
+inner tokenizer
+```
+
+Return the wrapped Microsoft.ML.Tokenizers instance.
+ Tokenizers created with `fromFunctions` have no backend; this call fails.
+
+**Parameters**
+
+- `tokenizer` : `Tokenizer`
 
 **Returns** `Tokenizer`
 
@@ -82,7 +138,7 @@ Create from a WordPiece config.
 wrap inner
 ```
 
-Wrap an existing Microsoft.ML.Tokenizers.Tokenizer instance.
+Wrap a Microsoft.ML.Tokenizers tokenizer.
 
 **Parameters**
 

@@ -8,14 +8,14 @@ Save and restore versioned training state (model + optimizer + epoch).
 
 | Function | Description |
 | --- | --- |
-| `load model optimizer dirPath` | Validate a Version 2 checkpoint completely, then commit model state,
+| `load modelState optimizer dirPath` | Validate a Version 2 checkpoint completely, then commit model state,
  optimizer state, and learning rate in that order. Return the restored epoch. |
-| `save model optimizer epoch dirPath` | Save canonical model state, optimizer state, and a Version 2 manifest. |
+| `save modelState optimizer epoch dirPath` | Save canonical model state, optimizer state, and a Version 2 manifest. |
 
 ## load
 
 ```fsharp
-load model optimizer dirPath
+load modelState optimizer dirPath
 ```
 
 Validate a Version 2 checkpoint completely, then commit model state,
@@ -23,7 +23,7 @@ Validate a Version 2 checkpoint completely, then commit model state,
 
 **Parameters**
 
-- `model` : `'T`
+- `modelState` : `ModelState`
 - `optimizer` : `IOptimizer`
 - `dirPath` : `string`
 
@@ -34,14 +34,14 @@ Validate a Version 2 checkpoint completely, then commit model state,
 ## save
 
 ```fsharp
-save model optimizer epoch dirPath
+save modelState optimizer epoch dirPath
 ```
 
 Save canonical model state, optimizer state, and a Version 2 manifest.
 
 **Parameters**
 
-- `model` : `'T`
+- `modelState` : `ModelState`
 - `optimizer` : `IOptimizer`
 - `epoch` : `int`
 - `dirPath` : `string`

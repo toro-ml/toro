@@ -4,7 +4,7 @@ description: "Model composition and parameter management."
 namespace: "Toro.NN"
 ---
 
-Attribute-driven model state discovery, serialization, and deserialization.
+Attribute-driven model state discovery.
  Records use field names; options are transparent; tuples and stable lists use zero-based
  indices; union values use CaseName.index; and string dictionaries use ordinally sorted keys.
  Supported containers are records, options, tuples, discriminated unions, arrays, F# lists,
@@ -12,131 +12,39 @@ Attribute-driven model state discovery, serialization, and deserialization.
 
 | Function | Description |
 | --- | --- |
-| `loadFromDict model tensors nameMap mode` | Load tensors from a dictionary into the model, matching by canonical state name.
- When nameMap is Some, dictionary keys are translated before matching. |
-| `loadInto model filePath mode` | Load tensors from a .safetensors file into the model in place.
- Validation completes before any model tensor is changed. |
-| `namedBuffers model` | Return canonical persistent buffers in deterministic discovery order. |
-| `namedParams model` | Return canonical parameters, including parameters that do not require gradients. |
-| `namedState model` | Return parameters and buffers in deterministic discovery order. A shared Tensor is
+| `state model` | Discover model state through attributes and supported F# containers. A shared Tensor is
  represented once, under the first path at which it is discovered. |
-| `save model filePath` | Save canonical parameters and buffers to a .safetensors file. |
-| `trainableParams model` | Return canonical parameters whose Tensor currently requires gradients. |
+| `stateWith descriptor model` | Build model state from an explicit descriptor without inspecting the model structure. |
 
-## loadFromDict
-
-```fsharp
-loadFromDict model tensors nameMap mode
-```
-
-Load tensors from a dictionary into the model, matching by canonical state name.
- When nameMap is Some, dictionary keys are translated before matching.
-
-**Parameters**
-
-- `model` : `'a`
-- `tensors` : `Map<string, Tensor>`
-- `nameMap` : `Map<string, string> option`
-- `mode` : `LoadMode`
-
-**Returns** `LoadReport`
-
----
-
-## loadInto
+## state
 
 ```fsharp
-loadInto model filePath mode
+state model
 ```
 
-Load tensors from a .safetensors file into the model in place.
- Validation completes before any model tensor is changed.
-
-**Parameters**
-
-- `model` : `'T`
-- `filePath` : `string`
-- `mode` : `LoadMode`
-
-**Returns** `LoadReport`
-
----
-
-## namedBuffers
-
-```fsharp
-namedBuffers model
-```
-
-Return canonical persistent buffers in deterministic discovery order.
-
-**Parameters**
-
-- `model` : `'T`
-
-**Returns** `NamedTensor list`
-
----
-
-## namedParams
-
-```fsharp
-namedParams model
-```
-
-Return canonical parameters, including parameters that do not require gradients.
-
-**Parameters**
-
-- `model` : `'T`
-
-**Returns** `NamedTensor list`
-
----
-
-## namedState
-
-```fsharp
-namedState model
-```
-
-Return parameters and buffers in deterministic discovery order. A shared Tensor is
+Discover model state through attributes and supported F# containers. A shared Tensor is
  represented once, under the first path at which it is discovered.
 
 **Parameters**
 
-- `model` : `'T`
+- `model` : `'Model`
 
-**Returns** `NamedTensor list`
-
----
-
-## save
-
-```fsharp
-save model filePath
-```
-
-Save canonical parameters and buffers to a .safetensors file.
-
-**Parameters**
-
-- `model` : `'T`
-- `filePath` : `string`
+**Returns** `ModelState`
 
 ---
 
-## trainableParams
+## stateWith
 
 ```fsharp
-trainableParams model
+stateWith descriptor model
 ```
 
-Return canonical parameters whose Tensor currently requires gradients.
+Build model state from an explicit descriptor without inspecting the model structure.
 
 **Parameters**
 
-- `model` : `'T`
+- `descriptor` : `ModelDescriptor<'Model>`
+- `model` : `'Model`
 
-**Returns** `NamedTensor list`
+**Returns** `ModelState`
 

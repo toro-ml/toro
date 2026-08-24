@@ -17,7 +17,8 @@ Discriminated union describing learning-rate schedule shapes.
 | `CosineAnnealingWarmRestarts(t0, tMult, etaMin)` |  |
 | `CyclicLR(baseLr, maxLr, stepSizeUp, stepSizeDown)` |  |
 | `Exponential gamma` |  |
-| `LinearWarmup warmupSteps` |  |
+| `LinearWarmup warmupSteps` | Ramp from 0 at step 0 to `baseLr` at `warmupSteps`, then hold. |
+| `LinearWarmupDecay(warmupSteps, totalSteps, endLr)` | Ramp from 0 to `baseLr` over `warmupSteps`, then decay linearly to `endLr` at `totalSteps`. |
 | `OneCycle(totalSteps, maxLr, divFactor, finalDivFactor, pctStart)` |  |
 | `Polynomial(totalSteps, power, endLr)` |  |
 | `StepDecay(stepSize, gamma)` |  |
@@ -31,6 +32,7 @@ Discriminated union describing learning-rate schedule shapes.
 | `this.IsCyclicLR` |  |
 | `this.IsExponential` |  |
 | `this.IsLinearWarmup` |  |
+| `this.IsLinearWarmupDecay` |  |
 | `this.IsOneCycle` |  |
 | `this.IsPolynomial` |  |
 | `this.IsStepDecay` |  |
