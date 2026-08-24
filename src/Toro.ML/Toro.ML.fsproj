@@ -19,7 +19,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="DatasetValidation.fs" />
     <Compile Include="RankingDataset.fs" />
+    <Compile Include="RegressionDataset.fs" />
     <Compile Include="Interop.fs" />
   </ItemGroup>
 

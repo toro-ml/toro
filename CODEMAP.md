@@ -125,24 +125,36 @@ Shared tensor datasets and ML.NET conversion for classical machine learning. Nam
 
 | File | Role |
 |------|------|
+| `DatasetValidation.fs` | Shared internal feature and label tensor invariants |
 | `RankingDataset.fs` | Validated tensor-backed ranking dataset with contiguous query groups |
-| `Interop.fs` | IntelliSense-hidden Tensor to `IDataView` conversion and fixed ML.NET schema for algorithm packages |
+| `RegressionDataset.fs` | Validated tensor-backed regression dataset |
+| `Interop.fs` | IntelliSense-hidden shared scoring plus task-specific Tensor to `IDataView` conversion for algorithm packages |
 
 ### Toro.ML.FastTree — `src/Toro.ML.FastTree/`
 
-FastTree learning-to-rank over `RankingDataset`. Namespace: `Toro.ML.FastTree`.
+FastTree regression and learning-to-rank. Namespace: `Toro.ML.FastTree`.
 
 | File | Role |
 |------|------|
-| `Ranking.fs` | FastTree-specific config, model, training, scoring, evaluation, and ML.NET zip persistence |
+| `Regression.fs` | FastTree-specific regression config, model, operations, metrics, and ML.NET zip persistence |
+| `Ranking.fs` | FastTree-specific ranking config, model, operations, metrics, and ML.NET zip persistence |
 
 ### Toro.ML.LightGbm — `src/Toro.ML.LightGbm/`
 
-LightGBM learning-to-rank over `RankingDataset`. Namespace: `Toro.ML.LightGbm`.
+LightGBM regression and learning-to-rank. Namespace: `Toro.ML.LightGbm`.
 
 | File | Role |
 |------|------|
-| `Ranking.fs` | LightGBM-specific config, model, training, scoring, evaluation, and ML.NET zip persistence |
+| `Regression.fs` | LightGBM-specific regression config, model, operations, metrics, and ML.NET zip persistence |
+| `Ranking.fs` | LightGBM-specific ranking config, model, operations, metrics, and ML.NET zip persistence |
+
+## Growth Direction
+
+- **`Toro` remains the tensor substrate**: tensor extensions, lifetime management, and tensor serialization belong in the root package. It does not acquire trainer, model-family, modality, or service dependencies.
+- **Training paradigms branch above the substrate**: `Toro.NN` owns differentiable neural-network composition and optimization, while `Toro.ML` owns borrowed task datasets and ML.NET interop for classical machine learning.
+- **Algorithms grow by package and tasks grow inside packages**: packages such as `Toro.ML.FastTree` and `Toro.ML.LightGbm` contain independent task modules such as `Regression` and `Ranking`. Config and model types remain task- and algorithm-specific.
+- **Modalities stay orthogonal**: `Toro.Text`, `Toro.Vision`, and `Toro.GNN` provide domain data and operations without becoming mandatory dependencies of the root package.
+- **Reusable architectures and external adapters stay at the leaves**: `Toro.Models` owns model families; `Toro.Hub` owns remote assets; `Toro.Extensions.AI` owns ecosystem integration. These packages may compose lower layers but lower layers do not depend on them.
 
 ## Design Patterns
 

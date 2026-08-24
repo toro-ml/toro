@@ -156,7 +156,7 @@ The [MnistTraining](examples/MnistTraining) example saves CPU Torch RNG state an
 - **SafeTensors:** Save canonical parameters and buffers, or load external weights with strict preflight validation.
 - **Vision and text:** Image loading and transforms plus tokenization based on Microsoft.ML.Tokenizers.
 - **Graph neural networks:** Message passing, GCN, GAT, GraphSAGE, GIN, graph normalization, and global pooling.
-- **Classical machine learning:** Tensor-backed ranking datasets with independent ML.NET FastTree and LightGBM packages.
+- **Classical machine learning:** Tensor-backed regression and ranking with independent ML.NET FastTree and LightGBM packages.
 
 ## Packages
 
@@ -170,10 +170,19 @@ The [MnistTraining](examples/MnistTraining) example saves CPU Torch RNG state an
 | [`Toro.Text`](src/Toro.Text) | Tokenization and tensor encoding |
 | [`Toro.Vision`](src/Toro.Vision) | Image loading and tensor transforms |
 | [`Toro.ML`](src/Toro.ML) | Shared tensor datasets and ML.NET interop |
-| [`Toro.ML.FastTree`](src/Toro.ML.FastTree) | FastTree learning-to-rank |
-| [`Toro.ML.LightGbm`](src/Toro.ML.LightGbm) | LightGBM learning-to-rank |
+| [`Toro.ML.FastTree`](src/Toro.ML.FastTree) | FastTree regression and learning-to-rank |
+| [`Toro.ML.LightGbm`](src/Toro.ML.LightGbm) | LightGBM regression and learning-to-rank |
 
 `Toro.Hub` downloads one revision-pinned Hugging Face file at a time and caches it locally.
+
+### Package architecture
+
+`Toro` remains the small tensor substrate: tensor extensions, scoped ownership, and tensor serialization. Higher layers grow without adding their dependencies to the root package.
+
+- `Toro.NN` provides differentiable modules, training, and checkpoints; `Toro.GNN` and `Toro.Models` build on it.
+- `Toro.ML` provides task datasets and ML.NET interop; algorithm packages such as `Toro.ML.FastTree` add independent task modules such as `Regression` and `Ranking`.
+- `Toro.Text` and `Toro.Vision` remain orthogonal modality packages.
+- `Toro.Hub` and `Toro.Extensions.AI` remain leaf integrations rather than foundational dependencies.
 
 ## Examples
 

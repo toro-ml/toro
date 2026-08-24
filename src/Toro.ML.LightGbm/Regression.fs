@@ -10,8 +10,8 @@ open Toro
 open Toro.ML
 open Toro.ML.Interop
 
-/// Common LightGBM ranking settings.
-type RankingConfig = {
+/// Common LightGBM regression settings.
+type RegressionConfig = {
     /// Number of boosting iterations.
     NumberOfIterations: int
     /// Maximum number of leaves, or `None` to use ML.NET auto-tuning.
@@ -24,12 +24,12 @@ type RankingConfig = {
     Seed: int option
 }
 
-/// Constructors for LightGBM ranking settings.
-module RankingConfig =
+/// Constructors for LightGBM regression settings.
+module RegressionConfig =
 
     /// Create settings from the ML.NET LightGBM defaults with a deterministic seed.
-    let create () : RankingConfig =
-        let options = LightGbmRankingTrainer.Options()
+    let create () : RegressionConfig =
+        let options = LightGbmRegressionTrainer.Options()
 
         {
             NumberOfIterations = options.NumberOfIterations
@@ -39,9 +39,10 @@ module RankingConfig =
             Seed = Some 0
         }
 
-/// A fitted LightGBM ranking model.
+/// A fitted LightGBM regression model.
 [<Sealed>]
-type RankingModel internal (featureCount: int, transformer: RankingPredictionTransformer<LightGbmRankingModelParameters>) =
+type RegressionModel
+    internal (featureCount: int, transformer: RegressionPredictionTransformer<LightGbmRegressionModelParameters>) =
 
     /// Number of input features expected by the model.
     member _.FeatureCount = featureCount
@@ -49,10 +50,10 @@ type RankingModel internal (featureCount: int, transformer: RankingPredictionTra
     /// Underlying ML.NET model.
     member _.Transformer = transformer
 
-/// LightGBM learning-to-rank operations.
-module Ranking =
+/// LightGBM regression operations.
+module Regression =
 
-    let private validateConfig (config: RankingConfig) =
+    let private validateConfig (config: RegressionConfig) =
         if config.NumberOfIterations <= 0 then
             invalidArg (nameof config) "NumberOfIterations must be positive."
 
@@ -78,26 +79,25 @@ module Ranking =
         | Some value -> MLContext(seed = value)
         | None -> MLContext()
 
-    let private prepareOptions (configure: LightGbmRankingTrainer.Options -> unit) : LightGbmRankingTrainer.Options =
-        let options = LightGbmRankingTrainer.Options()
+    let private prepareOptions (configure: LightGbmRegressionTrainer.Options -> unit) : LightGbmRegressionTrainer.Options =
+        let options = LightGbmRegressionTrainer.Options()
         configure options
         options.LabelColumnName <- Columns.Label
         options.FeatureColumnName <- Columns.Features
-        options.RowGroupColumnName <- Columns.GroupId
         options
 
     let private fitOptions
         (seed: int option)
-        (options: LightGbmRankingTrainer.Options)
-        (dataset: RankingDataset)
-        : RankingModel =
+        (options: LightGbmRegressionTrainer.Options)
+        (dataset: RegressionDataset)
+        : RegressionModel =
         let mlContext = context seed
-        let data = RankingDataView.training mlContext dataset
-        let transformer = mlContext.Ranking.Trainers.LightGbm(options).Fit data
-        RankingModel(dataset.FeatureCount, transformer)
+        let data = RegressionDataView.training mlContext dataset
+        let transformer = mlContext.Regression.Trainers.LightGbm(options).Fit data
+        RegressionModel(dataset.FeatureCount, transformer)
 
-    /// Fit a LightGBM ranker with common F# settings.
-    let fit (config: RankingConfig) (dataset: RankingDataset) : RankingModel =
+    /// Fit a LightGBM regressor with common F# settings.
+    let fit (config: RegressionConfig) (dataset: RegressionDataset) : RegressionModel =
         validateConfig config
 
         prepareOptions (fun options ->
@@ -108,17 +108,17 @@ module Ranking =
             options.Seed <- Option.toNullable config.Seed)
         |> fun options -> fitOptions config.Seed options dataset
 
-    /// Fit a LightGBM ranker after configuring the complete ML.NET options object.
+    /// Fit a LightGBM regressor after configuring the complete ML.NET options object.
     let fitWithOptions
         (seed: int option)
-        (configure: LightGbmRankingTrainer.Options -> unit)
-        (dataset: RankingDataset)
-        : RankingModel =
+        (configure: LightGbmRegressionTrainer.Options -> unit)
+        (dataset: RegressionDataset)
+        : RegressionModel =
         prepareOptions configure
         |> fun options -> fitOptions seed options dataset
 
-    /// Score a feature matrix. Scores are returned as a detached CPU float32 tensor.
-    let predict (features: Tensor) (model: RankingModel) : Tensor =
+    /// Predict target values. Values are returned as a detached CPU float32 tensor.
+    let predict (features: Tensor) (model: RegressionModel) : Tensor =
         let mlContext = MLContext()
         let featureCount, data = TensorDataView.scoring mlContext features
 
@@ -128,37 +128,38 @@ module Ranking =
         model.Transformer.Transform(data)
         |> TensorDataView.float32Column Columns.Score
 
-    /// Evaluate a fitted ranker with ML.NET ranking metrics.
-    let evaluate (dataset: RankingDataset) (model: RankingModel) : RankingMetrics =
+    /// Evaluate a fitted regressor with ML.NET regression metrics.
+    let evaluate (dataset: RegressionDataset) (model: RegressionModel) : RegressionMetrics =
         if dataset.FeatureCount <> model.FeatureCount then
             invalidArg (nameof dataset) $"Dataset features have width {dataset.FeatureCount}, expected {model.FeatureCount}."
 
         let mlContext = MLContext()
-        let data = RankingDataView.training mlContext dataset
+        let data = RegressionDataView.training mlContext dataset
         let scored = model.Transformer.Transform data
-        mlContext.Ranking.Evaluate(scored, Columns.Label, Columns.GroupId, Columns.Score)
+        mlContext.Regression.Evaluate(scored, Columns.Label, Columns.Score)
 
     /// Save a fitted model in the ML.NET zip format.
-    let save (path: string) (model: RankingModel) : unit =
+    let save (path: string) (model: RegressionModel) : unit =
         let mlContext = MLContext()
         let inputSchema = TensorDataView.schema mlContext model.FeatureCount
         mlContext.Model.Save(model.Transformer, inputSchema, path)
 
-    /// Load a LightGBM ranking model from the ML.NET zip format.
-    let load (path: string) : RankingModel =
+    /// Load a LightGBM regression model from the ML.NET zip format.
+    let load (path: string) : RegressionModel =
         let mlContext = MLContext()
         let mutable inputSchema = Unchecked.defaultof<DataViewSchema>
         let transformer = mlContext.Model.Load(path, &inputSchema)
 
         match transformer with
-        | :? RankingPredictionTransformer<LightGbmRankingModelParameters> as ranker ->
-            if ranker.FeatureColumnName <> Columns.Features then
+        | :? RegressionPredictionTransformer<LightGbmRegressionModelParameters> as regressor ->
+            if regressor.FeatureColumnName <> Columns.Features then
                 raise (
-                    InvalidDataException $"Model feature column is '{ranker.FeatureColumnName}', expected '{Columns.Features}'."
+                    InvalidDataException
+                        $"Model feature column is '{regressor.FeatureColumnName}', expected '{Columns.Features}'."
                 )
 
             let featureCount =
-                match ranker.FeatureColumnType with
+                match regressor.FeatureColumnType with
                 | :? VectorDataViewType as featureType -> featureType.Size
                 | featureType -> raise (InvalidDataException $"Model feature column has unsupported type '{featureType}'.")
 
@@ -183,5 +184,5 @@ module Ranking =
                         $"Model input schema has incompatible feature type '{inputType}', expected Vector<Single>[{featureCount}]."
                 )
 
-            RankingModel(featureCount, ranker)
-        | _ -> raise (InvalidDataException "The file does not contain a LightGBM ranking model.")
+            RegressionModel(featureCount, regressor)
+        | _ -> raise (InvalidDataException "The file does not contain a LightGBM regression model.")

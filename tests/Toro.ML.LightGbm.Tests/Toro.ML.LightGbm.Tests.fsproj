@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <Compile Include="RegressionTests.fs" />
     <Compile Include="RankingTests.fs" />
   </ItemGroup>
 

@@ -11,7 +11,7 @@ dotnet add package Toro.ML
 dotnet add package TorchSharp-cpu
 ```
 
-## Ranking data
+## Datasets
 
 ```fsharp
 open TorchSharp
@@ -24,7 +24,13 @@ let groupIds = torch.tensor ([| 10L; 10L; 20L; 20L |], dtype = torch.int64)
 let dataset = RankingDataset.create features labels groupIds
 ```
 
-`RankingDataset` borrows its tensors. It does not copy or dispose them.
+Regression uses the same feature and label layout without query groups.
+
+```fsharp
+let dataset = RegressionDataset.create features labels
+```
+
+Datasets borrow their tensors. They do not copy or dispose them.
 
 ## License
 

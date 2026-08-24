@@ -47,27 +47,9 @@ module RankingDataset =
 
                 current <- value
 
-    let internal validateFeatures (paramName: string) (features: Tensor) =
-        if features.dim () <> 2 then
-            invalidArg paramName $"Features must be 2-d, but have {features.dim ()} dimensions."
-
-        if features.dtype <> torch.float32 then
-            invalidArg paramName $"Features must have dtype float32, but have {features.dtype}."
-
-        if features.shape[0] <= 0L then
-            invalidArg paramName "Features must contain at least one row."
-
-        if features.shape[1] <= 0L then
-            invalidArg paramName "Features must contain at least one column."
-
     let internal validate (dataset: RankingDataset) =
-        validateFeatures (nameof dataset.Features) dataset.Features
-
-        if dataset.Labels.dim () <> 1 then
-            invalidArg (nameof dataset.Labels) $"Labels must be 1-d, but have {dataset.Labels.dim ()} dimensions."
-
-        if dataset.Labels.dtype <> torch.float32 then
-            invalidArg (nameof dataset.Labels) $"Labels must have dtype float32, but have {dataset.Labels.dtype}."
+        DatasetValidation.features (nameof dataset.Features) dataset.Features
+        DatasetValidation.float32Labels (nameof dataset.Labels) dataset.Features.shape[0] dataset.Labels
 
         if dataset.GroupIds.dim () <> 1 then
             invalidArg (nameof dataset.GroupIds) $"Group ids must be 1-d, but have {dataset.GroupIds.dim ()} dimensions."
@@ -76,9 +58,6 @@ module RankingDataset =
             invalidArg (nameof dataset.GroupIds) $"Group ids must have dtype int64, but have {dataset.GroupIds.dtype}."
 
         let rowCount = dataset.Features.shape[0]
-
-        if dataset.Labels.shape[0] <> rowCount then
-            invalidArg (nameof dataset.Labels) $"Labels have {dataset.Labels.shape[0]} rows, expected {rowCount}."
 
         if dataset.GroupIds.shape[0] <> rowCount then
             invalidArg (nameof dataset.GroupIds) $"Group ids have {dataset.GroupIds.shape[0]} rows, expected {rowCount}."

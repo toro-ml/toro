@@ -1,6 +1,6 @@
 # Toro.ML.FastTree
 
-FastTree learning-to-rank over [Toro](https://www.nuget.org/packages/Toro) tensors, backed by ML.NET.
+FastTree regression and learning-to-rank over [Toro](https://www.nuget.org/packages/Toro) tensors, backed by ML.NET.
 
 ## Installation
 
@@ -9,7 +9,19 @@ dotnet add package Toro.ML.FastTree
 dotnet add package TorchSharp-cpu
 ```
 
-## Quick example
+## Regression
+
+```fsharp
+open Toro.ML
+open Toro.ML.FastTree
+
+let dataset = RegressionDataset.create features labels
+let model = Regression.fit (RegressionConfig.create ()) dataset
+let values = Regression.predict features model
+let metrics = Regression.evaluate dataset model
+```
+
+## Ranking
 
 ```fsharp
 open Toro.ML

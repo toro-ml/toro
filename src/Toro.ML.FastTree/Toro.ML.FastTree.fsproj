@@ -7,7 +7,7 @@
     <Version>0.1.0</Version>
     <Authors>ryushiaok</Authors>
     <Description>FastTree classical machine-learning algorithms over Toro tensors</Description>
-    <PackageTags>fsharp;dotnet;ml;torchsharp;mlnet;fasttree;ranking</PackageTags>
+    <PackageTags>fsharp;dotnet;ml;torchsharp;mlnet;fasttree;regression;ranking</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/toro-ml/toro</RepositoryUrl>
@@ -19,6 +19,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Regression.fs" />
     <Compile Include="Ranking.fs" />
   </ItemGroup>
 
